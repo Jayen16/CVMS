@@ -21,102 +21,131 @@
             </form>
         </div>
 
-        <div class="grid gap-4 md:grid-cols-4">
-            <div class="app-panel">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Given</div>
-                <div class="mt-3 h-2 rounded-full bg-emerald-500"></div>
-            </div>
-            <div class="app-panel">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pending verification</div>
-                <div class="mt-3 h-2 rounded-full bg-amber-400"></div>
-            </div>
-            <div class="app-panel">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Upcoming</div>
-                <div class="mt-3 h-2 rounded-full bg-sky-400"></div>
-            </div>
-            <div class="app-panel">
-                <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Overdue</div>
-                <div class="mt-3 h-2 rounded-full bg-red-500"></div>
-                <div class="mt-2 text-xs text-slate-500">Suggest action today</div>
-            </div>
-        </div>
-
-        <section class="app-card">
-            <div class="app-card-header">
-                <h2 class="app-card-title">Schedule indication legend</h2>
-            </div>
-            <div class="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
-                @foreach ($indications as $value => $label)
-                    <div class="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-                        <span class="schedule-indication-{{ str_replace('_', '-', $value) }} h-9 w-16 rounded border border-slate-300"></span>
-                        <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">{{ $label }}</span>
+        <section class="grid gap-4 lg:grid-cols-2">
+            <div class="app-panel !p-4">
+                <h2 class="text-sm font-semibold text-slate-950 dark:text-white">Vaccination status</h2>
+                <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
+                    <div class="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-zinc-300">
+                        <span class="size-3 rounded-sm bg-emerald-500"></span>
+                        <span>Given</span>
                     </div>
-                @endforeach
+                    <div class="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-zinc-300">
+                        <span class="size-3 rounded-sm bg-amber-400"></span>
+                        <span>Pending verification</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-zinc-300">
+                        <span class="size-3 rounded-sm bg-sky-400"></span>
+                        <span>Upcoming</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-zinc-300">
+                        <span class="size-3 rounded-sm bg-red-500"></span>
+                        <span>Overdue</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-panel !p-4">
+                <h2 class="text-sm font-semibold text-slate-950 dark:text-white">Schedule indication</h2>
+                <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                    @foreach ($indications as $value => $label)
+                        <div class="flex min-w-0 items-center gap-2 text-xs font-medium text-slate-600 dark:text-zinc-300">
+                            <span class="schedule-indication-{{ str_replace('_', '-', $value) }} h-4 w-8 shrink-0 rounded border border-slate-300"></span>
+                            <span class="truncate">{{ $label }}</span>
+                        </div>
+                    @endforeach
+                </div>
             </div>
         </section>
 
         <section class="app-card">
             <div class="app-card-header">
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <h2 class="app-card-title">Routine schedule timeline</h2>
+                    <div>
+                        <h2 class="app-card-title">Routine schedule checklist</h2>
+                        <p class="mt-1 text-sm text-slate-500 dark:text-zinc-400">Checklist markers are positioned on the age scale like a Gantt chart.</p>
+                    </div>
                     <div class="text-xs font-medium text-slate-500">Birth to 5 years scale</div>
                 </div>
             </div>
 
-            <div class="max-h-[72vh] overflow-auto">
-                <div class="min-w-[1280px] divide-y divide-slate-200 dark:divide-zinc-800">
-                    <div class="sticky top-0 z-20 grid grid-cols-[280px_1fr] bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 shadow-sm dark:bg-zinc-950 dark:text-zinc-400">
-                        <div class="px-6 py-4">Vaccine</div>
-                        <div class="grid grid-cols-6 px-8 py-4">
-                            <span>Birth</span>
-                            <span>1 mo</span>
-                            <span>6 mos</span>
-                            <span>12 mos</span>
-                            <span>24 mos</span>
-                            <span>5 yrs</span>
+            <div class="max-h-[78vh] overflow-auto">
+                <div class="min-w-[1180px] divide-y divide-slate-200 dark:divide-zinc-800">
+                    <div class="sticky top-0 z-20 grid grid-cols-[260px_1fr] bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 shadow-sm dark:bg-zinc-950 dark:text-zinc-400">
+                        <div class="border-r border-slate-200 px-5 py-3 dark:border-zinc-800">Vaccine</div>
+                        <div class="relative px-8 py-3">
+                            <div class="grid grid-cols-8">
+                                <span>Birth</span>
+                                <span>6 wks</span>
+                                <span>10 wks</span>
+                                <span>14 wks</span>
+                                <span>6 mos</span>
+                                <span>9 mos</span>
+                                <span>12 mos</span>
+                                <span>5 yrs</span>
+                            </div>
                         </div>
                     </div>
 
                     @forelse ($timeline as $row)
-                        <div class="grid min-h-44 grid-cols-[280px_1fr] items-center">
-                            <div class="px-6 py-8">
-                                <div class="font-semibold text-slate-950 dark:text-white">{{ $row['name'] }}</div>
-                                <a href="{{ route('children.timeline', ['child' => $child, 'vaccine' => $row['code']]) }}" class="text-xs text-teal-700 hover:underline dark:text-teal-300">Focus</a>
+                        <div class="grid min-h-32 grid-cols-[260px_1fr] bg-white dark:bg-zinc-900">
+                            <div class="{{ $row['indication_class'] }} flex flex-col justify-center border-r border-slate-200 px-5 py-4 dark:border-zinc-800">
+                                <h3 class="text-sm font-semibold text-slate-950">{{ $row['name'] }}</h3>
+                                <p class="mt-1 line-clamp-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700">{{ $row['indication_label'] }}</p>
+                                <a href="{{ route('children.timeline', ['child' => $child, 'vaccine' => $row['code']]) }}" class="mt-3 w-fit rounded bg-white/85 px-2 py-1 text-[11px] font-semibold text-teal-800 ring-1 ring-slate-300 hover:bg-white">Focus</a>
                             </div>
-                            <div class="relative mx-8 my-10 h-28 rounded-lg bg-slate-100 ring-1 ring-slate-200 dark:bg-zinc-800 dark:ring-zinc-700">
-                                <div class="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-slate-300 dark:bg-zinc-600"></div>
-                                <div class="absolute inset-y-0 left-[20%] w-px bg-slate-200 dark:bg-zinc-700"></div>
-                                <div class="absolute inset-y-0 left-[40%] w-px bg-slate-200 dark:bg-zinc-700"></div>
-                                <div class="absolute inset-y-0 left-[60%] w-px bg-slate-200 dark:bg-zinc-700"></div>
-                                <div class="absolute inset-y-0 left-[80%] w-px bg-slate-200 dark:bg-zinc-700"></div>
+
+                            <div class="relative px-8 py-7">
+                                <div class="absolute inset-x-8 top-1/2 h-3 -translate-y-1/2 rounded-full bg-slate-100 ring-1 ring-slate-200 dark:bg-zinc-800 dark:ring-zinc-700"></div>
+                                <div class="absolute inset-y-0 left-[12.5%] w-px bg-slate-100 dark:bg-zinc-800"></div>
+                                <div class="absolute inset-y-0 left-[25%] w-px bg-slate-100 dark:bg-zinc-800"></div>
+                                <div class="absolute inset-y-0 left-[37.5%] w-px bg-slate-100 dark:bg-zinc-800"></div>
+                                <div class="absolute inset-y-0 left-[50%] w-px bg-slate-100 dark:bg-zinc-800"></div>
+                                <div class="absolute inset-y-0 left-[62.5%] w-px bg-slate-100 dark:bg-zinc-800"></div>
+                                <div class="absolute inset-y-0 left-[75%] w-px bg-slate-100 dark:bg-zinc-800"></div>
+                                <div class="absolute inset-y-0 left-[87.5%] w-px bg-slate-100 dark:bg-zinc-800"></div>
 
                                 @foreach ($row['doses'] as $point)
-                                    <div class="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style="left: {{ $point['position'] }}%">
-                                        <div class="group relative flex size-12 items-center justify-center">
-                                            <div class="{{ $point['indication_class'] }} absolute inset-0 rounded-full opacity-60"></div>
-                                            <div class="relative size-8 rounded-full ring-4 ring-white dark:ring-zinc-800
-                                                @if ($point['status'] === 'given') bg-emerald-500
-                                                @elseif ($point['status'] === 'pending') bg-amber-400
-                                                @elseif ($point['status'] === 'overdue') bg-red-500
-                                                @else bg-sky-400 @endif">
+                                    @php
+                                        $markerClasses = match ($point['status']) {
+                                            'given' => 'border-emerald-600 bg-emerald-500 text-white shadow-emerald-900/20',
+                                            'pending' => 'border-amber-500 bg-amber-400 text-slate-950 shadow-amber-900/20',
+                                            'overdue' => 'border-red-600 bg-red-500 text-white shadow-red-900/20',
+                                            default => 'border-sky-500 bg-sky-400 text-slate-950 shadow-sky-900/20',
+                                        };
+                                        $statusLabel = match ($point['status']) {
+                                            'given' => 'Given',
+                                            'pending' => 'Pending verification',
+                                            'overdue' => 'Overdue',
+                                            default => 'Upcoming',
+                                        };
+                                        $markerText = match ($point['status']) {
+                                            'given' => 'OK',
+                                            'pending' => '!',
+                                            'overdue' => 'Due',
+                                            default => 'Todo',
+                                        };
+                                    @endphp
+
+                                    <div class="absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2" style="left: calc(2rem + (100% - 4rem) * {{ $point['position'] / 100 }});">
+                                        <div class="group relative flex flex-col items-center gap-1">
+                                            <div class="flex h-10 w-10 items-center justify-center rounded-md border text-[10px] font-bold shadow-sm {{ $markerClasses }}">
+                                                {{ $markerText }}
                                             </div>
-                                            <div class="pointer-events-none absolute left-1/2 top-14 z-30 hidden w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-lg group-hover:block dark:border-zinc-700 dark:bg-zinc-900">
-                                                <div class="font-semibold text-slate-950 dark:text-white">Dose {{ $point['dose'] }} | {{ $point['label'] }}</div>
+                                            <div class="max-w-24 truncate rounded bg-white/90 px-1.5 py-0.5 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200 dark:bg-zinc-900/90 dark:text-zinc-200 dark:ring-zinc-700">
+                                                D{{ $point['dose'] }} · {{ $point['age_summary'] }}
+                                            </div>
+
+                                            <div class="pointer-events-none absolute left-1/2 top-16 z-30 hidden w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-lg group-hover:block dark:border-zinc-700 dark:bg-zinc-900">
+                                                <div class="font-semibold text-slate-950 dark:text-white">Dose {{ $point['dose'] }} · {{ $point['label'] }}</div>
                                                 <div class="mt-1 text-slate-500">Due {{ $point['due_at']->format('M d, Y') }}</div>
-                                                <div class="mt-1 text-slate-500">Indication: {{ $point['indication_label'] }}</div>
+                                                <div class="mt-1 text-slate-500">Status: {{ $statusLabel }}</div>
                                                 @if ($point['record'])
                                                     <div class="mt-2 text-slate-600 dark:text-zinc-300">
                                                         Given {{ $point['record']->administered_at->format('M d, Y') }}
-                                                        <br>
-                                                        Status: {{ ucfirst($point['record']->verification_status) }}
                                                     </div>
-                                                @else
+                                                @elseif ($point['action_at'])
                                                     <div class="mt-2 text-slate-600 dark:text-zinc-300">
-                                                        {{ ucfirst($point['status']) }}
-                                                        @if ($point['action_at'])
-                                                            <br>
-                                                            Suggested action: {{ $point['action_at']->format('M d, Y') }}
-                                                        @endif
+                                                        Action {{ $point['action_at']->format('M d, Y') }}
                                                     </div>
                                                 @endif
                                             </div>

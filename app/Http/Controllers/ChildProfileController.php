@@ -4,22 +4,31 @@ namespace App\Http\Controllers;
 
 use App\Models\Barangay;
 use App\Models\ChildProfile;
+use App\Models\VaccinationRecord;
 use App\Models\VaccineType;
 use App\Services\ImmunizationSuggestionService;
+use App\Services\OfflineSyncService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ChildProfileController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $vaccineTypeId = $request->integer('vaccine_type_id') ?: null;
+
         return view('children.index', [
             'children' => $this->visibleChildren()
                 ->with(['barangay', 'vaccinations'])
+                ->when($vaccineTypeId && ! auth()->user()->isParent(), fn (Builder $query) => $query->whereHas('vaccinations', fn (Builder $records) => $records->where('vaccine_type_id', $vaccineTypeId)->where('verification_status', 'verified')))
                 ->latest()
-                ->paginate(12),
+                ->paginate(12)
+                ->withQueryString(),
+            'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
+            'selectedVaccineTypeId' => $vaccineTypeId,
         ]);
     }
 
@@ -33,7 +42,7 @@ class ChildProfileController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, OfflineSyncService $offlineSync): RedirectResponse
     {
         abort_if(auth()->user()->isParent(), 403);
         abort_if(auth()->user()->isNurse() && auth()->user()->barangay_id === null, 403);
@@ -60,7 +69,21 @@ class ChildProfileController extends Controller
             : auth()->user()->barangay_id;
         $validated['created_by'] = auth()->id();
 
+        $duplicate = ChildProfile::query()
+            ->where('barangay_id', $validated['barangay_id'])
+            ->whereDate('birthdate', $validated['birthdate'])
+            ->where('first_name', $validated['first_name'])
+            ->where('last_name', $validated['last_name'])
+            ->first();
+
+        if ($duplicate) {
+            throw ValidationException::withMessages([
+                'first_name' => 'Possible duplicate child found in this barangay with the same name and birthdate. Review the duplicates queue first.',
+            ]);
+        }
+
         $child = ChildProfile::create($validated);
+        $offlineSync->queueUpsert($child->load(['barangay', 'creator']));
 
         return to_route('children.show', $child)->with('status', 'Child profile created.');
     }
@@ -69,12 +92,32 @@ class ChildProfileController extends Controller
     {
         $this->authorizeChild($child);
 
-        $child->load(['barangay', 'parents', 'vaccinations.vaccineType', 'vaccinations.recorder', 'vaccinations.submitter', 'vaccinations.verifier']);
+        $child->load([
+            'barangay',
+            'parents',
+            'vaccinations.vaccineType',
+            'vaccinations.recorder',
+            'vaccinations.submitter',
+            'vaccinations.verifier',
+            'adverseEventReports.vaccineType',
+            'adverseEventReports.reporter',
+        ]);
+        $editableRecord = null;
+
+        if (auth()->user()->isParent() && request()->filled('edit_record')) {
+            $editableRecord = $child->vaccinations
+                ->first(fn (VaccinationRecord $record) => $record->id === request()->integer('edit_record'));
+
+            abort_if($editableRecord === null, 404);
+            abort_if($editableRecord->submitted_by !== auth()->id(), 403);
+            abort_if(! $editableRecord->isPendingVerification(), 403);
+        }
 
         return view('children.show', [
             'child' => $child,
             'suggestion' => $suggestions->suggestNextDose($child),
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
+            'editableRecord' => $editableRecord,
         ]);
     }
 

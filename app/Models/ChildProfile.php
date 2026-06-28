@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class ChildProfile extends Model
 {
@@ -21,6 +22,8 @@ class ChildProfile extends Model
         'guardian_name',
         'guardian_contact',
         'address',
+        'vaccine_card_token',
+        'sync_uuid',
     ];
 
     protected function casts(): array
@@ -55,6 +58,14 @@ class ChildProfile extends Model
     }
 
     /**
+     * @return HasMany<AdverseEventReport, $this>
+     */
+    public function adverseEventReports(): HasMany
+    {
+        return $this->hasMany(AdverseEventReport::class);
+    }
+
+    /**
      * @return BelongsToMany<User, $this>
      */
     public function parents(): BelongsToMany
@@ -80,5 +91,18 @@ class ChildProfile extends Model
         }
 
         return (int) $birthdate->diffInYears().' years';
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (ChildProfile $child): void {
+            if (blank($child->vaccine_card_token)) {
+                $child->vaccine_card_token = (string) Str::uuid();
+            }
+
+            if (blank($child->sync_uuid)) {
+                $child->sync_uuid = (string) Str::uuid();
+            }
+        });
     }
 }

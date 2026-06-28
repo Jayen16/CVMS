@@ -27,4 +27,12 @@ class Barangay extends Model
     {
         return $this->hasMany(ChildProfile::class);
     }
+
+    /**
+     * @return HasMany<ClinicAnnouncement, $this>
+     */
+    public function announcements(): HasMany
+    {
+        return $this->hasMany(ClinicAnnouncement::class);
+    }
 }

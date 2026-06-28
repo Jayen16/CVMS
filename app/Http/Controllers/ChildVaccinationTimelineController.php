@@ -73,6 +73,8 @@ class ChildVaccinationTimelineController extends Controller
             $rows[] = [
                 'name' => $vaccine->name,
                 'code' => $code,
+                'indication_label' => $doses->first()->indicationLabel(),
+                'indication_class' => $doses->first()->indicationClass(),
                 'doses' => $this->dosePoints($child, $doses->values(), $records),
                 'records' => array_values($records->all()),
             ];
@@ -99,6 +101,7 @@ class ChildVaccinationTimelineController extends Controller
             $points[] = [
                 'dose' => $doseNumber,
                 'label' => $dose->label,
+                'age_summary' => $dose->ageSummary(),
                 'indication_label' => $dose->indicationLabel(),
                 'indication_class' => $dose->indicationClass(),
                 'due_at' => $dueAt,

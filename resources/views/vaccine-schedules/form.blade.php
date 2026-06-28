@@ -17,13 +17,24 @@
                 <label class="grid gap-2 text-sm">
                     <span class="font-medium text-slate-800 dark:text-zinc-100">Vaccine</span>
                     <select name="vaccine_type_id" class="app-input">
-                        <option value="">Select vaccine</option>
+                        <option value="">{{ $allowNewVaccine ? 'Select existing vaccine or add new below' : 'Select vaccine' }}</option>
                         @foreach ($vaccines as $vaccine)
                             <option value="{{ $vaccine->id }}" @selected((int) old('vaccine_type_id', $schedule->vaccine_type_id) === $vaccine->id)>{{ $vaccine->name }}</option>
                         @endforeach
                     </select>
                     @error('vaccine_type_id') <span class="text-xs font-medium text-red-600 dark:text-red-400">{{ $message }}</span> @enderror
                 </label>
+
+                @if ($allowNewVaccine)
+                    <div class="rounded-lg border border-dashed border-teal-300 bg-teal-50/60 p-4 dark:border-teal-800 dark:bg-teal-950/40">
+                        <h2 class="text-sm font-semibold text-slate-950 dark:text-white">Add new vaccine</h2>
+                        <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Use this when the vaccine is not in the existing choices. Leave these blank when selecting an existing vaccine.</p>
+                        <div class="mt-4 grid gap-4 md:grid-cols-2">
+                            <x-form-field label="New vaccine name" name="new_vaccine_name" />
+                            <x-form-field label="New vaccine code" name="new_vaccine_code" />
+                        </div>
+                    </div>
+                @endif
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <x-form-field label="Dose number" name="dose_number" type="number" :value="$schedule->dose_number" />

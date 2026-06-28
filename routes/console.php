@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('vaccinations:send-reminders')->dailyAt('08:00');
+Schedule::command('offline:sync-outbox')->everyFiveMinutes();

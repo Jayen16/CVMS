@@ -8,23 +8,32 @@
             <div>
                 <p class="eyebrow">Administration</p>
                 <h1 class="page-title">Vaccine schedule rules</h1>
-                <p class="page-subtitle">Manage the dose timing used by the AI next-dose suggestion, reminders, and timeline chart.</p>
+                <p class="page-subtitle">Manage vaccines and dose timing used by the AI next-dose suggestion, reminders, and timeline chart.</p>
             </div>
-            <a href="{{ route('vaccine-schedules.create') }}" class="app-button-primary">Add dose rule</a>
+            <a href="{{ route('vaccine-schedules.create') }}" class="app-button-primary">Add vaccine or dose rule</a>
         </div>
 
         <div class="grid gap-5">
             @foreach ($vaccines as $vaccine)
                 <section class="app-card">
                     <div class="app-card-header">
-                        <div class="flex items-center justify-between gap-4">
+                        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                             <div>
                                 <h2 class="app-card-title">{{ $vaccine->name }}</h2>
                                 <p class="text-xs font-medium uppercase tracking-wide text-slate-500">{{ $vaccine->code }}</p>
                             </div>
-                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">
-                                {{ $vaccine->schedules->count() }} doses
-                            </span>
+                            <div class="flex flex-wrap items-center gap-2 md:justify-end">
+                                <span class="status-pill {{ $vaccine->active ? 'status-verified' : 'status-rejected' }}">
+                                    {{ $vaccine->active ? 'Active vaccine' : 'Inactive vaccine' }}
+                                </span>
+                                <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                    {{ $vaccine->schedules->count() }} doses
+                                </span>
+                                <form method="POST" action="{{ route('vaccine-types.toggle', $vaccine) }}">
+                                    @csrf
+                                    <button class="app-button-secondary !px-3 !py-1.5 !text-xs">{{ $vaccine->active ? 'Deactivate vaccine' : 'Activate vaccine' }}</button>
+                                </form>
+                            </div>
                         </div>
                     </div>
 

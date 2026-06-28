@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class VaccinationRecord extends Model
 {
@@ -20,6 +22,9 @@ class VaccinationRecord extends Model
         'verified_at',
         'clinic_name',
         'clinic_location',
+        'proof_path',
+        'client_submission_id',
+        'sync_uuid',
         'next_due_at',
         'suggested_vaccine',
         'suggestion_note',
@@ -75,8 +80,25 @@ class VaccinationRecord extends Model
         return $this->belongsTo(User::class, 'verified_by');
     }
 
+    /**
+     * @return HasMany<AdverseEventReport, $this>
+     */
+    public function adverseEventReports(): HasMany
+    {
+        return $this->hasMany(AdverseEventReport::class);
+    }
+
     public function isPendingVerification(): bool
     {
         return $this->verification_status === 'pending';
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (VaccinationRecord $record): void {
+            if (blank($record->sync_uuid)) {
+                $record->sync_uuid = (string) Str::uuid();
+            }
+        });
     }
 }

@@ -18,6 +18,23 @@
                     <flux:sidebar.item icon="users" :href="route('children.index')" :current="request()->routeIs('children.*')" wire:navigate>
                         {{ __('Children') }}
                     </flux:sidebar.item>
+                    @if (auth()->user()->isAdmin() || auth()->user()->isNurse())
+                        <flux:sidebar.item icon="clipboard-document-check" :href="route('verification-queue.index')" :current="request()->routeIs('verification-queue.*')" wire:navigate>
+                            {{ __('Verification Queue') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="bell-alert" :href="route('defaulters.index')" :current="request()->routeIs('defaulters.*')" wire:navigate>
+                            {{ __('Defaulters') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="megaphone" :href="route('announcements.index')" :current="request()->routeIs('announcements.*')" wire:navigate>
+                            {{ __('Announcements') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="exclamation-triangle" :href="route('aefi-reports.index')" :current="request()->routeIs('aefi-reports.*')" wire:navigate>
+                            {{ __('AEFI') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="squares-2x2" :href="route('duplicates.index')" :current="request()->routeIs('duplicates.*')" wire:navigate>
+                            {{ __('Duplicates') }}
+                        </flux:sidebar.item>
+                    @endif
                     @if (auth()->user()->isAdmin())
                         <flux:sidebar.item icon="user-plus" :href="route('nurses.index')" :current="request()->routeIs('nurses.*')" wire:navigate>
                             {{ __('Nurses') }}

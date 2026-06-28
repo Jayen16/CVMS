@@ -11,6 +11,24 @@
             @endif
         </div>
 
+
+        @if (! auth()->user()->isParent())
+            <form method="GET" action="{{ route('children.index') }}" class="app-panel flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <label class="grid flex-1 gap-2 text-sm">
+                    <span class="font-medium text-slate-800 dark:text-zinc-100">Filter by vaccination taken</span>
+                    <select name="vaccine_type_id" class="app-input">
+                        <option value="">All vaccinations</option>
+                        @foreach ($vaccines as $vaccine)
+                            <option value="{{ $vaccine->id }}" @selected((int) $selectedVaccineTypeId === $vaccine->id)>{{ $vaccine->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <div class="flex gap-2">
+                    <button class="app-button-primary">Filter</button>
+                    <a href="{{ route('children.index') }}" class="app-button-secondary">Clear</a>
+                </div>
+            </form>
+        @endif
         <div class="app-card">
             <table class="app-table">
                 <thead>
@@ -44,3 +62,4 @@
         {{ $children->links() }}
     </div>
 </x-layouts::app>
+

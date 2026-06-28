@@ -22,6 +22,7 @@ test('nurses can view a child vaccination timeline chart', function () {
         ->get(route('children.timeline', $child))
         ->assertOk()
         ->assertSee('vaccination timeline')
-        ->assertSee('Routine schedule timeline')
-        ->assertSee('Suggested action');
+        ->assertSee('Routine schedule checklist')
+        ->assertSee('Action');
 });
+

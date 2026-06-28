@@ -31,6 +31,20 @@
                 <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" />
             </div>
 
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+                <x-stat-card label="Pending verification" :value="$stats['pending']" />
+                <div class="app-card flex items-center justify-between">
+                    <div>
+                        <h2 class="app-card-title">Quick actions</h2>
+                        <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Review pending submissions, duplicate children, and recall lists.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="{{ route('verification-queue.index') }}" class="app-button-secondary">Verification queue</a>
+                        <a href="{{ route('duplicates.index') }}" class="app-button-secondary">Duplicates</a>
+                    </div>
+                </div>
+            </div>
+
             <section class="app-card">
                 <div class="app-card-header">
                     <h2 class="app-card-title">Barangay statistics</h2>
@@ -68,6 +82,31 @@
 
             <section class="app-card">
                 <div class="app-card-header">
+                    <h2 class="app-card-title">This month’s family due calendar</h2>
+                </div>
+                <div class="grid gap-3 md:grid-cols-2">
+                    @forelse ($calendarItems as $date => $items)
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                            <div class="text-sm font-semibold text-slate-950 dark:text-white">{{ \Illuminate\Support\Carbon::parse($date)->format('M d, Y') }}</div>
+                            <div class="mt-3 space-y-3">
+                                @foreach ($items as $item)
+                                    <a href="{{ route('children.show', $item['child']) }}" class="block rounded-lg bg-white p-3 ring-1 ring-slate-200 transition hover:bg-teal-50 dark:bg-zinc-900 dark:ring-zinc-800 dark:hover:bg-zinc-800">
+                                        <div class="font-medium text-slate-950 dark:text-white">{{ $item['child']->full_name }}</div>
+                                        <div class="mt-1 text-sm text-slate-600 dark:text-zinc-300">
+                                            {{ $item['suggestion']['vaccine_name'] }} dose {{ $item['suggestion']['dose_number'] }}
+                                        </div>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-sm text-zinc-500">No due items in the current calendar month.</p>
+                    @endforelse
+                </div>
+            </section>
+
+            <section class="app-card">
+                <div class="app-card-header">
                     <h2 class="app-card-title">Linked child profiles</h2>
                 </div>
                 <div class="divide-y divide-slate-200 dark:divide-zinc-800">
@@ -82,10 +121,17 @@
                 </div>
             </section>
         @else
-            <div class="grid gap-4 md:grid-cols-3">
+            <div class="grid gap-4 md:grid-cols-4">
                 <x-stat-card label="Assigned barangay" :value="$stats['barangay']" />
                 <x-stat-card label="Children" :value="$stats['children']" />
                 <x-stat-card label="Vaccination records" :value="$stats['vaccinations']" />
+                <x-stat-card label="Pending verification" :value="$stats['pending']" />
+            </div>
+
+            <div class="mt-4 flex flex-wrap gap-2">
+                <a href="{{ route('verification-queue.index') }}" class="app-button-secondary">Verification queue</a>
+                <a href="{{ route('defaulters.index') }}" class="app-button-secondary">Defaulters</a>
+                <a href="{{ route('aefi-reports.index') }}" class="app-button-secondary">AEFI reports</a>
             </div>
 
             <section class="app-card">
@@ -104,5 +150,36 @@
                 </div>
             </section>
         @endif
+
+        <section class="app-card">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Clinic announcements</h2>
+                @if (auth()->user()->isAdmin() || auth()->user()->isNurse())
+                    <a href="{{ route('announcements.index') }}" class="app-button-secondary">Manage announcements</a>
+                @endif
+            </div>
+            <div class="grid gap-3 md:grid-cols-2">
+                @forelse ($announcements as $announcement)
+                    <article class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="font-semibold text-slate-950 dark:text-white">{{ $announcement->title }}</div>
+                            <span class="status-pill bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200">{{ ucfirst($announcement->category) }}</span>
+                        </div>
+                        <div class="mt-2 text-sm text-slate-600 dark:text-zinc-300">
+                            {{ $announcement->starts_on->format('M d, Y') }}@if ($announcement->ends_on) to {{ $announcement->ends_on->format('M d, Y') }}@endif
+                            @if ($announcement->barangay)
+                                | {{ $announcement->barangay->name }}
+                            @endif
+                            @if ($announcement->location)
+                                | {{ $announcement->location }}
+                            @endif
+                        </div>
+                        <p class="mt-3 text-sm leading-6 text-slate-600 dark:text-zinc-300">{{ $announcement->message }}</p>
+                    </article>
+                @empty
+                    <p class="text-sm text-zinc-500">No active clinic announcements.</p>
+                @endforelse
+            </div>
+        </section>
     </div>
 </x-layouts::app>

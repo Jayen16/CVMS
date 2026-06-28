@@ -7,6 +7,7 @@ use App\Models\ChildProfile;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineType;
 use App\Services\ImmunizationSuggestionService;
+use App\Services\VaccinationSubmissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -47,27 +48,17 @@ class ParentChildController extends Controller
         ]);
     }
 
-    public function storeVaccination(Request $request, ChildProfile $child, ImmunizationSuggestionService $suggestions): JsonResponse
+    public function storeVaccination(
+        Request $request,
+        ChildProfile $child,
+        ImmunizationSuggestionService $suggestions,
+        VaccinationSubmissionService $submissions
+    ): JsonResponse
     {
         $this->authorizeLinkedChild($child);
 
-        $validated = $request->validate([
-            'vaccine_type_id' => ['required', 'exists:vaccine_types,id'],
-            'dose_number' => ['nullable', 'integer', 'min:1', 'max:10'],
-            'administered_at' => ['required', 'date', 'before_or_equal:today'],
-            'clinic_name' => ['required', 'string', 'max:255'],
-            'clinic_location' => ['nullable', 'string', 'max:255'],
-            'remarks' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        $record = VaccinationRecord::create([
-            ...$validated,
-            'child_profile_id' => $child->id,
-            'recorded_by' => auth()->id(),
-            'submitted_by' => auth()->id(),
-            'source' => 'outside_clinic',
-            'verification_status' => 'pending',
-        ]);
+        $validated = $submissions->validate(auth()->user(), $child, $request->all() + $request->allFiles());
+        $record = $submissions->create($child, auth()->user(), $validated);
 
         $record->update($suggestions->suggestionForRecord($child));
         $record->load(['vaccineType', 'recorder', 'submitter', 'verifier']);
@@ -156,6 +147,7 @@ class ParentChildController extends Controller
             'verification_status' => $record->verification_status,
             'clinic_name' => $record->clinic_name,
             'clinic_location' => $record->clinic_location,
+            'proof_url' => $record->proof_path ? asset('storage/'.$record->proof_path) : null,
             'remarks' => $record->remarks,
             'submitted_by' => $record->submitter?->name,
             'verified_by' => $record->verifier?->name,
