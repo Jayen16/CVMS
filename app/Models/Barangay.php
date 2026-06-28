@@ -21,6 +21,14 @@ class Barangay extends Model
     }
 
     /**
+     * @return HasManyRelation<User, $this>
+     */
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
+
+    /**
      * @return HasMany<ChildProfile, $this>
      */
     public function children(): HasMany

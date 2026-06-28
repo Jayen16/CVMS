@@ -41,6 +41,7 @@ class AdminReportController extends Controller
      */
     private function reportData(Request $request): array
     {
+        $user = auth()->user();
         $validated = $request->validate([
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
@@ -55,17 +56,25 @@ class AdminReportController extends Controller
             : now()->endOfDay();
 
         $recordScope = VaccinationRecord::query()
-            ->whereBetween('administered_at', [$startDate->toDateString(), $endDate->toDateString()]);
+            ->whereBetween('administered_at', [$startDate->toDateString(), $endDate->toDateString()])
+            ->when(
+                ! $user->isSuperAdmin(),
+                fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))
+            );
 
         $barangayRecords = VaccinationRecord::query()
             ->select('child_profiles.barangay_id', DB::raw('count(*) as total'))
             ->join('child_profiles', 'vaccination_records.child_profile_id', '=', 'child_profiles.id')
             ->whereBetween('vaccination_records.administered_at', [$startDate->toDateString(), $endDate->toDateString()])
+            ->when(! $user->isSuperAdmin(), fn ($query) => $query->where('child_profiles.barangay_id', $user->barangay_id))
             ->groupBy('child_profiles.barangay_id')
             ->pluck('total', 'barangay_id');
 
         $barangays = Barangay::query()
-            ->withCount(['children', 'nurses'])
+            ->withCount('children')
+            ->withCount(['users as nurses_count' => fn ($query) => $query->whereJsonContains('roles', 'nurse')])
+            ->withCount(['users as barangay_admins_count' => fn ($query) => $query->whereJsonContains('roles', 'barangay_admin')])
+            ->when(! $user->isSuperAdmin(), fn ($query) => $query->whereKey($user->barangay_id))
             ->orderBy('name')
             ->get()
             ->map(function (Barangay $barangay) use ($barangayRecords) {
@@ -76,10 +85,12 @@ class AdminReportController extends Controller
 
         $vaccines = VaccineType::query()
             ->withCount([
-                'records as report_records_count' => fn ($query) => $query->whereBetween('administered_at', [
-                    $startDate->toDateString(),
-                    $endDate->toDateString(),
-                ]),
+                'records as report_records_count' => fn ($query) => $query
+                    ->whereBetween('administered_at', [
+                        $startDate->toDateString(),
+                        $endDate->toDateString(),
+                    ])
+                    ->when(! $user->isSuperAdmin(), fn ($builder) => $builder->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))),
             ])
             ->orderBy('name')
             ->get();
@@ -105,11 +116,20 @@ class AdminReportController extends Controller
             'endDate' => $endDate,
             'generatedAt' => now(),
             'stats' => [
-                'barangays' => Barangay::count(),
-                'nurses' => User::where('role', 'nurse')->count(),
-                'children' => ChildProfile::count(),
+                'barangays' => $user->isSuperAdmin() ? Barangay::count() : 1,
+                'barangayAdmins' => $user->isSuperAdmin()
+                    ? User::whereJsonContains('roles', 'barangay_admin')->count()
+                    : User::where('barangay_id', $user->barangay_id)->whereJsonContains('roles', 'barangay_admin')->count(),
+                'nurses' => $user->isSuperAdmin()
+                    ? User::whereJsonContains('roles', 'nurse')->count()
+                    : User::where('barangay_id', $user->barangay_id)->whereJsonContains('roles', 'nurse')->count(),
+                'children' => $user->isSuperAdmin()
+                    ? ChildProfile::count()
+                    : ChildProfile::where('barangay_id', $user->barangay_id)->count(),
                 'vaccinations' => (clone $recordScope)->count(),
-                'pending' => VaccinationRecord::where('verification_status', 'pending')->count(),
+                'pending' => VaccinationRecord::where('verification_status', 'pending')
+                    ->when(! $user->isSuperAdmin(), fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id)))
+                    ->count(),
             ],
             'barangays' => $barangays,
             'vaccines' => $vaccines,
@@ -121,6 +141,6 @@ class AdminReportController extends Controller
 
     private function authorizeAdmin(): void
     {
-        abort_unless(auth()->user()?->isAdmin(), 403);
+        abort_unless(auth()->user()?->canViewOversight(), 403);
     }
 }

@@ -6,7 +6,7 @@
                 <h1 class="page-title">Child profiles</h1>
                 <p class="page-subtitle">Registry of children covered by the clinic barangays.</p>
             </div>
-            @if (! auth()->user()->isParent())
+            @if (auth()->user()->canManageChildren())
                 <a href="{{ route('children.create') }}" class="app-button-primary">New child</a>
             @endif
         </div>

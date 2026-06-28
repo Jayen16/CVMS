@@ -12,13 +12,13 @@ class VerificationQueueController extends Controller
 {
     public function index(Request $request): View
     {
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isNurse(), 403);
+        abort_unless(auth()->user()->canViewVerificationQueue(), 403);
 
         $query = VaccinationRecord::query()
             ->with(['child.barangay', 'vaccineType', 'submitter'])
             ->where('verification_status', 'pending');
 
-        if (auth()->user()->isNurse()) {
+        if (! auth()->user()->isSuperAdmin()) {
             $query->whereHas('child', fn ($builder) => $builder->where('barangay_id', auth()->user()->barangay_id));
         }
 

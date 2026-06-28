@@ -17,10 +17,10 @@ class ClinicAnnouncementController extends Controller
         $query = ClinicAnnouncement::query()
             ->with(['barangay', 'creator'])
             ->when($user->isParent(), fn ($builder) => $builder->whereIn('audience', ['all', 'parents']))
-            ->when($user->isNurse(), fn ($builder) => $builder->whereIn('audience', ['all', 'staff']))
+            ->when($user->isNurse() || $user->isBarangayAdmin(), fn ($builder) => $builder->whereIn('audience', ['all', 'staff']))
             ->latest('starts_on');
 
-        if ($user->isNurse()) {
+        if ($user->isNurse() || $user->isBarangayAdmin()) {
             $query->where(function ($builder) use ($user) {
                 $builder->whereNull('barangay_id')
                     ->orWhere('barangay_id', $user->barangay_id);
@@ -35,7 +35,7 @@ class ClinicAnnouncementController extends Controller
 
     public function store(Request $request, OfflineSyncService $offlineSync): RedirectResponse
     {
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isNurse(), 403);
+        abort_unless(auth()->user()->canManageAnnouncements(), 403);
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -48,7 +48,7 @@ class ClinicAnnouncementController extends Controller
             'message' => ['required', 'string', 'max:2000'],
         ]);
 
-        if (auth()->user()->isNurse()) {
+        if (! auth()->user()->isSuperAdmin()) {
             $validated['barangay_id'] = auth()->user()->barangay_id;
         }
 
@@ -86,7 +86,7 @@ class ClinicAnnouncementController extends Controller
     {
         $user = auth()->user();
 
-        abort_unless($user->isAdmin() || $user->isNurse(), 403);
-        abort_if($user->isNurse() && $announcement->barangay_id !== $user->barangay_id, 403);
+        abort_unless($user->canManageAnnouncements(), 403);
+        abort_if(! $user->isSuperAdmin() && $announcement->barangay_id !== $user->barangay_id, 403);
     }
 }

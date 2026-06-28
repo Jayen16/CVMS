@@ -13,11 +13,11 @@ class DuplicateChildrenPage extends Component
 {
     public function render(DuplicateChildDetectionService $duplicates): View
     {
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isNurse(), 403);
+        abort_unless(auth()->user()->canViewDuplicates(), 403);
 
         $children = ChildProfile::query()
             ->with('barangay')
-            ->when(auth()->user()->isNurse(), fn ($query) => $query->where('barangay_id', auth()->user()->barangay_id))
+            ->when(! auth()->user()->isSuperAdmin(), fn ($query) => $query->where('barangay_id', auth()->user()->barangay_id))
             ->orderBy('last_name')
             ->get();
 

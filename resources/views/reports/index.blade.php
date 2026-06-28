@@ -41,8 +41,9 @@
             </form>
         </section>
 
-        <div class="grid gap-4 md:grid-cols-5">
+        <div class="grid gap-4 md:grid-cols-6">
             <x-stat-card label="Barangays" :value="$stats['barangays']" />
+            <x-stat-card label="Barangay admins" :value="$stats['barangayAdmins']" />
             <x-stat-card label="Nurses" :value="$stats['nurses']" />
             <x-stat-card label="Children" :value="$stats['children']" />
             <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" />
@@ -60,6 +61,7 @@
                         <thead>
                             <tr>
                                 <th class="px-4 py-3 font-medium">Barangay</th>
+                                <th class="px-4 py-3 font-medium">Admins</th>
                                 <th class="px-4 py-3 font-medium">Nurses</th>
                                 <th class="px-4 py-3 font-medium">Children</th>
                                 <th class="px-4 py-3 font-medium">Vaccinations</th>
@@ -69,12 +71,13 @@
                             @forelse ($barangays as $barangay)
                                 <tr class="app-table-row">
                                     <td class="font-medium text-slate-950 dark:text-white">{{ $barangay->name }}</td>
+                                    <td>{{ $barangay->barangay_admins_count }}</td>
                                     <td>{{ $barangay->nurses_count }}</td>
                                     <td>{{ $barangay->children_count }}</td>
                                     <td>{{ $barangay->report_vaccinations_count }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="4" class="px-4 py-6 text-center text-zinc-500">No barangays yet.</td></tr>
+                                <tr><td colspan="5" class="px-4 py-6 text-center text-zinc-500">No barangays yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -160,38 +163,40 @@
             </section>
         </div>
 
-        <section class="app-card">
-            <div class="app-card-header">
-                <h2 class="app-card-title">Recent vaccination records</h2>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="app-table">
-                    <thead>
-                        <tr>
-                            <th class="px-4 py-3 font-medium">Child</th>
-                            <th class="px-4 py-3 font-medium">Barangay</th>
-                            <th class="px-4 py-3 font-medium">Vaccine</th>
-                            <th class="px-4 py-3 font-medium">Dose</th>
-                            <th class="px-4 py-3 font-medium">Date</th>
-                            <th class="px-4 py-3 font-medium">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($recentRecords as $record)
-                            <tr class="app-table-row">
-                                <td class="font-medium text-slate-950 dark:text-white">{{ $record->child?->full_name }}</td>
-                                <td>{{ $record->child?->barangay?->name ?? 'Unassigned' }}</td>
-                                <td>{{ $record->vaccineType?->name }}</td>
-                                <td>{{ $record->dose_number ? 'Dose '.$record->dose_number : 'Not set' }}</td>
-                                <td>{{ $record->administered_at?->format('M d, Y') }}</td>
-                                <td class="capitalize">{{ str_replace('_', ' ', $record->verification_status) }}</td>
+        @if (! auth()->user()->isSuperAdmin())
+            <section class="app-card">
+                <div class="app-card-header">
+                    <h2 class="app-card-title">Recent vaccination records</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="app-table">
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-3 font-medium">Child</th>
+                                <th class="px-4 py-3 font-medium">Barangay</th>
+                                <th class="px-4 py-3 font-medium">Vaccine</th>
+                                <th class="px-4 py-3 font-medium">Dose</th>
+                                <th class="px-4 py-3 font-medium">Date</th>
+                                <th class="px-4 py-3 font-medium">Status</th>
                             </tr>
-                        @empty
-                            <tr><td colspan="6" class="px-4 py-6 text-center text-zinc-500">No records in this period.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </section>
+                        </thead>
+                        <tbody>
+                            @forelse ($recentRecords as $record)
+                                <tr class="app-table-row">
+                                    <td class="font-medium text-slate-950 dark:text-white">{{ $record->child?->full_name }}</td>
+                                    <td>{{ $record->child?->barangay?->name ?? 'Unassigned' }}</td>
+                                    <td>{{ $record->vaccineType?->name }}</td>
+                                    <td>{{ $record->dose_number ? 'Dose '.$record->dose_number : 'Not set' }}</td>
+                                    <td>{{ $record->administered_at?->format('M d, Y') }}</td>
+                                    <td class="capitalize">{{ str_replace('_', ' ', $record->verification_status) }}</td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="6" class="px-4 py-6 text-center text-zinc-500">No records in this period.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
     </div>
 </x-layouts::app>

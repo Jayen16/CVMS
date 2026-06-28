@@ -28,8 +28,8 @@ class DashboardPage extends Component
                 $query->whereNull('ends_on')->orWhereDate('ends_on', '>=', today());
             })
             ->when($user->isParent(), fn ($query) => $query->whereIn('audience', ['all', 'parents']))
-            ->when($user->isNurse(), fn ($query) => $query->whereIn('audience', ['all', 'staff']))
-            ->when($user->isNurse(), fn ($query) => $query->where(function ($builder) use ($user) {
+            ->when($user->isNurse() || $user->isBarangayAdmin(), fn ($query) => $query->whereIn('audience', ['all', 'staff']))
+            ->when($user->isNurse() || $user->isBarangayAdmin(), fn ($query) => $query->where(function ($builder) use ($user) {
                 $builder->whereNull('barangay_id')->orWhere('barangay_id', $user->barangay_id);
             }))
             ->orderBy('starts_on')
@@ -40,19 +40,22 @@ class DashboardPage extends Component
             ? OfflineSyncOutbox::whereNull('synced_at')->count()
             : 0;
 
-        if ($user->isAdmin()) {
+        if ($user->isSuperAdmin()) {
             return view('livewire.dashboard-page', [
-                'role' => 'admin',
+                'role' => 'superadmin',
                 'stats' => [
                     'barangays' => Barangay::count(),
-                    'nurses' => User::where('role', 'nurse')->count(),
+                    'barangayAdmins' => User::whereJsonContains('roles', 'barangay_admin')->count(),
+                    'nurses' => User::whereJsonContains('roles', 'nurse')->count(),
                     'children' => ChildProfile::count(),
                     'vaccinations' => VaccinationRecord::count(),
                     'pending' => VaccinationRecord::where('verification_status', 'pending')->count(),
                     'pendingSync' => $pendingSync,
                 ],
                 'barangays' => Barangay::query()
-                    ->withCount(['children', 'nurses'])
+                    ->withCount('children')
+                    ->withCount(['users as barangay_admins_count' => fn ($query) => $query->whereJsonContains('roles', 'barangay_admin')])
+                    ->withCount(['users as nurses_count' => fn ($query) => $query->whereJsonContains('roles', 'nurse')])
                     ->with(['children.vaccinations'])
                     ->orderBy('name')
                     ->get(),
@@ -91,6 +94,29 @@ class DashboardPage extends Component
                 ],
                 'children' => $children,
                 'calendarItems' => $calendarItems,
+                'announcements' => $announcements,
+            ])->layout('layouts.app', ['title' => 'Dashboard']);
+        }
+
+        if ($user->isBarangayAdmin() && ! $user->isNurse()) {
+            return view('livewire.dashboard-page', [
+                'role' => 'barangay_admin',
+                'stats' => [
+                    'barangay' => $user->barangay()->value('name') ?? 'Unassigned',
+                    'nurses' => User::where('barangay_id', $user->barangay_id)->whereJsonContains('roles', 'nurse')->count(),
+                    'children' => ChildProfile::where('barangay_id', $user->barangay_id)->count(),
+                    'vaccinations' => VaccinationRecord::whereHas('child', fn ($query) => $query->where('barangay_id', $user->barangay_id))->count(),
+                    'pending' => VaccinationRecord::where('verification_status', 'pending')
+                        ->whereHas('child', fn ($query) => $query->where('barangay_id', $user->barangay_id))
+                        ->count(),
+                    'pendingSync' => $pendingSync,
+                ],
+                'children' => ChildProfile::query()
+                    ->where('barangay_id', $user->barangay_id)
+                    ->withCount('vaccinations')
+                    ->latest()
+                    ->take(8)
+                    ->get(),
                 'announcements' => $announcements,
             ])->layout('layouts.app', ['title' => 'Dashboard']);
         }

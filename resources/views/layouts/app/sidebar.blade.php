@@ -15,33 +15,47 @@
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="users" :href="route('children.index')" :current="request()->routeIs('children.*')" wire:navigate>
-                        {{ __('Children') }}
-                    </flux:sidebar.item>
-                    @if (auth()->user()->isAdmin() || auth()->user()->isNurse())
+                    @if (auth()->user()->canViewChildrenRegistry())
+                        <flux:sidebar.item icon="users" :href="route('children.index')" :current="request()->routeIs('children.*')" wire:navigate>
+                            {{ __('Children') }}
+                        </flux:sidebar.item>
+                    @endif
+                    @if (auth()->user()->canViewVerificationQueue())
                         <flux:sidebar.item icon="clipboard-document-check" :href="route('verification-queue.index')" :current="request()->routeIs('verification-queue.*')" wire:navigate>
                             {{ __('Verification Queue') }}
                         </flux:sidebar.item>
+                    @endif
+                    @if (auth()->user()->canViewDefaulters())
                         <flux:sidebar.item icon="bell-alert" :href="route('defaulters.index')" :current="request()->routeIs('defaulters.*')" wire:navigate>
                             {{ __('Defaulters') }}
                         </flux:sidebar.item>
+                    @endif
+                    @if (auth()->user()->canManageAnnouncements() || auth()->user()->isParent())
                         <flux:sidebar.item icon="megaphone" :href="route('announcements.index')" :current="request()->routeIs('announcements.*')" wire:navigate>
                             {{ __('Announcements') }}
                         </flux:sidebar.item>
+                    @endif
+                    @if (auth()->user()->canViewAefiReports())
                         <flux:sidebar.item icon="exclamation-triangle" :href="route('aefi-reports.index')" :current="request()->routeIs('aefi-reports.*')" wire:navigate>
                             {{ __('AEFI') }}
                         </flux:sidebar.item>
+                    @endif
+                    @if (auth()->user()->canViewDuplicates())
                         <flux:sidebar.item icon="squares-2x2" :href="route('duplicates.index')" :current="request()->routeIs('duplicates.*')" wire:navigate>
                             {{ __('Duplicates') }}
                         </flux:sidebar.item>
                     @endif
-                    @if (auth()->user()->isAdmin())
+                    @if (auth()->user()->canManageBarangayStaff())
                         <flux:sidebar.item icon="user-plus" :href="route('nurses.index')" :current="request()->routeIs('nurses.*')" wire:navigate>
-                            {{ __('Nurses') }}
+                            {{ auth()->user()->canManageBarangayAdmins() ? __('Barangay Admins') : __('Nurses') }}
                         </flux:sidebar.item>
+                    @endif
+                    @if (auth()->user()->canManagePlatform())
                         <flux:sidebar.item icon="calendar-days" :href="route('vaccine-schedules.index')" :current="request()->routeIs('vaccine-schedules.*')" wire:navigate>
                             {{ __('Schedules') }}
                         </flux:sidebar.item>
+                    @endif
+                    @if (auth()->user()->canViewOversight())
                         <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
                             {{ __('Reports') }}
                         </flux:sidebar.item>

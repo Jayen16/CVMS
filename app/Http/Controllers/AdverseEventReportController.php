@@ -14,11 +14,14 @@ class AdverseEventReportController extends Controller
 {
     public function index(): View
     {
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isNurse(), 403);
+        abort_unless(auth()->user()->canViewAefiReports(), 403);
 
         $reports = AdverseEventReport::query()
             ->with(['child.barangay', 'vaccineType', 'reporter'])
-            ->when(auth()->user()->isNurse(), fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', auth()->user()->barangay_id)))
+            ->when(
+                ! auth()->user()->isSuperAdmin(),
+                fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', auth()->user()->barangay_id))
+            )
             ->latest('event_date')
             ->paginate(15);
 
@@ -27,8 +30,8 @@ class AdverseEventReportController extends Controller
 
     public function store(Request $request, ChildProfile $child, OfflineSyncService $offlineSync): RedirectResponse
     {
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isNurse(), 403);
-        abort_if(auth()->user()->isNurse() && $child->barangay_id !== auth()->user()->barangay_id, 403);
+        abort_unless(auth()->user()->canSubmitAefiReports(), 403);
+        abort_if($child->barangay_id !== auth()->user()->barangay_id, 403);
 
         $validated = $request->validate([
             'vaccination_record_id' => ['nullable', 'exists:vaccination_records,id'],

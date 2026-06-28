@@ -81,7 +81,7 @@ class VaccinationRecordController extends Controller
 
     private function authorizeCreate(ChildProfile $child): void
     {
-        if (auth()->user()->isNurse()) {
+        if (auth()->user()->canManageChildren()) {
             abort_if($child->barangay_id !== auth()->user()->barangay_id, 403);
 
             return;
@@ -111,8 +111,8 @@ class VaccinationRecordController extends Controller
         $record->loadMissing('child');
 
         abort_unless($record->isPendingVerification(), 403);
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isNurse(), 403);
-        abort_if(auth()->user()->isNurse() && $record->child->barangay_id !== auth()->user()->barangay_id, 403);
+        abort_unless(auth()->user()->canVerifyVaccinations(), 403);
+        abort_if($record->child->barangay_id !== auth()->user()->barangay_id, 403);
     }
 
 }

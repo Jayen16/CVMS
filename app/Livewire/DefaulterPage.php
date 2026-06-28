@@ -25,12 +25,12 @@ class DefaulterPage extends Component
 
     public function render(ImmunizationSuggestionService $suggestions): View
     {
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isNurse(), 403);
+        abort_unless(auth()->user()->canViewDefaulters(), 403);
 
         $threshold = in_array($this->days, [7, 14, 30], true) ? $this->days : 7;
         $children = ChildProfile::query()
             ->with(['barangay', 'parents'])
-            ->when(auth()->user()->isNurse(), fn ($query) => $query->where('barangay_id', auth()->user()->barangay_id))
+            ->when(! auth()->user()->isSuperAdmin(), fn ($query) => $query->where('barangay_id', auth()->user()->barangay_id))
             ->get();
 
         $today = Carbon::today();

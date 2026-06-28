@@ -11,6 +11,7 @@ class VaccineCardController extends Controller
 {
     public function show(ChildProfile $child, QrCodeService $qrCodes): View
     {
+        abort_unless(auth()->user()->canViewChildrenRegistry(), 403);
         $this->authorizeChild($child);
 
         return view('children.card', $this->cardData($child, $qrCodes));
@@ -18,6 +19,7 @@ class VaccineCardController extends Controller
 
     public function pdf(ChildProfile $child, QrCodeService $qrCodes)
     {
+        abort_unless(auth()->user()->canViewChildrenRegistry(), 403);
         $this->authorizeChild($child);
 
         return Pdf::view('children.card-pdf', $this->cardData($child, $qrCodes))
@@ -55,6 +57,7 @@ class VaccineCardController extends Controller
     private function authorizeChild(ChildProfile $child): void
     {
         abort_if(auth()->user()->isNurse() && $child->barangay_id !== auth()->user()->barangay_id, 403);
+        abort_if(auth()->user()->isBarangayAdmin() && $child->barangay_id !== auth()->user()->barangay_id, 403);
         abort_if(auth()->user()->isParent() && ! $child->parents()->whereKey(auth()->id())->exists(), 403);
     }
 }

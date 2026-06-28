@@ -8,6 +8,7 @@ use App\Models\VaccineSchedule;
 use App\Models\VaccineType;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
@@ -19,6 +20,8 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $now = Carbon::now();
+
         collect(['Barangay 1', 'Barangay 2', 'Barangay 3'])->each(fn (string $name) => Barangay::firstOrCreate([
             'name' => $name,
         ]));
@@ -75,12 +78,57 @@ class DatabaseSeeder extends Seeder
             }
         }
 
+        $barangayOneId = Barangay::where('name', 'Barangay 1')->value('id');
+
         User::updateOrCreate([
             'email' => 'admin@example.com',
         ], [
             'name' => 'System Admin',
-            'password' => Hash::make('password'),
-            'role' => 'admin',
+            'password' => Hash::make('password123'),
+            'role' => 'superadmin',
+            'roles' => ['superadmin'],
+            'is_active' => true,
+            'email_verified_at' => $now,
+            'invitation_accepted_at' => $now,
+        ]);
+
+        User::updateOrCreate([
+            'email' => 'barangay-admin@example.com',
+        ], [
+            'name' => 'Barangay Admin',
+            'password' => Hash::make('password123'),
+            'role' => 'barangay_admin',
+            'roles' => ['barangay_admin'],
+            'barangay_id' => $barangayOneId,
+            'is_active' => true,
+            'email_verified_at' => $now,
+            'invitation_accepted_at' => $now,
+        ]);
+
+        User::updateOrCreate([
+            'email' => 'nurse@example.com',
+        ], [
+            'name' => 'Demo Nurse',
+            'password' => Hash::make('password123'),
+            'role' => 'nurse',
+            'roles' => ['nurse'],
+            'barangay_id' => $barangayOneId,
+            'is_active' => true,
+            'email_verified_at' => $now,
+            'invitation_accepted_at' => $now,
+        ]);
+
+        User::updateOrCreate([
+            'email' => 'parent@example.com',
+        ], [
+            'name' => 'Demo Parent',
+            'password' => Hash::make('password123'),
+            'phone' => '09171234567',
+            'role' => 'parent',
+            'roles' => ['parent'],
+            'is_active' => true,
+            'email_verified_at' => $now,
+            'invitation_accepted_at' => $now,
         ]);
     }
 }

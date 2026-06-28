@@ -43,8 +43,8 @@ class VerificationQueuePage extends Component
     {
         $record = VaccinationRecord::findOrFail($recordId);
         abort_unless($record->isPendingVerification(), 403);
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isNurse(), 403);
-        abort_if(auth()->user()->isNurse() && $record->child->barangay_id !== auth()->user()->barangay_id, 403);
+        abort_unless(auth()->user()->canVerifyVaccinations(), 403);
+        abort_if($record->child->barangay_id !== auth()->user()->barangay_id, 403);
 
         app(\App\Services\OfflineSyncService::class)->queueUpsert(
             tap($record, fn ($model) => $model->update([
@@ -61,8 +61,8 @@ class VerificationQueuePage extends Component
     {
         $record = VaccinationRecord::findOrFail($recordId);
         abort_unless($record->isPendingVerification(), 403);
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isNurse(), 403);
-        abort_if(auth()->user()->isNurse() && $record->child->barangay_id !== auth()->user()->barangay_id, 403);
+        abort_unless(auth()->user()->canVerifyVaccinations(), 403);
+        abort_if($record->child->barangay_id !== auth()->user()->barangay_id, 403);
 
         app(\App\Services\OfflineSyncService::class)->queueUpsert(
             tap($record, fn ($model) => $model->update([
@@ -77,13 +77,13 @@ class VerificationQueuePage extends Component
 
     public function render(): View
     {
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isNurse(), 403);
+        abort_unless(auth()->user()->canViewVerificationQueue(), 403);
 
         $query = VaccinationRecord::query()
             ->with(['child.barangay', 'vaccineType', 'submitter'])
             ->where('verification_status', 'pending');
 
-        if (auth()->user()->isNurse()) {
+        if (! auth()->user()->isSuperAdmin()) {
             $query->whereHas('child', fn ($builder) => $builder->where('barangay_id', auth()->user()->barangay_id));
         }
 

@@ -152,6 +152,6 @@ class VaccineScheduleController extends Controller
 
     private function authorizeAdmin(): void
     {
-        abort_unless(auth()->user()->isAdmin(), 403);
+        abort_unless(auth()->user()->isSuperAdmin(), 403);
     }
 }

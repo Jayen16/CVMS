@@ -7,7 +7,7 @@
             </div>
         </div>
 
-        <div class="grid gap-6 {{ auth()->user()->isAdmin() || auth()->user()->isNurse() ? 'xl:grid-cols-[1fr_360px]' : '' }}">
+        <div class="grid gap-6 {{ auth()->user()->canManageAnnouncements() ? 'xl:grid-cols-[1fr_360px]' : '' }}">
             <section class="app-card">
                 <div class="app-card-header">
                     <h2 class="app-card-title">Posted announcements</h2>
@@ -33,7 +33,7 @@
                                 </span>
                             </div>
                             <p class="mt-3 text-sm leading-6 text-slate-600 dark:text-zinc-300">{{ $announcement->message }}</p>
-                            @if (auth()->user()->isAdmin() || auth()->user()->isNurse())
+                            @if (auth()->user()->canManageAnnouncements())
                                 <div class="mt-4 flex flex-wrap gap-2">
                                     <form method="POST" action="{{ route('announcements.toggle', $announcement) }}">
                                         @csrf
@@ -56,14 +56,14 @@
                 </div>
             </section>
 
-            @if (auth()->user()->isAdmin() || auth()->user()->isNurse())
+            @if (auth()->user()->canManageAnnouncements())
                 <form method="POST" action="{{ route('announcements.store') }}" class="app-panel grid content-start gap-4">
                     @csrf
                     <h2 class="app-card-title">Post announcement</h2>
                     <x-form-field label="Title" name="title" />
                     <x-form-field label="Category" name="category" type="select" :options="['schedule' => 'Schedule', 'closure' => 'Closure', 'campaign' => 'Campaign', 'stock' => 'Stock advisory']" />
                     <x-form-field label="Audience" name="audience" type="select" :options="['all' => 'All users', 'parents' => 'Parents only', 'staff' => 'Staff only']" />
-                    @if (auth()->user()->isAdmin())
+                    @if (auth()->user()->isSuperAdmin())
                         <x-form-field label="Barangay" name="barangay_id" type="select" :options="$barangays->pluck('name', 'id')" />
                     @endif
                     <x-form-field label="Start date" name="starts_on" type="date" />

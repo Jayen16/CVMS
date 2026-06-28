@@ -25,7 +25,7 @@ Route::get('vaccine-cards/{token}', [VaccineCardController::class, 'validateToke
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardPage::class)->name('dashboard');
-    Route::resource('children', ChildProfileController::class)->only(['index', 'create', 'store', 'show']);
+    Route::resource('children', ChildProfileController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update']);
     Route::get('children/{child}/timeline', ChildVaccinationTimelineController::class)->name('children.timeline');
     Route::get('children/{child}/card', [VaccineCardController::class, 'show'])->name('children.card');
     Route::get('children/{child}/card/pdf', [VaccineCardController::class, 'pdf'])->name('children.card.pdf');

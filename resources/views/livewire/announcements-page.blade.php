@@ -6,7 +6,7 @@
         </div>
     </div>
 
-    <div class="grid gap-6 {{ auth()->user()->isAdmin() || auth()->user()->isNurse() ? 'xl:grid-cols-[1fr_360px]' : '' }}">
+    <div class="grid gap-6 {{ auth()->user()->canManageAnnouncements() ? 'xl:grid-cols-[1fr_360px]' : '' }}">
         <section class="app-card">
             <div class="app-card-header">
                 <h2 class="app-card-title">Posted announcements</h2>
@@ -32,7 +32,7 @@
                             </span>
                         </div>
                         <p class="mt-3 text-sm leading-6 text-slate-600 dark:text-zinc-300">{{ $announcement->message }}</p>
-                        @if (auth()->user()->isAdmin() || auth()->user()->isNurse())
+                        @if (auth()->user()->canManageAnnouncements())
                             <div class="mt-4 flex flex-wrap gap-2">
                                 <button wire:click="toggle({{ $announcement->id }})" class="app-button-secondary !px-3 !py-1.5 !text-xs">{{ $announcement->active ? 'Deactivate' : 'Activate' }}</button>
                                 <button wire:click="remove({{ $announcement->id }})" wire:confirm="Remove this announcement?" class="app-button-danger !px-3 !py-1.5 !text-xs">Delete</button>
@@ -46,13 +46,13 @@
             <div class="mt-4">{{ $announcements->links() }}</div>
         </section>
 
-        @if (auth()->user()->isAdmin() || auth()->user()->isNurse())
+        @if (auth()->user()->canManageAnnouncements())
             <form wire:submit="save" class="app-panel grid content-start gap-4">
                 <h2 class="app-card-title">Post announcement</h2>
                 <x-form-field label="Title" name="title" :value="$title" wire:model="title" />
                 <x-form-field label="Category" name="category" type="select" :options="['schedule' => 'Schedule', 'closure' => 'Closure', 'campaign' => 'Campaign', 'stock' => 'Stock advisory']" :value="$category" wire:model="category" />
                 <x-form-field label="Audience" name="audience" type="select" :options="['all' => 'All users', 'parents' => 'Parents only', 'staff' => 'Staff only']" :value="$audience" wire:model="audience" />
-                @if (auth()->user()->isAdmin())
+                @if (auth()->user()->isSuperAdmin())
                     <x-form-field label="Barangay" name="barangay_id" type="select" :options="$barangays->pluck('name', 'id')" :value="$barangay_id" wire:model="barangay_id" />
                 @endif
                 <x-form-field label="Start date" name="starts_on" type="date" :value="$starts_on" wire:model="starts_on" />

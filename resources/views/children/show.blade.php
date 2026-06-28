@@ -24,6 +24,9 @@
                         <button class="app-button-danger">Unlink child</button>
                     </form>
                 @endif
+                @if (auth()->user()->canManageChildren())
+                    <a href="{{ route('children.edit', $child) }}" class="app-button-secondary">Edit child info</a>
+                @endif
                 <a href="{{ route('children.card', $child) }}" class="app-button-secondary">Digital vaccine card</a>
                 <a href="{{ route('children.timeline', $child) }}" class="app-button-secondary">View timeline chart</a>
             </div>
@@ -110,7 +113,7 @@
                                 @if (auth()->user()->isParent())
                                     <th class="px-4 py-3 font-medium">Action</th>
                                 @endif
-                                @if (auth()->user()->isAdmin() || auth()->user()->isNurse())
+                                @if (auth()->user()->canVerifyVaccinations())
                                     <th class="px-4 py-3 font-medium">Action</th>
                                 @endif
                             </tr>
@@ -162,7 +165,7 @@
                                             @endif
                                         </td>
                                     @endif
-                                    @if (auth()->user()->isAdmin() || auth()->user()->isNurse())
+                                    @if (auth()->user()->canVerifyVaccinations())
                                         <td>
                                             @if ($record->isPendingVerification())
                                                 <div class="flex gap-2">
@@ -182,7 +185,7 @@
                                     @endif
                                 </tr>
                             @empty
-                                <tr><td colspan="{{ auth()->user()->isParent() || auth()->user()->isAdmin() || auth()->user()->isNurse() ? 8 : 6 }}" class="px-4 py-8 text-center text-zinc-500">No vaccination records yet.</td></tr>
+                                <tr><td colspan="{{ auth()->user()->isParent() || auth()->user()->canVerifyVaccinations() ? 8 : 6 }}" class="px-4 py-8 text-center text-zinc-500">No vaccination records yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -190,18 +193,6 @@
             </section>
 
             <div class="grid content-start gap-6">
-                @if (auth()->user()->isNurse())
-                    <form method="POST" action="{{ route('children.vaccinations.store', $child) }}" class="app-panel grid content-start gap-4">
-                        @csrf
-                        <h2 class="app-card-title">Record vaccination</h2>
-                        <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" />
-                        <x-form-field label="Dose number" name="dose_number" type="number" />
-                        <x-form-field label="Date given" name="administered_at" type="date" />
-                        <x-form-field label="Remarks" name="remarks" type="textarea" />
-                        <button class="app-button-primary">Save record</button>
-                    </form>
-                @endif
-
                 @if (auth()->user()->isParent())
                     <form method="POST" action="{{ $editableRecord ? route('vaccinations.update', $editableRecord) : route('children.vaccinations.store', $child) }}" class="app-panel grid content-start gap-4" enctype="multipart/form-data">
                         @csrf
@@ -236,90 +227,183 @@
                     </form>
                 @endif
 
-                @if (auth()->user()->isAdmin() || auth()->user()->isNurse())
-                    <section class="app-panel">
-                        <h2 class="app-card-title">AEFI reporting</h2>
-                        <form method="POST" action="{{ route('children.aefi-reports.store', $child) }}" class="mt-4 grid gap-4">
-                            @csrf
-                            <x-form-field label="Linked vaccination record" name="vaccination_record_id" type="select" :options="$child->vaccinations->pluck('vaccineType.name', 'id')" />
-                            <x-form-field label="Event date" name="event_date" type="date" />
-                            <x-form-field label="Severity" name="severity" type="select" :options="['mild' => 'Mild', 'moderate' => 'Moderate', 'severe' => 'Severe']" />
-                            <x-form-field label="Outcome" name="outcome" />
-                            <x-form-field label="Symptoms" name="symptoms" type="textarea" />
-                            <x-form-field label="Notes" name="notes" type="textarea" />
-                            <button class="app-button-primary">Save AEFI report</button>
-                        </form>
+                @if (auth()->user()->canViewAefiReports() || auth()->user()->canManageChildren())
+                    @php
+                        $availableTabs = auth()->user()->canManageChildren()
+                            ? ['vaccination' => 'Record vaccination', 'aefi' => 'AEFI reporting', 'parents' => 'Linked parents']
+                            : ['aefi' => 'AEFI reporting'];
+                        $activeTab = array_key_first($availableTabs);
 
-                        <div class="mt-4 space-y-3">
-                            @forelse ($child->adverseEventReports->sortByDesc('event_date') as $report)
-                                <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
-                                    <div class="font-medium text-slate-950 dark:text-white">{{ $report->event_date->format('M d, Y') }} | {{ ucfirst($report->severity) }}</div>
-                                    <div class="mt-1 text-sm text-slate-600 dark:text-zinc-300">{{ $report->symptoms }}</div>
-                                    <div class="mt-1 text-xs text-zinc-500">Reported by {{ $report->reporter->name }}</div>
-                                </div>
-                            @empty
-                                <p class="text-sm text-zinc-500">No AEFI reports for this child yet.</p>
-                            @endforelse
-                        </div>
-                    </section>
+                        if ($errors->hasAny(['vaccination_record_id', 'event_date', 'severity', 'outcome', 'symptoms', 'notes'])) {
+                            $activeTab = 'aefi';
+                        } elseif (auth()->user()->canManageChildren() && $errors->hasAny(['name', 'email', 'phone', 'relationship'])) {
+                            $activeTab = 'parents';
+                        } elseif (auth()->user()->canManageChildren() && $errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'remarks'])) {
+                            $activeTab = 'vaccination';
+                        }
+                    @endphp
 
-                    <section class="app-panel">
-                        <h2 class="app-card-title">Linked parents</h2>
-                        <div class="mt-3 divide-y divide-slate-200 text-sm dark:divide-zinc-800">
-                            @forelse ($child->parents as $parent)
-                                <div class="flex items-center justify-between gap-3 py-2">
-                                    <div>
-                                        <div class="font-medium text-slate-950 dark:text-white">{{ $parent->name }}</div>
-                                        <div class="text-zinc-500">
-                                            {{ $parent->email }}{{ $parent->phone ? ' | '.$parent->phone : '' }} | {{ $parent->pivot->relationship }}
-                                        </div>
-                                        <div class="mt-1">
-                                            @if ($parent->invitation_accepted_at)
-                                                <span class="status-pill status-verified">Configured</span>
-                                            @else
-                                                <span class="status-pill status-pending">Pending password setup</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                    <div class="flex flex-wrap gap-2">
-                                        @if (! $parent->invitation_accepted_at)
-                                            <form method="POST" action="{{ route('children.parents.setup-link', ['child' => $child, 'parent' => $parent]) }}">
-                                                @csrf
-                                                <button class="app-button-secondary !px-3 !py-1.5 !text-xs">Resend link</button>
-                                            </form>
-                                        @endif
-
-                                        <form method="POST" action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => $parent]) }}" onsubmit="return confirm('Unlink this parent from the child profile?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button class="app-button-danger !px-3 !py-1.5 !text-xs">Unlink</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            @empty
-                                <p class="py-2 text-zinc-500">No parent account linked yet.</p>
-                            @endforelse
+                    <section class="grid gap-4" data-child-tabs data-active-tab="{{ $activeTab }}">
+                        <div class="flex flex-wrap gap-2">
+                            @foreach ($availableTabs as $tabKey => $tabLabel)
+                                <button
+                                    type="button"
+                                    class="rounded-full px-4 py-2 text-sm font-semibold transition {{ $activeTab === $tabKey ? 'bg-teal-600 text-white shadow-sm shadow-teal-900/20' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-800 dark:hover:bg-zinc-800' }}"
+                                    data-tab-button
+                                    data-tab-target="{{ $tabKey }}"
+                                >
+                                    {{ $tabLabel }}
+                                </button>
+                            @endforeach
                         </div>
 
-                        <form method="POST" action="{{ route('children.parents.store', $child) }}" class="mt-4 grid gap-4">
-                            @csrf
-                            <div>
-                                <h3 class="text-sm font-semibold text-slate-950 dark:text-white">Invite parent</h3>
-                                <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">The parent will receive an email link to set their own password.</p>
+                        @if (auth()->user()->canManageChildren())
+                            <section class="app-panel {{ $activeTab === 'vaccination' ? '' : 'hidden' }}" data-tab-panel="vaccination">
+                                <form method="POST" action="{{ route('children.vaccinations.store', $child) }}" class="grid content-start gap-4">
+                                    @csrf
+                                    <h2 class="app-card-title">Record vaccination</h2>
+                                    <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" />
+                                    <x-form-field label="Dose number" name="dose_number" type="number" />
+                                    <x-form-field label="Date given" name="administered_at" type="date" />
+                                    <x-form-field label="Remarks" name="remarks" type="textarea" />
+                                    <button class="app-button-primary">Save record</button>
+                                </form>
+                            </section>
+                        @endif
+
+                        <section class="app-panel {{ $activeTab === 'aefi' ? '' : 'hidden' }}" data-tab-panel="aefi">
+                            <h2 class="app-card-title">AEFI reporting</h2>
+                            @if (auth()->user()->canSubmitAefiReports())
+                                <form method="POST" action="{{ route('children.aefi-reports.store', $child) }}" class="mt-4 grid gap-4">
+                                    @csrf
+                                    <x-form-field label="Linked vaccination record" name="vaccination_record_id" type="select" :options="$child->vaccinations->pluck('vaccineType.name', 'id')" />
+                                    <x-form-field label="Event date" name="event_date" type="date" />
+                                    <x-form-field label="Severity" name="severity" type="select" :options="['mild' => 'Mild', 'moderate' => 'Moderate', 'severe' => 'Severe']" />
+                                    <x-form-field label="Outcome" name="outcome" />
+                                    <x-form-field label="Symptoms" name="symptoms" type="textarea" />
+                                    <x-form-field label="Notes" name="notes" type="textarea" />
+                                    <button class="app-button-primary">Save AEFI report</button>
+                                </form>
+                            @endif
+
+                            <div class="mt-4 space-y-3">
+                                @forelse ($child->adverseEventReports->sortByDesc('event_date') as $report)
+                                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
+                                        <div class="font-medium text-slate-950 dark:text-white">{{ $report->event_date->format('M d, Y') }} | {{ ucfirst($report->severity) }}</div>
+                                        <div class="mt-1 text-sm text-slate-600 dark:text-zinc-300">{{ $report->symptoms }}</div>
+                                        <div class="mt-1 text-xs text-zinc-500">Reported by {{ $report->reporter->name }}</div>
+                                    </div>
+                                @empty
+                                    <p class="text-sm text-zinc-500">No AEFI reports for this child yet.</p>
+                                @endforelse
                             </div>
-                            <x-form-field label="Parent name" name="name" />
-                            <x-form-field label="Parent email" name="email" type="email" />
-                            <x-form-field label="Parent cellphone" name="phone" />
-                            <x-form-field label="Relationship" name="relationship" />
-                            <button class="app-button-primary">Send password setup link</button>
-                        </form>
+                        </section>
+
+                        @if (auth()->user()->canManageChildren())
+                        <section class="app-panel {{ $activeTab === 'parents' ? '' : 'hidden' }}" data-tab-panel="parents">
+                            <h2 class="app-card-title">Linked parents</h2>
+                            <div class="mt-3 divide-y divide-slate-200 text-sm dark:divide-zinc-800">
+                                @forelse ($child->parents as $parent)
+                                    <div class="flex items-center justify-between gap-3 py-2">
+                                        <div>
+                                            <div class="font-medium text-slate-950 dark:text-white">{{ $parent->name }}</div>
+                                            <div class="text-zinc-500">
+                                                {{ $parent->email }}{{ $parent->phone ? ' | '.$parent->phone : '' }} | {{ $parent->pivot->relationship }}
+                                            </div>
+                                            <div class="mt-1">
+                                                @if ($parent->invitation_accepted_at)
+                                                    <span class="status-pill status-verified">Configured</span>
+                                                @else
+                                                    <span class="status-pill status-pending">Pending password setup</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div class="flex flex-wrap gap-2">
+                                            @if (! $parent->invitation_accepted_at)
+                                                <form method="POST" action="{{ route('children.parents.setup-link', ['child' => $child, 'parent' => $parent]) }}">
+                                                    @csrf
+                                                    <button class="app-button-secondary !px-3 !py-1.5 !text-xs">Resend link</button>
+                                                </form>
+                                            @endif
+
+                                            <form method="POST" action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => $parent]) }}" onsubmit="return confirm('Unlink this parent from the child profile?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="app-button-danger !px-3 !py-1.5 !text-xs">Unlink</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <p class="py-2 text-zinc-500">No parent account linked yet.</p>
+                                @endforelse
+                            </div>
+
+                            <form method="POST" action="{{ route('children.parents.store', $child) }}" class="mt-4 grid gap-4">
+                                @csrf
+                                <div>
+                                    <h3 class="text-sm font-semibold text-slate-950 dark:text-white">Invite parent</h3>
+                                    <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">The parent will receive an email link to set their own password.</p>
+                                </div>
+                                <x-form-field label="Parent name" name="name" />
+                                <x-form-field label="Parent email" name="email" type="email" />
+                                <x-form-field label="Parent cellphone" name="phone" />
+                                <x-form-field label="Relationship" name="relationship" />
+                                <button class="app-button-primary">Send password setup link</button>
+                            </form>
+                        </section>
+                        @endif
                     </section>
                 @endif
             </div>
         </div>
     </div>
 
-    @if (auth()->user()->isNurse())
+    @if (auth()->user()->canViewAefiReports() || auth()->user()->canManageChildren())
+        <script>
+            (() => {
+                const tabsRoot = document.querySelector('[data-child-tabs]');
+                if (!tabsRoot) return;
+
+                const buttons = tabsRoot.querySelectorAll('[data-tab-button]');
+                const panels = tabsRoot.querySelectorAll('[data-tab-panel]');
+                const activeClasses = ['bg-teal-600', 'text-white', 'shadow-sm', 'shadow-teal-900/20'];
+                const inactiveClasses = ['bg-white', 'text-slate-700', 'ring-1', 'ring-slate-200', 'hover:bg-slate-50', 'dark:bg-zinc-900', 'dark:text-zinc-200', 'dark:ring-zinc-800', 'dark:hover:bg-zinc-800'];
+
+                const setActiveTab = (tabName) => {
+                    buttons.forEach((button) => {
+                        const isActive = button.dataset.tabTarget === tabName;
+                        button.classList.toggle('bg-teal-600', isActive);
+                        button.classList.toggle('text-white', isActive);
+                        button.classList.toggle('shadow-sm', isActive);
+                        button.classList.toggle('shadow-teal-900/20', isActive);
+                        button.classList.toggle('bg-white', !isActive);
+                        button.classList.toggle('text-slate-700', !isActive);
+                        button.classList.toggle('ring-1', !isActive);
+                        button.classList.toggle('ring-slate-200', !isActive);
+                        button.classList.toggle('hover:bg-slate-50', !isActive);
+                        button.classList.toggle('dark:bg-zinc-900', !isActive);
+                        button.classList.toggle('dark:text-zinc-200', !isActive);
+                        button.classList.toggle('dark:ring-zinc-800', !isActive);
+                        button.classList.toggle('dark:hover:bg-zinc-800', !isActive);
+                    });
+
+                    panels.forEach((panel) => {
+                        panel.classList.toggle('hidden', panel.dataset.tabPanel !== tabName);
+                    });
+                };
+
+                buttons.forEach((button) => {
+                    inactiveClasses.forEach((className) => button.classList.add(className));
+                    activeClasses.forEach((className) => button.classList.remove(className));
+                    button.addEventListener('click', () => setActiveTab(button.dataset.tabTarget));
+                });
+
+                setActiveTab(tabsRoot.dataset.activeTab);
+            })();
+        </script>
+    @endif
+
+    @if (auth()->user()->canManageChildren())
         <script>
             (() => {
                 const form = document.querySelector('form[action="{{ route('children.vaccinations.store', $child) }}"]');

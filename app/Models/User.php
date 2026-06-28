@@ -32,7 +32,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'phone', 'password', 'role', 'barangay_id', 'is_active', 'invitation_accepted_at'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'role', 'roles', 'barangay_id', 'is_active', 'invitation_accepted_at'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -49,6 +49,7 @@ class User extends Authenticatable implements PasskeyUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'roles' => 'array',
             'is_active' => 'boolean',
             'invitation_accepted_at' => 'datetime',
         ];
@@ -90,17 +91,136 @@ class User extends Authenticatable implements PasskeyUser
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->isSuperAdmin() || $this->isBarangayAdmin();
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole('superadmin');
+    }
+
+    public function isBarangayAdmin(): bool
+    {
+        return $this->hasRole('barangay_admin');
     }
 
     public function isNurse(): bool
     {
-        return $this->role === 'nurse';
+        return $this->hasRole('nurse');
     }
 
     public function isParent(): bool
     {
-        return $this->role === 'parent';
+        return $this->hasRole('parent');
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return in_array($role, $this->rolesList(), true);
+    }
+
+    /**
+     * @param  array<int, string>  $roles
+     */
+    public function syncRoles(array $roles): void
+    {
+        $roles = array_values(array_unique($roles));
+
+        $this->forceFill([
+            'roles' => $roles,
+            'role' => $roles[0] ?? $this->role,
+        ]);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function rolesList(): array
+    {
+        $roles = $this->roles;
+
+        if (is_array($roles) && $roles !== []) {
+            return array_values(array_unique(array_map('strval', $roles)));
+        }
+
+        return [$this->role === 'admin' ? 'superadmin' : $this->role];
+    }
+
+    public function displayRole(): string
+    {
+        return collect($this->rolesList())
+            ->map(fn (string $role) => str($role)->replace('_', ' ')->title())
+            ->implode(' + ');
+    }
+
+    public function canManagePlatform(): bool
+    {
+        return $this->isSuperAdmin();
+    }
+
+    public function canManageBarangayStaff(): bool
+    {
+        return $this->isSuperAdmin() || $this->isBarangayAdmin();
+    }
+
+    public function canManageNurses(): bool
+    {
+        return $this->isBarangayAdmin();
+    }
+
+    public function canManageBarangayAdmins(): bool
+    {
+        return $this->isSuperAdmin();
+    }
+
+    public function canManageChildren(): bool
+    {
+        return $this->isNurse();
+    }
+
+    public function canViewChildrenRegistry(): bool
+    {
+        return $this->isBarangayAdmin() || $this->isNurse() || $this->isParent();
+    }
+
+    public function canVerifyVaccinations(): bool
+    {
+        return $this->isNurse();
+    }
+
+    public function canSubmitAefiReports(): bool
+    {
+        return $this->isNurse();
+    }
+
+    public function canViewOversight(): bool
+    {
+        return $this->isSuperAdmin() || $this->isBarangayAdmin();
+    }
+
+    public function canViewVerificationQueue(): bool
+    {
+        return $this->isBarangayAdmin() || $this->isNurse();
+    }
+
+    public function canViewAefiReports(): bool
+    {
+        return $this->isBarangayAdmin() || $this->isNurse();
+    }
+
+    public function canViewDuplicates(): bool
+    {
+        return $this->isBarangayAdmin() || $this->isNurse();
+    }
+
+    public function canViewDefaulters(): bool
+    {
+        return $this->isBarangayAdmin() || $this->isNurse();
+    }
+
+    public function canManageAnnouncements(): bool
+    {
+        return $this->canManageBarangayStaff() || $this->isNurse();
     }
 
     /**

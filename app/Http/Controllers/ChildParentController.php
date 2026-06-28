@@ -95,12 +95,8 @@ class ChildParentController extends Controller
 
     private function authorizeChildAccess(ChildProfile $child): void
     {
-        abort_if(
-            auth()->user()->isNurse() && $child->barangay_id !== auth()->user()->barangay_id,
-            403
-        );
-
-        abort_unless(auth()->user()->isAdmin() || auth()->user()->isNurse(), 403);
+        abort_unless(auth()->user()->canManageChildren(), 403);
+        abort_if($child->barangay_id !== auth()->user()->barangay_id, 403);
     }
 
     private function authorizeUnlink(ChildProfile $child, User $parent): void

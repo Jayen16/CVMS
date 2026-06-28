@@ -15,6 +15,7 @@ class ChildVaccinationTimelineController extends Controller
 {
     public function __invoke(Request $request, ChildProfile $child): View
     {
+        abort_unless(auth()->user()->canViewChildrenRegistry(), 403);
         $this->authorizeChild($child);
 
         $child->load(['barangay', 'vaccinations.vaccineType']);
@@ -35,6 +36,7 @@ class ChildVaccinationTimelineController extends Controller
     private function authorizeChild(ChildProfile $child): void
     {
         abort_if(auth()->user()->isNurse() && $child->barangay_id !== auth()->user()->barangay_id, 403);
+        abort_if(auth()->user()->isBarangayAdmin() && $child->barangay_id !== auth()->user()->barangay_id, 403);
         abort_if(
             auth()->user()->isParent() && ! $child->parents()->whereKey(auth()->id())->exists(),
             403

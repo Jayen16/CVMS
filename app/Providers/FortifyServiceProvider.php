@@ -47,7 +47,7 @@ class FortifyServiceProvider extends ServiceProvider
                 return null;
             }
 
-            if ($user->isNurse() && ! $user->is_active) {
+            if (($user->isNurse() || $user->isBarangayAdmin()) && ! $user->is_active) {
                 return null;
             }
 

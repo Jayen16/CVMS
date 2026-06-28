@@ -28,7 +28,8 @@ class CreateNewUser implements CreatesNewUsers
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
-            'role' => User::query()->exists() ? 'nurse' : 'admin',
+            'role' => User::query()->exists() ? 'parent' : 'superadmin',
+            'roles' => User::query()->exists() ? ['parent'] : ['superadmin'],
         ]);
     }
 }
