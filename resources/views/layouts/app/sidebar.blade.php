@@ -65,6 +65,13 @@
 
             <flux:spacer />
 
+            <div class="hidden px-3 pb-3 lg:block">
+                <flux:radio.group x-data variant="segmented" x-model="$flux.appearance" class="app-appearance-toggle">
+                    <flux:radio value="light" icon="sun">Day</flux:radio>
+                    <flux:radio value="dark" icon="moon">Night</flux:radio>
+                </flux:radio.group>
+            </div>
+
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>
 
@@ -96,6 +103,15 @@
                             </div>
                         </div>
                     </flux:menu.radio.group>
+
+                    <flux:menu.separator />
+
+                    <div class="px-2 py-2">
+                        <flux:radio.group x-data variant="segmented" x-model="$flux.appearance" class="app-appearance-toggle w-full">
+                            <flux:radio value="light" icon="sun">Day</flux:radio>
+                            <flux:radio value="dark" icon="moon">Night</flux:radio>
+                        </flux:radio.group>
+                    </div>
 
                     <flux:menu.separator />
 

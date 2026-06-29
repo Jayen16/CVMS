@@ -1,4 +1,3 @@
-<x-layouts::app :title="__('Reports')">
     <div class="app-page">
         <div class="page-heading">
             <div>
@@ -199,4 +198,3 @@
             </section>
         @endif
     </div>
-</x-layouts::app>

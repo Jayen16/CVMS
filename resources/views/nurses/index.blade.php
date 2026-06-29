@@ -1,5 +1,4 @@
-<x-layouts::app :title="__('Nurses')">
-    <div class="app-page grid gap-6 lg:grid-cols-[1fr_380px]">
+<div class="app-page grid gap-6 lg:grid-cols-[1fr_380px]">
         <section class="flex flex-col gap-4">
             @if (session('status'))
                 <div class="app-alert-success">
@@ -110,4 +109,3 @@
             <button class="app-button-primary">Send password setup link</button>
         </form>
     </div>
-</x-layouts::app>

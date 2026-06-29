@@ -1,4 +1,3 @@
-<x-layouts::app :title="__('New child')">
     <div class="app-page">
         <div class="mx-auto w-full max-w-3xl">
             <div class="mb-6">
@@ -10,4 +9,3 @@
             @include('children._form', ['child' => $child, 'barangays' => $barangays])
         </div>
     </div>
-</x-layouts::app>

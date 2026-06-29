@@ -1,4 +1,3 @@
-<x-layouts::app :title="$child->full_name">
     <div class="app-page">
         @if (session('status'))
             <div class="app-alert-success">
@@ -452,7 +451,6 @@
             })();
         </script>
     @endif
-</x-layouts::app>
 
 
 

@@ -1,4 +1,3 @@
-<x-layouts::app :title="__('Vaccine Schedules')">
     <div class="app-page">
         @if (session('status'))
             <div class="app-alert-success">{{ session('status') }}</div>
@@ -91,4 +90,3 @@
             @endforeach
         </div>
     </div>
-</x-layouts::app>

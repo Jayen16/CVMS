@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'Indang RHU Child Vaccination Management System'),
 
     /*
     |--------------------------------------------------------------------------

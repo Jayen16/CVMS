@@ -1,4 +1,3 @@
-<x-layouts::app :title="__('Children')">
     <div class="app-page">
         <div class="page-heading">
             <div>
@@ -61,5 +60,4 @@
 
         {{ $children->links() }}
     </div>
-</x-layouts::app>
 

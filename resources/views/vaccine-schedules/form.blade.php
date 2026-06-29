@@ -1,4 +1,3 @@
-<x-layouts::app :title="$schedule->exists ? __('Edit Schedule') : __('Add Schedule')">
     <div class="app-page">
         <div class="mx-auto w-full max-w-3xl">
             <div class="mb-6">
@@ -72,4 +71,3 @@
             </form>
         </div>
     </div>
-</x-layouts::app>

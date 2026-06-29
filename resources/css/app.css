@@ -62,6 +62,68 @@ select:focus[data-flux-control] {
 }
 
 @layer components {
+    .rhu-auth-shell {
+        background:
+            radial-gradient(circle at top left, rgb(16 185 129 / 0.2), transparent 28%),
+            radial-gradient(circle at bottom right, rgb(14 165 233 / 0.18), transparent 28%),
+            linear-gradient(145deg, #f4fbf8 0%, #eef8ff 50%, #f8fafc 100%);
+    }
+
+    .dark .rhu-auth-shell {
+        background:
+            radial-gradient(circle at top left, rgb(16 185 129 / 0.15), transparent 28%),
+            radial-gradient(circle at bottom right, rgb(14 165 233 / 0.14), transparent 26%),
+            linear-gradient(145deg, #06101a 0%, #0b1220 50%, #111827 100%);
+    }
+
+    .rhu-auth-showcase {
+        @apply rounded-[2rem] border border-emerald-200/70 bg-[linear-gradient(135deg,#065f46_0%,#0f766e_52%,#155e75_100%)] p-8 text-white shadow-[0_24px_80px_rgba(6,95,70,0.28)];
+    }
+
+    .rhu-auth-showcase-inner {
+        @apply flex h-full flex-col justify-between gap-8;
+    }
+
+    .rhu-auth-kicker {
+        @apply text-xs font-semibold uppercase tracking-[0.28em] text-emerald-100/85;
+    }
+
+    .rhu-auth-title {
+        @apply mt-2 text-4xl font-semibold tracking-tight;
+    }
+
+    .rhu-auth-subtitle {
+        @apply mt-2 text-base text-emerald-50/85;
+    }
+
+    .rhu-auth-copy {
+        @apply max-w-xl text-lg leading-8 text-emerald-50/92;
+    }
+
+    .rhu-auth-orb {
+        @apply absolute rounded-full blur-3xl;
+    }
+
+    .rhu-auth-orb-one {
+        @apply left-0 top-0 h-56 w-56 bg-emerald-200/40;
+    }
+
+    .rhu-auth-orb-two {
+        @apply bottom-0 right-0 h-72 w-72 bg-sky-200/40;
+    }
+
+    .welcome-login-shell {
+        @apply rounded-[2rem] border border-emerald-200/70 bg-[linear-gradient(160deg,#ffffff_0%,#f0fdf4_35%,#ecfeff_100%)] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[linear-gradient(160deg,#0f172a_0%,#111827_40%,#0b1220_100%)] sm:p-8;
+    }
+
+    .welcome-login-card {
+        @apply rounded-[1.5rem] border border-emerald-100 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900/75;
+    }
+
+    .app-appearance-toggle {
+        @apply inline-flex rounded-xl border border-slate-200 bg-white/90 p-1 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/85;
+    }
+
     .app-shell {
         @apply min-h-screen bg-slate-50 text-slate-700 dark:bg-zinc-950 dark:text-zinc-200;
     }

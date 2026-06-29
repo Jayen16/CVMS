@@ -1,4 +1,3 @@
-<x-layouts::app :title="$child->full_name.' timeline'">
     <div class="app-page">
         <div class="page-heading xl:items-start">
             <div>
@@ -132,11 +131,11 @@
                                                 {{ $markerText }}
                                             </div>
                                             <div class="max-w-24 truncate rounded bg-white/90 px-1.5 py-0.5 text-[11px] font-semibold text-slate-700 ring-1 ring-slate-200 dark:bg-zinc-900/90 dark:text-zinc-200 dark:ring-zinc-700">
-                                                D{{ $point['dose'] }} · {{ $point['age_summary'] }}
+                                                D{{ $point['dose'] }} Â· {{ $point['age_summary'] }}
                                             </div>
 
                                             <div class="pointer-events-none absolute left-1/2 top-16 z-30 hidden w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-lg group-hover:block dark:border-zinc-700 dark:bg-zinc-900">
-                                                <div class="font-semibold text-slate-950 dark:text-white">Dose {{ $point['dose'] }} · {{ $point['label'] }}</div>
+                                                <div class="font-semibold text-slate-950 dark:text-white">Dose {{ $point['dose'] }} Â· {{ $point['label'] }}</div>
                                                 <div class="mt-1 text-slate-500">Due {{ $point['due_at']->format('M d, Y') }}</div>
                                                 <div class="mt-1 text-slate-500">Status: {{ $statusLabel }}</div>
                                                 @if ($point['record'])
@@ -161,4 +160,4 @@
             </div>
         </section>
     </div>
-</x-layouts::app>
+
