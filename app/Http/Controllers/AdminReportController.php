@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Barangay;
+use App\Models\AdverseEventReport;
 use App\Models\ChildProfile;
 use App\Models\User;
 use App\Models\VaccinationRecord;
@@ -56,6 +57,7 @@ class AdminReportController extends Controller
                     ...VaccineScheduleVersion::query()->pluck('id')->map(fn ($id) => (string) $id)->all(),
                 ]),
             ],
+            'include_aefi' => ['nullable', 'boolean'],
         ]);
 
         $startDate = filled($validated['start_date'] ?? null)
@@ -66,6 +68,7 @@ class AdminReportController extends Controller
             ? Carbon::parse($validated['end_date'])->endOfDay()
             : now()->endOfDay();
         $scheduleVersionFilter = $validated['schedule_version'] ?? 'all';
+        $includeAefi = (bool) ($validated['include_aefi'] ?? false);
 
         $recordScope = VaccinationRecord::query()
             ->whereBetween('administered_at', [$startDate->toDateString(), $endDate->toDateString()])
@@ -121,6 +124,12 @@ class AdminReportController extends Controller
                         fn ($builder) => $builder->where('suggested_schedule_version_id', (int) $scheduleVersionFilter)
                     )
                     ->when(! $user->isSuperAdmin(), fn ($builder) => $builder->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))),
+                'adverseEventReports as report_aefi_count' => fn ($query) => $query
+                    ->whereBetween('event_date', [
+                        $startDate->toDateString(),
+                        $endDate->toDateString(),
+                    ])
+                    ->when(! $user->isSuperAdmin(), fn ($builder) => $builder->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))),
             ])
             ->orderBy('name')
             ->get();
@@ -150,6 +159,17 @@ class AdminReportController extends Controller
             ->take(25)
             ->get();
 
+        $aefiScope = AdverseEventReport::query()
+            ->whereBetween('event_date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->when(
+                ! $user->isSuperAdmin(),
+                fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))
+            );
+
+        $recentAefiReports = $includeAefi
+            ? (clone $aefiScope)->with(['child.barangay', 'vaccineType', 'reporter'])->latest('event_date')->take(25)->get()
+            : collect();
+
         $versionOptions = VaccineScheduleVersion::query()
             ->orderByDesc('effective_date')
             ->orderByDesc('id')
@@ -166,6 +186,7 @@ class AdminReportController extends Controller
             'endDate' => $endDate,
             'generatedAt' => now(),
             'scheduleVersionFilter' => $scheduleVersionFilter,
+            'includeAefi' => $includeAefi,
             'scheduleVersionOptions' => $versionOptions,
             'selectedScheduleVersion' => $selectedVersion,
             'stats' => [
@@ -180,6 +201,7 @@ class AdminReportController extends Controller
                     ? ChildProfile::count()
                     : ChildProfile::where('barangay_id', $user->barangay_id)->count(),
                 'vaccinations' => (clone $recordScope)->count(),
+                'aefi' => $includeAefi ? (clone $aefiScope)->count() : 0,
                 'pending' => VaccinationRecord::where('verification_status', 'pending')
                     ->when($scheduleVersionFilter === 'unassigned', fn ($query) => $query->whereNull('suggested_schedule_version_id'))
                     ->when(
@@ -195,6 +217,7 @@ class AdminReportController extends Controller
             'sourceCounts' => $sourceCounts,
             'versionCounts' => $versionCounts,
             'recentRecords' => $recentRecords,
+            'recentAefiReports' => $recentAefiReports,
         ];
     }
 

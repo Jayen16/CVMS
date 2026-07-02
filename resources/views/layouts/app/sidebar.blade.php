@@ -50,6 +50,11 @@
                             {{ auth()->user()->canManageBarangayAdmins() ? __('Barangay Admins') : __('Nurses') }}
                         </flux:sidebar.item>
                     @endif
+                    @if (auth()->user()->isSuperAdmin() || auth()->user()->isBarangayAdmin() || auth()->user()->isNurse())
+                        <flux:sidebar.item icon="arrow-path" :href="route('sync.index')" :current="request()->routeIs('sync.*')" wire:navigate>
+                            {{ __('Sync Data') }}
+                        </flux:sidebar.item>
+                    @endif
                     @if (auth()->user()->canManagePlatform())
                         <flux:sidebar.item icon="calendar-days" :href="route('vaccine-schedules.index')" :current="request()->routeIs('vaccine-schedules.*')" wire:navigate>
                             {{ __('Schedules') }}
