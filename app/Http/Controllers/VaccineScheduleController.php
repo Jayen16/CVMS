@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\VaccineSchedule;
+use App\Models\VaccineScheduleVersion;
 use App\Models\VaccineType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -16,9 +18,15 @@ class VaccineScheduleController extends Controller
     {
         $this->authorizeAdmin();
 
+        $selectedVersionId = request()->integer('version') ?: VaccineScheduleVersion::query()->where('status', 'active')->value('id');
+
         return view('vaccine-schedules.index', [
+            'versions' => VaccineScheduleVersion::query()->orderByDesc('effective_date')->orderByDesc('id')->get(),
+            'selectedVersionId' => $selectedVersionId,
             'vaccines' => VaccineType::query()
-                ->with(['schedules' => fn ($query) => $query->orderBy('dose_number')])
+                ->with(['schedules' => fn ($query) => $query
+                    ->when($selectedVersionId, fn ($inner) => $inner->where('vaccine_schedule_version_id', $selectedVersionId))
+                    ->orderBy('dose_number')])
                 ->orderBy('name')
                 ->get(),
         ]);
@@ -30,6 +38,7 @@ class VaccineScheduleController extends Controller
 
         return view('vaccine-schedules.form', [
             'schedule' => new VaccineSchedule(['active' => true]),
+            'versions' => VaccineScheduleVersion::query()->orderByDesc('effective_date')->orderByDesc('id')->get(),
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
             'indications' => VaccineSchedule::indicationOptions(),
             'allowNewVaccine' => true,
@@ -51,6 +60,7 @@ class VaccineScheduleController extends Controller
 
         return view('vaccine-schedules.form', [
             'schedule' => $vaccineSchedule,
+            'versions' => VaccineScheduleVersion::query()->orderByDesc('effective_date')->orderByDesc('id')->get(),
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
             'indications' => VaccineSchedule::indicationOptions(),
             'allowNewVaccine' => false,
@@ -84,6 +94,78 @@ class VaccineScheduleController extends Controller
         return to_route('vaccine-schedules.index')->with('status', 'Vaccine status updated.');
     }
 
+    public function storeVersion(Request $request): RedirectResponse
+    {
+        $this->authorizeAdmin();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'version_code' => ['required', 'string', 'max:64', Rule::unique('vaccine_schedule_versions', 'version_code')],
+            'effective_date' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'clone_from_version_id' => ['nullable', 'exists:vaccine_schedule_versions,id'],
+        ]);
+
+        $version = DB::transaction(function () use ($validated) {
+            $version = VaccineScheduleVersion::create([
+                'name' => $validated['name'],
+                'version_code' => $validated['version_code'],
+                'effective_date' => $validated['effective_date'] ?? null,
+                'status' => 'draft',
+                'source' => config('immunization.source'),
+                'source_url' => config('immunization.source_url'),
+                'notes' => $validated['notes'] ?? null,
+            ]);
+
+            if (! empty($validated['clone_from_version_id'])) {
+                $sourceRows = VaccineSchedule::query()
+                    ->where('vaccine_schedule_version_id', $validated['clone_from_version_id'])
+                    ->get();
+
+                foreach ($sourceRows as $row) {
+                    VaccineSchedule::create([
+                        'vaccine_type_id' => $row->vaccine_type_id,
+                        'vaccine_schedule_version_id' => $version->id,
+                        'dose_number' => $row->dose_number,
+                        'age_days' => $row->age_days,
+                        'age_weeks' => $row->age_weeks,
+                        'age_months' => $row->age_months,
+                        'age_years' => $row->age_years,
+                        'label' => $row->label,
+                        'indication' => $row->indication,
+                        'notes' => $row->notes,
+                        'active' => $row->active,
+                    ]);
+                }
+            }
+
+            return $version;
+        });
+
+        return to_route('vaccine-schedules.index', ['version' => $version->id])
+            ->with('status', 'Vaccine schedule version created.');
+    }
+
+    public function activateVersion(VaccineScheduleVersion $vaccineScheduleVersion): RedirectResponse
+    {
+        $this->authorizeAdmin();
+
+        DB::transaction(function () use ($vaccineScheduleVersion): void {
+            VaccineScheduleVersion::query()
+                ->where('status', 'active')
+                ->whereKeyNot($vaccineScheduleVersion->id)
+                ->update(['status' => 'archived']);
+
+            $vaccineScheduleVersion->update([
+                'status' => 'active',
+                'published_at' => $vaccineScheduleVersion->published_at ?? now(),
+            ]);
+        });
+
+        return to_route('vaccine-schedules.index', ['version' => $vaccineScheduleVersion->id])
+            ->with('status', 'Schedule version activated.');
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -92,6 +174,7 @@ class VaccineScheduleController extends Controller
         $isCreate = $schedule === null;
 
         $validated = $request->validate([
+            'vaccine_schedule_version_id' => ['nullable', 'exists:vaccine_schedule_versions,id'],
             'vaccine_type_id' => [$isCreate ? 'nullable' : 'required', 'exists:vaccine_types,id', 'required_without:new_vaccine_name'],
             'new_vaccine_name' => [$isCreate ? 'nullable' : 'prohibited', 'string', 'max:255', 'required_without:vaccine_type_id', Rule::unique('vaccine_types', 'name')],
             'new_vaccine_code' => [$isCreate ? 'nullable' : 'prohibited', 'string', 'max:32', Rule::unique('vaccine_types', 'code')],
@@ -121,9 +204,13 @@ class VaccineScheduleController extends Controller
             $validated['vaccine_type_id'] = $vaccine->id;
         }
 
+        $validated['vaccine_schedule_version_id'] = (int) ($validated['vaccine_schedule_version_id']
+            ?? VaccineScheduleVersion::query()->where('status', 'active')->value('id'));
+
         $request->validate([
             'dose_number' => [
                 Rule::unique('vaccine_schedules', 'dose_number')
+                    ->where('vaccine_schedule_version_id', (int) $validated['vaccine_schedule_version_id'])
                     ->where('vaccine_type_id', (int) $validated['vaccine_type_id'])
                     ->ignore($schedule?->id),
             ],

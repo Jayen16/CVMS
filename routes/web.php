@@ -9,8 +9,8 @@ use App\Http\Controllers\ChildProfileController;
 use App\Http\Controllers\ClinicAnnouncementController;
 use App\Http\Controllers\NurseController;
 use App\Http\Controllers\VaccinationRecordController;
-use App\Http\Controllers\VaccineScheduleController;
 use App\Http\Controllers\VaccineCardController;
+use App\Http\Controllers\VaccineScheduleController;
 use App\Livewire\AefiReportsPage;
 use App\Livewire\AnnouncementsPage;
 use App\Livewire\ChildCreatePage;
@@ -78,6 +78,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('vaccine-schedules/{vaccineSchedule}', [VaccineScheduleController::class, 'update'])->name('vaccine-schedules.update');
     Route::post('vaccine-schedules/{vaccineSchedule}/toggle', [VaccineScheduleController::class, 'toggle'])->name('vaccine-schedules.toggle');
     Route::post('vaccine-types/{vaccineType}/toggle', [VaccineScheduleController::class, 'toggleVaccine'])->name('vaccine-types.toggle');
+    Route::post('vaccine-schedule-versions', [VaccineScheduleController::class, 'storeVersion'])->name('vaccine-schedule-versions.store');
+    Route::post('vaccine-schedule-versions/{vaccineScheduleVersion}/activate', [VaccineScheduleController::class, 'activateVersion'])->name('vaccine-schedule-versions.activate');
 
     Route::prefix('api/parent')->name('api.parent.')->group(function () {
         Route::get('children', [ParentChildController::class, 'index'])->name('children.index');

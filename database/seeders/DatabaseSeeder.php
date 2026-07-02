@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Barangay;
+use App\Models\VaccineScheduleVersion;
 use App\Models\User;
 use App\Models\VaccineSchedule;
 use App\Models\VaccineType;
@@ -44,6 +45,18 @@ class DatabaseSeeder extends Seeder
         }
 
         $schedule = config('immunization.routine_schedule');
+        $versionConfig = config('immunization.version', []);
+        $scheduleVersion = VaccineScheduleVersion::updateOrCreate([
+            'version_code' => $versionConfig['version_code'] ?? '2026.1',
+        ], [
+            'name' => $versionConfig['name'] ?? 'PIDSP 2026 Revised July',
+            'effective_date' => $versionConfig['effective_date'] ?? '2026-07-01',
+            'status' => $versionConfig['status'] ?? 'active',
+            'source' => config('immunization.source'),
+            'source_url' => config('immunization.source_url'),
+            'notes' => $versionConfig['notes'] ?? null,
+            'published_at' => $now,
+        ]);
 
         if (is_array($schedule)) {
             foreach ($schedule as $code => $doses) {
@@ -63,6 +76,7 @@ class DatabaseSeeder extends Seeder
                     }
 
                     VaccineSchedule::updateOrCreate([
+                        'vaccine_schedule_version_id' => $scheduleVersion->id,
                         'vaccine_type_id' => $vaccine->id,
                         'dose_number' => (int) $dose['dose'],
                     ], [

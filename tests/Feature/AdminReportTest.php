@@ -4,6 +4,7 @@ use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\User;
 use App\Models\VaccinationRecord;
+use App\Models\VaccineScheduleVersion;
 use App\Models\VaccineType;
 use Spatie\LaravelPdf\Facades\Pdf;
 
@@ -21,6 +22,12 @@ test('admins can view vaccination reports and export a pdf', function () {
         'guardian_name' => 'Maria Santos',
     ]);
     $vaccine = VaccineType::create(['code' => 'bcg-report', 'name' => 'BCG Report']);
+    $scheduleVersion = VaccineScheduleVersion::create([
+        'name' => 'PIDSP 2026 Revised July',
+        'version_code' => '2026.1-report',
+        'effective_date' => now()->toDateString(),
+        'status' => 'active',
+    ]);
 
     VaccinationRecord::create([
         'child_profile_id' => $child->id,
@@ -29,6 +36,7 @@ test('admins can view vaccination reports and export a pdf', function () {
         'dose_number' => 1,
         'source' => 'barangay_clinic',
         'verification_status' => 'verified',
+        'suggested_schedule_version_id' => $scheduleVersion->id,
         'administered_at' => now()->toDateString(),
     ]);
 
@@ -37,15 +45,23 @@ test('admins can view vaccination reports and export a pdf', function () {
         ->assertOk()
         ->assertSee('Vaccination report')
         ->assertSee('Barangay Uno')
-        ->assertSee('BCG Report');
+        ->assertSee('BCG Report')
+        ->assertSee('Schedule version usage')
+        ->assertSee('PIDSP 2026 Revised July');
+
+    $this->actingAs($admin)
+        ->get(route('reports.index', ['schedule_version' => $scheduleVersion->id]))
+        ->assertOk()
+        ->assertSee('PIDSP 2026 Revised July')
+        ->assertSee('2026.1-report');
 
     Pdf::fake();
 
     $this->actingAs($admin)
-        ->get(route('reports.pdf'))
+        ->get(route('reports.pdf', ['schedule_version' => $scheduleVersion->id]))
         ->assertOk();
 
-    Pdf::assertRespondedWithPdf(fn ($pdf) => $pdf->contains(['Vaccination report', 'BCG Report']));
+    Pdf::assertRespondedWithPdf(fn ($pdf) => $pdf->contains(['Vaccination report', 'BCG Report', '2026.1-report']));
 });
 
 test('nurses cannot access admin reports', function () {

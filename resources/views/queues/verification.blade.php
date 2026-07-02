@@ -42,7 +42,20 @@
                                 <td>{{ $record->child->barangay?->name }}</td>
                                 <td>{{ $record->vaccineType->name }}</td>
                                 <td>{{ $record->administered_at->format('M d, Y') }}</td>
-                                <td>{{ str($record->source)->replace('_', ' ')->title() }}</td>
+                                <td>
+                                    {{ str($record->source)->replace('_', ' ')->title() }}
+                                    @foreach ($record->proofPaths() as $proofPath)
+                                        <div class="text-xs">
+                                            <a
+                                                href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($proofPath) }}"
+                                                target="_blank"
+                                                class="text-teal-700 hover:underline dark:text-teal-300"
+                                            >
+                                                View proof photo {{ $loop->iteration }}
+                                            </a>
+                                        </div>
+                                    @endforeach
+                                </td>
                                 <td>{{ $record->submitter?->name ?? 'N/A' }}</td>
                                 <td>
                                     <div class="flex gap-2">

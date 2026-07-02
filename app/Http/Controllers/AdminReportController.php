@@ -6,10 +6,12 @@ use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\User;
 use App\Models\VaccinationRecord;
+use App\Models\VaccineScheduleVersion;
 use App\Models\VaccineType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Spatie\LaravelPdf\Facades\Pdf;
 
@@ -45,6 +47,15 @@ class AdminReportController extends Controller
         $validated = $request->validate([
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'schedule_version' => [
+                'nullable',
+                'string',
+                Rule::in([
+                    'all',
+                    'unassigned',
+                    ...VaccineScheduleVersion::query()->pluck('id')->map(fn ($id) => (string) $id)->all(),
+                ]),
+            ],
         ]);
 
         $startDate = filled($validated['start_date'] ?? null)
@@ -54,9 +65,18 @@ class AdminReportController extends Controller
         $endDate = filled($validated['end_date'] ?? null)
             ? Carbon::parse($validated['end_date'])->endOfDay()
             : now()->endOfDay();
+        $scheduleVersionFilter = $validated['schedule_version'] ?? 'all';
 
         $recordScope = VaccinationRecord::query()
             ->whereBetween('administered_at', [$startDate->toDateString(), $endDate->toDateString()])
+            ->when(
+                $scheduleVersionFilter === 'unassigned',
+                fn ($query) => $query->whereNull('suggested_schedule_version_id')
+            )
+            ->when(
+                $scheduleVersionFilter !== 'all' && $scheduleVersionFilter !== 'unassigned',
+                fn ($query) => $query->where('suggested_schedule_version_id', (int) $scheduleVersionFilter)
+            )
             ->when(
                 ! $user->isSuperAdmin(),
                 fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))
@@ -66,6 +86,11 @@ class AdminReportController extends Controller
             ->select('child_profiles.barangay_id', DB::raw('count(*) as total'))
             ->join('child_profiles', 'vaccination_records.child_profile_id', '=', 'child_profiles.id')
             ->whereBetween('vaccination_records.administered_at', [$startDate->toDateString(), $endDate->toDateString()])
+            ->when($scheduleVersionFilter === 'unassigned', fn ($query) => $query->whereNull('vaccination_records.suggested_schedule_version_id'))
+            ->when(
+                $scheduleVersionFilter !== 'all' && $scheduleVersionFilter !== 'unassigned',
+                fn ($query) => $query->where('vaccination_records.suggested_schedule_version_id', (int) $scheduleVersionFilter)
+            )
             ->when(! $user->isSuperAdmin(), fn ($query) => $query->where('child_profiles.barangay_id', $user->barangay_id))
             ->groupBy('child_profiles.barangay_id')
             ->pluck('total', 'barangay_id');
@@ -90,6 +115,11 @@ class AdminReportController extends Controller
                         $startDate->toDateString(),
                         $endDate->toDateString(),
                     ])
+                    ->when($scheduleVersionFilter === 'unassigned', fn ($builder) => $builder->whereNull('suggested_schedule_version_id'))
+                    ->when(
+                        $scheduleVersionFilter !== 'all' && $scheduleVersionFilter !== 'unassigned',
+                        fn ($builder) => $builder->where('suggested_schedule_version_id', (int) $scheduleVersionFilter)
+                    )
                     ->when(! $user->isSuperAdmin(), fn ($builder) => $builder->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))),
             ])
             ->orderBy('name')
@@ -105,16 +135,39 @@ class AdminReportController extends Controller
             ->groupBy('source')
             ->pluck('total', 'source');
 
+        $versionCounts = (clone $recordScope)
+            ->leftJoin('vaccine_schedule_versions', 'vaccination_records.suggested_schedule_version_id', '=', 'vaccine_schedule_versions.id')
+            ->selectRaw("coalesce(vaccine_schedule_versions.name, 'Legacy / unspecified') as version_name")
+            ->selectRaw("coalesce(vaccine_schedule_versions.version_code, 'legacy') as version_code")
+            ->selectRaw('count(*) as total')
+            ->groupBy('version_name', 'version_code')
+            ->orderByDesc('total')
+            ->get();
+
         $recentRecords = (clone $recordScope)
-            ->with(['child.barangay', 'vaccineType', 'recorder'])
+            ->with(['child.barangay', 'vaccineType', 'recorder', 'suggestedScheduleVersion'])
             ->latest('administered_at')
             ->take(25)
             ->get();
+
+        $versionOptions = VaccineScheduleVersion::query()
+            ->orderByDesc('effective_date')
+            ->orderByDesc('id')
+            ->get();
+
+        $selectedVersion = match ($scheduleVersionFilter) {
+            'all' => null,
+            'unassigned' => 'Legacy / unspecified',
+            default => $versionOptions->firstWhere('id', (int) $scheduleVersionFilter),
+        };
 
         return [
             'startDate' => $startDate,
             'endDate' => $endDate,
             'generatedAt' => now(),
+            'scheduleVersionFilter' => $scheduleVersionFilter,
+            'scheduleVersionOptions' => $versionOptions,
+            'selectedScheduleVersion' => $selectedVersion,
             'stats' => [
                 'barangays' => $user->isSuperAdmin() ? Barangay::count() : 1,
                 'barangayAdmins' => $user->isSuperAdmin()
@@ -128,6 +181,11 @@ class AdminReportController extends Controller
                     : ChildProfile::where('barangay_id', $user->barangay_id)->count(),
                 'vaccinations' => (clone $recordScope)->count(),
                 'pending' => VaccinationRecord::where('verification_status', 'pending')
+                    ->when($scheduleVersionFilter === 'unassigned', fn ($query) => $query->whereNull('suggested_schedule_version_id'))
+                    ->when(
+                        $scheduleVersionFilter !== 'all' && $scheduleVersionFilter !== 'unassigned',
+                        fn ($query) => $query->where('suggested_schedule_version_id', (int) $scheduleVersionFilter)
+                    )
                     ->when(! $user->isSuperAdmin(), fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id)))
                     ->count(),
             ],
@@ -135,6 +193,7 @@ class AdminReportController extends Controller
             'vaccines' => $vaccines,
             'verificationCounts' => $verificationCounts,
             'sourceCounts' => $sourceCounts,
+            'versionCounts' => $versionCounts,
             'recentRecords' => $recentRecords,
         ];
     }

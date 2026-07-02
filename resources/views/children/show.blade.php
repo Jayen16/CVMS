@@ -1,4 +1,7 @@
-    <div class="app-page">
+    <div
+        class="app-page"
+        x-data="{ openVerificationModal: false, verificationActionUrl: '', verificationActionLabel: 'Verify', verificationSubject: '' }"
+    >
         @if (session('status'))
             <div class="app-alert-success">
                 {{ session('status') }}
@@ -132,15 +135,24 @@
                                         @if ($record->clinic_name)
                                             <div class="text-xs text-zinc-500">{{ $record->clinic_name }}</div>
                                         @endif
-                                        @if ($record->proof_path)
-                                            <div class="text-xs"><a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($record->proof_path) }}" target="_blank" class="text-teal-700 hover:underline dark:text-teal-300">View proof photo</a></div>
-                                        @endif
+                                        @foreach ($record->proofPaths() as $proofPath)
+                                            <div class="text-xs">
+                                                <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($proofPath) }}" target="_blank" class="text-teal-700 hover:underline dark:text-teal-300">
+                                                    View proof photo {{ $loop->iteration }}
+                                                </a>
+                                            </div>
+                                        @endforeach
                                     </td>
                                     <td>
-                                        <span class="status-pill
+                                        <span
+                                            class="status-pill
                                             @if ($record->verification_status === 'verified') status-verified
                                             @elseif ($record->verification_status === 'pending') status-pending
-                                            @else status-rejected @endif">
+                                            @else status-rejected @endif"
+                                            @if (auth()->user()->canVerifyVaccinations() && $record->verified_at)
+                                                title="{{ ucfirst($record->verification_status) }} by {{ $record->verifier?->name ?? 'Unknown user' }} on {{ $record->verified_at->format('M d, Y g:i A') }}"
+                                            @endif
+                                        >
                                             {{ ucfirst($record->verification_status) }}
                                         </span>
                                         @if ($record->submitter)
@@ -170,11 +182,23 @@
                                                 <div class="flex gap-2">
                                                     <form method="POST" action="{{ route('vaccinations.verify', $record) }}">
                                                         @csrf
-                                                        <button class="app-button-primary !px-3 !py-1.5 !text-xs">Verify</button>
+                                                        <button
+                                                            type="button"
+                                                            class="app-button-primary !px-3 !py-1.5 !text-xs"
+                                                            @click="openVerificationModal = true; verificationActionUrl = @js(route('vaccinations.verify', $record)); verificationActionLabel = 'Verify'; verificationSubject = @js($child->full_name.' - '.$record->vaccineType->name)"
+                                                        >
+                                                            Verify
+                                                        </button>
                                                     </form>
                                                     <form method="POST" action="{{ route('vaccinations.reject', $record) }}">
                                                         @csrf
-                                                        <button class="app-button-danger !px-3 !py-1.5 !text-xs">Reject</button>
+                                                        <button
+                                                            type="button"
+                                                            class="app-button-danger !px-3 !py-1.5 !text-xs"
+                                                            @click="openVerificationModal = true; verificationActionUrl = @js(route('vaccinations.reject', $record)); verificationActionLabel = 'Reject'; verificationSubject = @js($child->full_name.' - '.$record->vaccineType->name)"
+                                                        >
+                                                            Reject
+                                                        </button>
                                                     </form>
                                                 </div>
                                             @else
@@ -211,8 +235,21 @@
                         <x-form-field label="Facility or clinic location" name="clinic_location" :value="$editableRecord?->clinic_location" />
                         <label class="grid gap-2 text-sm">
                             <span class="font-medium text-slate-800 dark:text-zinc-100">Photo proof of vaccine card or record</span>
-                            <input type="file" name="proof_file" accept="image/*" class="app-input">
-                            @error('proof_file')
+                            <input type="file" name="proof_files[]" accept="image/*" multiple class="app-input">
+                            <span class="text-xs text-zinc-500">You can upload up to 5 photos.</span>
+                            @if ($editableRecord && $editableRecord->proofPaths() !== [])
+                                <div class="space-y-1 text-xs">
+                                    @foreach ($editableRecord->proofPaths() as $proofPath)
+                                        <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($proofPath) }}" target="_blank" class="block text-teal-700 hover:underline dark:text-teal-300">
+                                            Current proof photo {{ $loop->iteration }}
+                                        </a>
+                                    @endforeach
+                                </div>
+                            @endif
+                            @error('proof_files')
+                                <span class="text-xs font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
+                            @enderror
+                            @error('proof_files.*')
                                 <span class="text-xs font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
                             @enderror
                         </label>
@@ -353,6 +390,38 @@
                         @endif
                     </section>
                 @endif
+            </div>
+        </div>
+        <form method="POST" x-ref="verificationForm" class="hidden">
+            @csrf
+        </form>
+
+        <div
+            x-cloak
+            x-show="openVerificationModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4"
+            x-transition.opacity
+        >
+            <div
+                @click.outside="openVerificationModal = false"
+                class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
+                x-transition
+            >
+                <h2 class="text-lg font-semibold text-slate-950 dark:text-white" x-text="`${verificationActionLabel} vaccination history`"></h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-zinc-300">
+                    Please confirm you want to
+                    <span class="font-semibold text-slate-950 dark:text-white" x-text="verificationActionLabel.toLowerCase()"></span>
+                    <span x-text="` ${verificationSubject}.`"></span>
+                </p>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" class="app-button-secondary" @click="openVerificationModal = false">Cancel</button>
+                    <button
+                        type="button"
+                        class="app-button-primary"
+                        @click="$refs.verificationForm.action = verificationActionUrl; $refs.verificationForm.submit();"
+                        x-text="`Confirm ${verificationActionLabel.toLowerCase()}`"
+                    ></button>
+                </div>
             </div>
         </div>
     </div>

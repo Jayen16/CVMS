@@ -66,6 +66,14 @@ class ChildProfile extends Model
     }
 
     /**
+     * @return HasMany<ChildVaccineSeriesVersion, $this>
+     */
+    public function seriesVersions(): HasMany
+    {
+        return $this->hasMany(ChildVaccineSeriesVersion::class, 'child_profile_id');
+    }
+
+    /**
      * @return BelongsToMany<User, $this>
      */
     public function parents(): BelongsToMany

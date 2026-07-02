@@ -20,6 +20,7 @@
                                 <th class="px-4 py-3 font-medium">Birthdate</th>
                                 <th class="px-4 py-3 font-medium">Barangay</th>
                                 <th class="px-4 py-3 font-medium">Guardian</th>
+                                <th class="px-4 py-3 font-medium text-right">Merge</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -29,6 +30,16 @@
                                     <td>{{ $child->birthdate->format('M d, Y') }}</td>
                                     <td>{{ $child->barangay?->name }}</td>
                                     <td>{{ $child->guardian_name }}{{ $child->guardian_contact ? ' | '.$child->guardian_contact : '' }}</td>
+                                    <td class="text-right">
+                                        <button
+                                            type="button"
+                                            wire:click="mergeGroup(@js($group['signature']), {{ $child->id }})"
+                                            wire:confirm="Keep {{ $child->full_name }} and merge the other records in this duplicate group into it?"
+                                            class="app-button-secondary !px-3 !py-1.5 !text-xs"
+                                        >
+                                            Keep This Record
+                                        </button>
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

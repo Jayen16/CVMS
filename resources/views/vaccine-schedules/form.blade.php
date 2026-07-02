@@ -14,6 +14,18 @@
                 @endif
 
                 <label class="grid gap-2 text-sm">
+                    <span class="font-medium text-slate-800 dark:text-zinc-100">Schedule version</span>
+                    <select name="vaccine_schedule_version_id" class="app-input">
+                        @foreach ($versions as $version)
+                            <option value="{{ $version->id }}" @selected((int) old('vaccine_schedule_version_id', $schedule->vaccine_schedule_version_id ?: $versions->firstWhere('status', 'active')?->id) === $version->id)>
+                                {{ $version->name }} ({{ $version->version_code }}){{ $version->status === 'active' ? ' - Active' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('vaccine_schedule_version_id') <span class="text-xs font-medium text-red-600 dark:text-red-400">{{ $message }}</span> @enderror
+                </label>
+
+                <label class="grid gap-2 text-sm">
                     <span class="font-medium text-slate-800 dark:text-zinc-100">Vaccine</span>
                     <select name="vaccine_type_id" class="app-input">
                         <option value="">{{ $allowNewVaccine ? 'Select existing vaccine or add new below' : 'Select vaccine' }}</option>

@@ -33,11 +33,31 @@ class DuplicateChildDetectionService
 
         return collect($groups)
             ->filter(fn (array $group) => count($group['children']) > 1)
-            ->map(fn (array $group, string $signature) => [
-                'signature' => $signature,
-                'reason' => $group['reason'],
-                'children' => collect($group['children'])->unique('id')->sortBy('last_name')->values()->all(),
-            ])
+            ->map(function (array $group, string $signature): array {
+                $children = collect($group['children'])->unique('id')->sortBy('last_name')->values();
+
+                return [
+                    'signature' => $signature,
+                    'reason' => $group['reason'],
+                    'children' => $children->all(),
+                    'dedupe_key' => $children->pluck('id')->sort()->implode('-'),
+                ];
+            })
+            ->groupBy('dedupe_key')
+            ->map(function ($duplicateGroups): array {
+                $primary = $duplicateGroups->first();
+                $reasons = $duplicateGroups
+                    ->pluck('reason')
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                return [
+                    'signature' => $primary['signature'],
+                    'reason' => implode(' + ', $reasons),
+                    'children' => $primary['children'],
+                ];
+            })
             ->sortByDesc(fn (array $group) => count($group['children']))
             ->values()
             ->all();

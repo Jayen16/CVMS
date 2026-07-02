@@ -2,7 +2,14 @@
 
 return [
     'source' => 'PIDSP 2026 Childhood Immunization Schedule',
-    'source_url' => 'https://www.pidsphil.org/home/wp-content/uploads/2025/11/2026-PIDSP-Immunization-Calendar.pdf',
+    'source_url' => 'https://www.pidsphil.org/home/wp-content/uploads/2026/06/Revised-July-2026-PIDSP-Immunization-Calendar_ea6.pdf',
+    'version' => [
+        'name' => 'PIDSP 2026 Revised July',
+        'version_code' => '2026.1',
+        'effective_date' => '2026-07-01',
+        'status' => 'active',
+        'notes' => 'Seeded from the revised July 2026 PIDSP schedule reference.',
+    ],
 
     'vaccines' => [
         ['code' => 'bcg', 'name' => 'BCG'],

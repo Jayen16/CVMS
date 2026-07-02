@@ -210,7 +210,12 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canViewDuplicates(): bool
     {
-        return $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isSuperAdmin() || $this->isBarangayAdmin() || $this->isNurse();
+    }
+
+    public function canMergeDuplicates(): bool
+    {
+        return $this->canViewDuplicates();
     }
 
     public function canViewDefaulters(): bool

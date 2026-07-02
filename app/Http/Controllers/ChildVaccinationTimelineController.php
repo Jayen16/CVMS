@@ -6,6 +6,7 @@ use App\Models\ChildProfile;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineSchedule;
 use App\Models\VaccineType;
+use App\Services\VaccineScheduleVersionResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -20,7 +21,7 @@ class ChildVaccinationTimelineController extends Controller
 
         $child->load(['barangay', 'vaccinations.vaccineType']);
         $selectedVaccine = $request->string('vaccine')->toString();
-        $timeline = $this->timeline($child, $selectedVaccine);
+        $timeline = $this->timeline($child, $selectedVaccine, app(VaccineScheduleVersionResolver::class));
 
         return view('children.timeline', [
             'child' => $child,
@@ -46,15 +47,9 @@ class ChildVaccinationTimelineController extends Controller
     /**
      * @return list<array{name: string, code: string, doses: list<array<string, mixed>>, records: list<VaccinationRecord>}>
      */
-    private function timeline(ChildProfile $child, string $selectedVaccine): array
+    private function timeline(ChildProfile $child, string $selectedVaccine, VaccineScheduleVersionResolver $versions): array
     {
-        $scheduleRows = VaccineSchedule::query()
-            ->where('active', true)
-            ->with('vaccineType')
-            ->orderBy('vaccine_type_id')
-            ->orderBy('dose_number')
-            ->get()
-            ->groupBy(fn (VaccineSchedule $schedule) => $schedule->vaccineType->code);
+        $scheduleRows = $versions->scheduleRowsForChild($child);
         $rows = [];
 
         foreach ($scheduleRows as $code => $doses) {
@@ -75,6 +70,7 @@ class ChildVaccinationTimelineController extends Controller
             $rows[] = [
                 'name' => $vaccine->name,
                 'code' => $code,
+                'version_name' => $doses->first()->scheduleVersion?->name,
                 'indication_label' => $doses->first()->indicationLabel(),
                 'indication_class' => $doses->first()->indicationClass(),
                 'doses' => $this->dosePoints($child, $doses->values(), $records),

@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\VaccineType;
+use App\Models\VaccineScheduleVersion;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
@@ -12,9 +13,20 @@ class VaccineSchedulesPage extends Component
     {
         $this->authorizeAdmin();
 
+        $versions = VaccineScheduleVersion::query()
+            ->orderByRaw("case when status = 'active' then 0 when status = 'draft' then 1 else 2 end")
+            ->orderByDesc('effective_date')
+            ->orderByDesc('id')
+            ->get();
+        $selectedVersionId = request()->integer('version') ?: $versions->firstWhere('status', 'active')?->id;
+
         return view('vaccine-schedules.index', [
+            'versions' => $versions,
+            'selectedVersionId' => $selectedVersionId,
             'vaccines' => VaccineType::query()
-                ->with(['schedules' => fn ($query) => $query->orderBy('dose_number')])
+                ->with(['schedules' => fn ($query) => $query
+                    ->where('vaccine_schedule_version_id', $selectedVersionId)
+                    ->orderBy('dose_number')])
                 ->orderBy('name')
                 ->get(),
         ])->layout('layouts.app', [

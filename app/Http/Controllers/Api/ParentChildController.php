@@ -148,6 +148,10 @@ class ParentChildController extends Controller
             'clinic_name' => $record->clinic_name,
             'clinic_location' => $record->clinic_location,
             'proof_url' => $record->proof_path ? asset('storage/'.$record->proof_path) : null,
+            'proof_urls' => array_map(
+                fn (string $path) => asset('storage/'.$path),
+                $record->proofPaths()
+            ),
             'remarks' => $record->remarks,
             'submitted_by' => $record->submitter?->name,
             'verified_by' => $record->verifier?->name,

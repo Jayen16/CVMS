@@ -4,12 +4,18 @@ use App\Models\AdverseEventReport;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\ClinicAnnouncement;
+use App\Models\ChildVaccineSeriesVersion;
 use App\Models\OfflineSyncOutbox;
 use App\Models\User;
+use App\Models\VaccineScheduleVersion;
+use App\Models\VaccinationReminder;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineType;
+use App\Services\DuplicateChildDetectionService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
+use App\Livewire\DuplicateChildrenPage;
 
 test('parent submissions can include photo proof and appear on the digital vaccine card', function () {
     Storage::fake('public');
@@ -153,6 +159,160 @@ test('staff can use verification queue, defaulter list, and duplicate detection'
         ->assertOk()
         ->assertSee('Potential duplicate child records')
         ->assertSee($child->full_name);
+});
+
+test('duplicate merge keeps the selected child and moves linked records', function () {
+    $barangay = Barangay::create(['name' => 'Merge Barangay']);
+    $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
+    $parent = User::factory()->create(['role' => 'parent']);
+    $vaccine = VaccineType::query()->firstOrFail();
+    $scheduleVersion = VaccineScheduleVersion::query()->firstOrFail();
+
+    $target = ChildProfile::create([
+        'barangay_id' => $barangay->id,
+        'created_by' => $nurse->id,
+        'first_name' => 'Ivy',
+        'last_name' => 'Dela Cruz',
+        'birthdate' => now()->subMonths(9)->toDateString(),
+        'sex' => 'female',
+        'guardian_name' => 'Parent One',
+        'guardian_contact' => '09170000010',
+    ]);
+
+    $duplicate = ChildProfile::create([
+        'barangay_id' => $barangay->id,
+        'created_by' => $nurse->id,
+        'first_name' => 'Ivy',
+        'last_name' => 'Dela Cruz',
+        'birthdate' => $target->birthdate->toDateString(),
+        'sex' => 'female',
+        'guardian_name' => 'Parent Two',
+        'guardian_contact' => '09170000010',
+    ]);
+
+    $duplicate->parents()->attach($parent->id, ['relationship' => 'mother']);
+
+    $record = VaccinationRecord::create([
+        'child_profile_id' => $duplicate->id,
+        'vaccine_type_id' => $vaccine->id,
+        'recorded_by' => $nurse->id,
+        'dose_number' => 1,
+        'source' => 'barangay_clinic',
+        'verification_status' => 'verified',
+        'verified_by' => $nurse->id,
+        'verified_at' => now(),
+        'administered_at' => now()->subDay()->toDateString(),
+    ]);
+
+    $report = AdverseEventReport::create([
+        'child_profile_id' => $duplicate->id,
+        'vaccination_record_id' => $record->id,
+        'vaccine_type_id' => $vaccine->id,
+        'reported_by' => $nurse->id,
+        'event_date' => now()->toDateString(),
+        'severity' => 'mild',
+        'outcome' => 'Recovered',
+        'symptoms' => 'Fever',
+    ]);
+
+    VaccinationReminder::create([
+        'child_profile_id' => $duplicate->id,
+        'parent_id' => $parent->id,
+        'vaccine_name' => 'BCG',
+        'dose_number' => 1,
+        'due_at' => now()->addWeek()->toDateString(),
+        'channel' => 'email',
+        'recipient' => $parent->email,
+        'status' => 'pending',
+    ]);
+
+    ChildVaccineSeriesVersion::create([
+        'child_profile_id' => $duplicate->id,
+        'vaccine_type_id' => $vaccine->id,
+        'vaccine_schedule_version_id' => $scheduleVersion->id,
+        'assigned_at' => now(),
+        'assignment_reason' => 'Initial assignment',
+    ]);
+
+    $signature = app(DuplicateChildDetectionService::class)
+        ->detect(ChildProfile::query()->whereKey([$target->id, $duplicate->id])->get())[0]['signature'];
+
+    $this->actingAs($nurse);
+
+    Livewire::test(DuplicateChildrenPage::class)
+        ->call('mergeGroup', $signature, $target->id)
+        ->assertHasNoErrors();
+
+    expect(ChildProfile::find($duplicate->id))->toBeNull();
+    expect($record->fresh()->child_profile_id)->toBe($target->id);
+    expect($report->fresh()->child_profile_id)->toBe($target->id);
+    expect(VaccinationReminder::where('child_profile_id', $target->id)->count())->toBe(1);
+    expect(ChildVaccineSeriesVersion::where('child_profile_id', $target->id)->count())->toBe(1);
+    expect($target->parents()->whereKey($parent->id)->exists())->toBeTrue();
+});
+
+test('superadmin can review duplicate matches across barangays', function () {
+    $north = Barangay::create(['name' => 'North Barangay']);
+    $south = Barangay::create(['name' => 'South Barangay']);
+    $superadmin = User::factory()->create(['role' => 'admin']);
+    $northNurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $north->id]);
+    $southNurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $south->id]);
+
+    ChildProfile::create([
+        'barangay_id' => $north->id,
+        'created_by' => $northNurse->id,
+        'first_name' => 'Mila',
+        'last_name' => 'Reyes',
+        'birthdate' => now()->subMonths(8)->toDateString(),
+        'sex' => 'female',
+        'guardian_name' => 'Guardian A',
+        'guardian_contact' => '09170000020',
+    ]);
+
+    ChildProfile::create([
+        'barangay_id' => $south->id,
+        'created_by' => $southNurse->id,
+        'first_name' => 'Mila',
+        'last_name' => 'Reyes',
+        'birthdate' => now()->subMonths(8)->toDateString(),
+        'sex' => 'female',
+        'guardian_name' => 'Guardian B',
+        'guardian_contact' => '09170000021',
+    ]);
+
+    $this->actingAs($superadmin)
+        ->get(route('duplicates.index'))
+        ->assertOk()
+        ->assertSee('Potential duplicate child records')
+        ->assertSee('North Barangay')
+        ->assertSee('South Barangay');
+});
+
+test('duplicate detection collapses identical child clusters into one group', function () {
+    $barangay = Barangay::create(['name' => 'Deduped Barangay']);
+    $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
+
+    foreach (range(1, 4) as $index) {
+        ChildProfile::create([
+            'barangay_id' => $barangay->id,
+            'created_by' => $nurse->id,
+            'first_name' => 'Lio',
+            'last_name' => 'Torres',
+            'birthdate' => now()->subMonths(8)->toDateString(),
+            'sex' => 'male',
+            'guardian_name' => 'Guardian '.$index,
+            'guardian_contact' => '09170000999',
+        ]);
+    }
+
+    $children = ChildProfile::query()->where('barangay_id', $barangay->id)->get();
+
+    $groups = app(DuplicateChildDetectionService::class)->detect($children);
+
+    expect($groups)->toHaveCount(1);
+    expect($groups[0]['children'])->toHaveCount(4);
+    expect($groups[0]['reason'])->toContain('Same birthdate and child name');
+    expect($groups[0]['reason'])->toContain('Same birthdate and guardian contact');
 });
 
 test('staff can save aefi reports and review them later', function () {

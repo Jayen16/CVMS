@@ -29,6 +29,14 @@
         <p class="muted">
             Period: {{ $startDate->format('M d, Y') }} to {{ $endDate->format('M d, Y') }}
             | Generated: {{ $generatedAt->format('M d, Y h:i A') }}
+            | Schedule version:
+            @if (($selectedScheduleVersion ?? null) instanceof \App\Models\VaccineScheduleVersion)
+                {{ $selectedScheduleVersion->name }} ({{ $selectedScheduleVersion->version_code }})
+            @elseif (is_string($selectedScheduleVersion))
+                {{ $selectedScheduleVersion }}
+            @else
+                All versions
+            @endif
         </p>
     </div>
 
@@ -126,6 +134,28 @@
         </div>
     </div>
 
+    <h2>Schedule version usage</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Version</th>
+                <th>Code</th>
+                <th>Records</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse ($versionCounts as $versionCount)
+                <tr>
+                    <td>{{ $versionCount->version_name }}</td>
+                    <td>{{ strtoupper($versionCount->version_code) }}</td>
+                    <td>{{ $versionCount->total }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="3">No vaccination records in this period.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+
     <h2>Recent vaccination records</h2>
     <table>
         <thead>
@@ -135,6 +165,7 @@
                 <th>Vaccine</th>
                 <th>Dose</th>
                 <th>Date</th>
+                <th>Schedule version</th>
                 <th>Status</th>
             </tr>
         </thead>
@@ -146,10 +177,11 @@
                     <td>{{ $record->vaccineType?->name }}</td>
                     <td>{{ $record->dose_number ? 'Dose '.$record->dose_number : 'Not set' }}</td>
                     <td>{{ $record->administered_at?->format('M d, Y') }}</td>
+                    <td>{{ $record->suggestedScheduleVersion?->version_code ?? 'Legacy / unspecified' }}</td>
                     <td class="badge">{{ str_replace('_', ' ', $record->verification_status) }}</td>
                 </tr>
             @empty
-                <tr><td colspan="6">No records in this period.</td></tr>
+                <tr><td colspan="7">No records in this period.</td></tr>
             @endforelse
         </tbody>
     </table>

@@ -7,7 +7,7 @@
             </div>
 
             <a
-                href="{{ route('reports.pdf', request()->only(['start_date', 'end_date'])) }}"
+                href="{{ route('reports.pdf', request()->only(['start_date', 'end_date', 'schedule_version'])) }}"
                 class="app-button-primary"
                 target="_blank"
                 rel="noopener"
@@ -17,7 +17,7 @@
         </div>
 
         <section class="app-card">
-            <form method="GET" action="{{ route('reports.index') }}" class="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+            <form method="GET" action="{{ route('reports.index') }}" class="grid gap-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">
                 <label class="space-y-1.5">
                     <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Start date</span>
                     <input
@@ -35,6 +35,21 @@
                         value="{{ request('end_date', $endDate->toDateString()) }}"
                         class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
                     >
+                </label>
+                <label class="space-y-1.5">
+                    <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Schedule version</span>
+                    <select
+                        name="schedule_version"
+                        class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                    >
+                        <option value="all" @selected(($scheduleVersionFilter ?? 'all') === 'all')>All versions</option>
+                        <option value="unassigned" @selected(($scheduleVersionFilter ?? 'all') === 'unassigned')>Legacy / unspecified</option>
+                        @foreach ($scheduleVersionOptions as $version)
+                            <option value="{{ $version->id }}" @selected((string) ($scheduleVersionFilter ?? 'all') === (string) $version->id)>
+                                {{ $version->name }} ({{ $version->version_code }})
+                            </option>
+                        @endforeach
+                    </select>
                 </label>
                 <button type="submit" class="app-button-secondary">Generate</button>
             </form>
@@ -158,9 +173,49 @@
                         <dt class="text-zinc-500">Generated</dt>
                         <dd class="font-medium text-slate-950 dark:text-white">{{ $generatedAt->format('M d, Y h:i A') }}</dd>
                     </div>
+                    <div class="flex justify-between gap-4">
+                        <dt class="text-zinc-500">Schedule version</dt>
+                        <dd class="font-medium text-slate-950 dark:text-white">
+                            @if (($selectedScheduleVersion ?? null) instanceof \App\Models\VaccineScheduleVersion)
+                                {{ $selectedScheduleVersion->name }} ({{ $selectedScheduleVersion->version_code }})
+                            @elseif (is_string($selectedScheduleVersion))
+                                {{ $selectedScheduleVersion }}
+                            @else
+                                All versions
+                            @endif
+                        </dd>
+                    </div>
                 </dl>
             </section>
         </div>
+
+        <section class="app-card">
+            <div class="app-card-header">
+                <h2 class="app-card-title">Schedule version usage</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="app-table">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 font-medium">Version</th>
+                            <th class="px-4 py-3 font-medium">Code</th>
+                            <th class="px-4 py-3 font-medium">Records</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($versionCounts as $versionCount)
+                            <tr class="app-table-row">
+                                <td class="font-medium text-slate-950 dark:text-white">{{ $versionCount->version_name }}</td>
+                                <td>{{ strtoupper($versionCount->version_code) }}</td>
+                                <td>{{ $versionCount->total }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="px-4 py-6 text-center text-zinc-500">No vaccination records in this period.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
 
         @if (! auth()->user()->isSuperAdmin())
             <section class="app-card">
@@ -176,6 +231,7 @@
                                 <th class="px-4 py-3 font-medium">Vaccine</th>
                                 <th class="px-4 py-3 font-medium">Dose</th>
                                 <th class="px-4 py-3 font-medium">Date</th>
+                                <th class="px-4 py-3 font-medium">Schedule version</th>
                                 <th class="px-4 py-3 font-medium">Status</th>
                             </tr>
                         </thead>
@@ -187,10 +243,11 @@
                                     <td>{{ $record->vaccineType?->name }}</td>
                                     <td>{{ $record->dose_number ? 'Dose '.$record->dose_number : 'Not set' }}</td>
                                     <td>{{ $record->administered_at?->format('M d, Y') }}</td>
+                                    <td>{{ $record->suggestedScheduleVersion?->version_code ?? 'Legacy / unspecified' }}</td>
                                     <td class="capitalize">{{ str_replace('_', ' ', $record->verification_status) }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6" class="px-4 py-6 text-center text-zinc-500">No records in this period.</td></tr>
+                                <tr><td colspan="7" class="px-4 py-6 text-center text-zinc-500">No records in this period.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

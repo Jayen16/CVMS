@@ -67,7 +67,10 @@
                 </div>
             </div>
 
-            <div class="max-h-[78vh] overflow-auto">
+            <div @class([
+                'overflow-x-auto overflow-y-visible',
+                'pb-24' => $selectedVaccine !== '',
+            ])>
                 <div class="min-w-[1180px] divide-y divide-slate-200 dark:divide-zinc-800">
                     <div class="sticky top-0 z-20 grid grid-cols-[260px_1fr] bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 shadow-sm dark:bg-zinc-950 dark:text-zinc-400">
                         <div class="border-r border-slate-200 px-5 py-3 dark:border-zinc-800">Vaccine</div>
@@ -86,10 +89,13 @@
                     </div>
 
                     @forelse ($timeline as $row)
-                        <div class="grid min-h-32 grid-cols-[260px_1fr] bg-white dark:bg-zinc-900">
+                        <div class="relative grid min-h-32 grid-cols-[260px_1fr] bg-white hover:z-30 focus-within:z-30 dark:bg-zinc-900">
                             <div class="{{ $row['indication_class'] }} flex flex-col justify-center border-r border-slate-200 px-5 py-4 dark:border-zinc-800">
                                 <h3 class="text-sm font-semibold text-slate-950">{{ $row['name'] }}</h3>
                                 <p class="mt-1 line-clamp-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700">{{ $row['indication_label'] }}</p>
+                                @if (! empty($row['version_name']))
+                                    <p class="mt-1 text-[11px] text-slate-700">{{ $row['version_name'] }}</p>
+                                @endif
                                 <a href="{{ route('children.timeline', ['child' => $child, 'vaccine' => $row['code']]) }}" class="mt-3 w-fit rounded bg-white/85 px-2 py-1 text-[11px] font-semibold text-teal-800 ring-1 ring-slate-300 hover:bg-white">Focus</a>
                             </div>
 
@@ -125,7 +131,7 @@
                                         };
                                     @endphp
 
-                                    <div class="absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2" style="left: calc(2rem + (100% - 4rem) * {{ $point['position'] / 100 }});">
+                                    <div class="absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 hover:z-40 focus-within:z-40" style="left: calc(2rem + (100% - 4rem) * {{ $point['position'] / 100 }});">
                                         <div class="group relative flex flex-col items-center gap-1">
                                             <div class="flex h-10 w-10 items-center justify-center rounded-md border text-[10px] font-bold shadow-sm {{ $markerClasses }}">
                                                 {{ $markerText }}
@@ -134,7 +140,7 @@
                                                 D{{ $point['dose'] }} · {{ $point['age_summary'] }}
                                             </div>
 
-                                            <div class="pointer-events-none absolute left-1/2 top-16 z-30 hidden w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-lg group-hover:block dark:border-zinc-700 dark:bg-zinc-900">
+                                            <div class="pointer-events-auto absolute left-1/2 top-16 z-50 hidden w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-lg group-hover:block group-focus-within:block hover:block dark:border-zinc-700 dark:bg-zinc-900">
                                                 <div class="font-semibold text-slate-950 dark:text-white">Dose {{ $point['dose'] }} · {{ $point['label'] }}</div>
                                                 <div class="mt-1 text-slate-500">Due {{ $point['due_at']->format('M d, Y') }}</div>
                                                 <div class="mt-1 text-slate-500">Status: {{ $statusLabel }}</div>
@@ -142,6 +148,21 @@
                                                     <div class="mt-2 text-slate-600 dark:text-zinc-300">
                                                         Given {{ $point['record']->administered_at->format('M d, Y') }}
                                                     </div>
+                                                    @if ($point['record']->proofPaths() !== [])
+                                                        <div class="mt-2 space-y-1">
+                                                            @foreach ($point['record']->proofPaths() as $proofPath)
+                                                                <div>
+                                                                    <a
+                                                                        href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($proofPath) }}"
+                                                                        target="_blank"
+                                                                        class="pointer-events-auto text-teal-700 hover:underline dark:text-teal-300"
+                                                                    >
+                                                                        View submitted proof {{ $loop->iteration }}
+                                                                    </a>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
                                                 @elseif ($point['action_at'])
                                                     <div class="mt-2 text-slate-600 dark:text-zinc-300">
                                                         Action {{ $point['action_at']->format('M d, Y') }}
