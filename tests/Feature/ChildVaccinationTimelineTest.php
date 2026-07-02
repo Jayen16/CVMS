@@ -23,6 +23,8 @@ test('nurses can view a child vaccination timeline chart', function () {
         ->assertOk()
         ->assertSee('vaccination timeline')
         ->assertSee('Routine schedule checklist')
+        ->assertSee('Birth to 18 years scale')
+        ->assertSee('13-18 yrs')
         ->assertSee('Action');
 });
 

@@ -120,9 +120,11 @@ class ChildTimelinePage extends Component
 
     private function positionForDueDate(Carbon $birthdate, Carbon $dueAt): int
     {
-        $months = max(0, (int) $birthdate->diffInMonths($dueAt));
+        $timelineEndsAt = $birthdate->copy()->addYearsNoOverflow(18);
+        $elapsedDays = max(0, (int) $birthdate->diffInDays($dueAt, false));
+        $totalDays = max(1, (int) $birthdate->diffInDays($timelineEndsAt));
 
-        return min(100, max(0, (int) round(($months / 60) * 100)));
+        return min(100, max(0, (int) round(($elapsedDays / $totalDays) * 100)));
     }
 
     private function actionDateFor(?VaccinationRecord $record, Carbon $dueAt): ?Carbon
