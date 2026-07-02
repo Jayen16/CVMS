@@ -1,6 +1,6 @@
 <x-layouts::auth :title="__('Register')">
     <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Create an account')" :description="__('Enter your details below to create your account')" />
+        <x-auth-header :title="__('Create an account')" :description="__('Use either an email address or a phone number together with your password')" />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
@@ -25,9 +25,17 @@
                 :label="__('Email address')"
                 :value="old('email')"
                 type="email"
-                required
                 autocomplete="email"
                 placeholder="email@example.com"
+            />
+
+            <flux:input
+                name="phone"
+                :label="__('Phone number')"
+                :value="old('phone')"
+                type="text"
+                autocomplete="tel"
+                placeholder="09171234567"
             />
 
             <!-- Password -->

@@ -97,9 +97,9 @@
                             <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
                                 @csrf
 
-                                <!-- Email Address -->
-                                <flux:input name="email" :label="__('Email address')" :value="old('email')" type="email"
-                                    required autofocus autocomplete="email" placeholder="email@example.com" />
+                                <!-- Login -->
+                                <flux:input name="email" :label="__('Email address or phone number')" :value="old('email')" type="text"
+                                    required autofocus autocomplete="username" placeholder="email@example.com or 09171234567" />
 
                                 <!-- Password -->
                                 <div class="relative">

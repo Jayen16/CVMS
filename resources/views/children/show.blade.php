@@ -1,6 +1,33 @@
     <div
         class="app-page"
-        x-data="{ openVerificationModal: false, verificationActionUrl: '', verificationActionLabel: 'Verify', verificationSubject: '' }"
+        x-data="{
+            openVerificationModal: false,
+            verificationActionUrl: '',
+            verificationActionLabel: 'Verify',
+            verificationSubject: '',
+            openConfirmModal: false,
+            confirmActionLabel: 'Confirm',
+            confirmMessage: '',
+            confirmForm: null,
+            showConfirmModal(actionLabel, message, form) {
+                this.confirmActionLabel = actionLabel;
+                this.confirmMessage = message;
+                this.confirmForm = form;
+                this.openConfirmModal = true;
+            },
+            submitConfirmedAction() {
+                if (this.confirmForm) {
+                    this.confirmForm.requestSubmit();
+                }
+
+                this.openConfirmModal = false;
+                this.confirmForm = null;
+            },
+            closeConfirmModal() {
+                this.openConfirmModal = false;
+                this.confirmForm = null;
+            },
+        }"
     >
         @if (session('status'))
             <div class="app-alert-success">
@@ -20,7 +47,11 @@
             </div>
             <div class="flex flex-wrap gap-2">
                 @if (auth()->user()->isParent())
-                    <form method="POST" action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => auth()->user()]) }}" onsubmit="return confirm('Unlink this child from your account?')">
+                    <form
+                        method="POST"
+                        action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => auth()->user()]) }}"
+                        @submit.prevent="showConfirmModal('Unlink child', 'Unlink this child from your account?', $event.currentTarget)"
+                    >
                         @csrf
                         @method('DELETE')
                         <button class="app-button-danger">Unlink child</button>
@@ -363,7 +394,11 @@
                                                 </form>
                                             @endif
 
-                                            <form method="POST" action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => $parent]) }}" onsubmit="return confirm('Unlink this parent from the child profile?')">
+                                            <form
+                                                method="POST"
+                                                action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => $parent]) }}"
+                                                @submit.prevent="showConfirmModal('Unlink parent', 'Unlink this parent from the child profile?', $event.currentTarget)"
+                                            >
                                                 @csrf
                                                 @method('DELETE')
                                                 <button class="app-button-danger !px-3 !py-1.5 !text-xs">Unlink</button>
@@ -379,13 +414,13 @@
                                 @csrf
                                 <div>
                                     <h3 class="text-sm font-semibold text-slate-950 dark:text-white">Invite parent</h3>
-                                    <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">The parent will receive an email link to set their own password.</p>
+                                    <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Link the parent using either an email address or a phone number. Email can receive a password setup link, while phone-only parents can finish sign up using that phone number and a password.</p>
                                 </div>
                                 <x-form-field label="Parent name" name="name" />
                                 <x-form-field label="Parent email" name="email" type="email" />
                                 <x-form-field label="Parent cellphone" name="phone" />
                                 <x-form-field label="Relationship" name="relationship" />
-                                <button class="app-button-primary">Send password setup link</button>
+                                <button class="app-button-primary">Link parent account</button>
                             </form>
                         </section>
                         @endif
@@ -407,7 +442,12 @@
                                 :options="\App\Models\Barangay::orderBy('name')->pluck('name', 'id')"
                                 :value="$child->barangay_id"
                             />
-                            <button class="app-button-primary" onclick="return confirm('Transfer this child to another barangay?')">Transfer child</button>
+                            <button
+                                class="app-button-primary"
+                                @click.prevent="showConfirmModal('Transfer child', 'Transfer this child to another barangay?', $event.currentTarget.form)"
+                            >
+                                Transfer child
+                            </button>
                         </form>
                     </section>
                 @endif
@@ -441,6 +481,32 @@
                         class="app-button-primary"
                         @click="$refs.verificationForm.action = verificationActionUrl; $refs.verificationForm.submit();"
                         x-text="`Confirm ${verificationActionLabel.toLowerCase()}`"
+                    ></button>
+                </div>
+            </div>
+        </div>
+
+        <div
+            x-cloak
+            x-show="openConfirmModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4"
+            x-transition.opacity
+            @keydown.escape.window="closeConfirmModal()"
+        >
+            <div
+                @click.outside="closeConfirmModal()"
+                class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
+                x-transition
+            >
+                <h2 class="text-lg font-semibold text-slate-950 dark:text-white" x-text="confirmActionLabel"></h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-zinc-300" x-text="confirmMessage"></p>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" class="app-button-secondary" @click="closeConfirmModal()">Cancel</button>
+                    <button
+                        type="button"
+                        class="app-button-primary"
+                        @click="submitConfirmedAction()"
+                        x-text="confirmActionLabel"
                     ></button>
                 </div>
             </div>

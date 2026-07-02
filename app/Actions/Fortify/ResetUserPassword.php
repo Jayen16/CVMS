@@ -24,7 +24,7 @@ class ResetUserPassword implements ResetsUserPasswords
 
         $user->forceFill([
             'password' => $input['password'],
-            'email_verified_at' => $user->email_verified_at ?? now(),
+            'email_verified_at' => filled($user->email) ? ($user->email_verified_at ?? now()) : null,
             'invitation_accepted_at' => $user->invitation_accepted_at ?? now(),
             'is_active' => true,
         ])->save();

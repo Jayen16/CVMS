@@ -14,6 +14,7 @@ new #[Title('Profile settings')] class extends Component {
 
     public string $name = '';
     public string $email = '';
+    public string $phone = '';
 
     /**
      * Mount the component.
@@ -21,7 +22,8 @@ new #[Title('Profile settings')] class extends Component {
     public function mount(): void
     {
         $this->name = Auth::user()->name;
-        $this->email = Auth::user()->email;
+        $this->email = Auth::user()->email ?? '';
+        $this->phone = Auth::user()->phone ?? '';
     }
 
     /**
@@ -35,7 +37,11 @@ new #[Title('Profile settings')] class extends Component {
 
         $user->fill($validated);
 
-        if ($user->isDirty('email')) {
+        $validated['phone'] = \App\Models\User::normalizePhone($validated['phone'] ?? null);
+
+        if ($user->isDirty('email') && filled($validated['email'])) {
+            $user->email_verified_at = null;
+        } elseif (blank($validated['email'])) {
             $user->email_verified_at = null;
         }
 
@@ -81,12 +87,16 @@ new #[Title('Profile settings')] class extends Component {
 
     <flux:heading class="sr-only">{{ __('Profile settings') }}</flux:heading>
 
-    <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your name and email address')">
+    <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your name and account contact details')">
         <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
             <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
 
             <div>
-                <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
+                <flux:input wire:model="email" :label="__('Email')" type="email" autocomplete="email" />
+            </div>
+
+            <div>
+                <flux:input wire:model="phone" :label="__('Phone number')" type="text" autocomplete="tel" />
 
                 @if ($this->hasUnverifiedEmail)
                     <div>

@@ -21,7 +21,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 /**
  * @property int $id
  * @property string $name
- * @property string $email
+ * @property string|null $email
  * @property string|null $phone
  * @property Carbon|null $email_verified_at
  * @property string $password
@@ -53,6 +53,43 @@ class User extends Authenticatable implements PasskeyUser
             'is_active' => 'boolean',
             'invitation_accepted_at' => 'datetime',
         ];
+    }
+
+    public static function normalizePhone(?string $phone): ?string
+    {
+        if (blank($phone)) {
+            return null;
+        }
+
+        $phone = preg_replace('/(?!^\+)\D+/', '', trim($phone) ?? '');
+
+        return blank($phone) ? null : $phone;
+    }
+
+    public static function findByLogin(string $login): ?self
+    {
+        $login = trim($login);
+        $phone = self::normalizePhone($login);
+
+        return self::query()
+            ->where(function ($query) use ($login, $phone): void {
+                $query->where('email', $login);
+
+                if (filled($phone)) {
+                    $query->orWhere('phone', $phone);
+                }
+            })
+            ->first();
+    }
+
+    public function hasEmailLogin(): bool
+    {
+        return filled($this->email);
+    }
+
+    public function hasSmsLogin(): bool
+    {
+        return filled($this->phone);
     }
 
     /**

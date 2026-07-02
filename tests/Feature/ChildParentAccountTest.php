@@ -10,7 +10,6 @@ test('linking a new parent sends a password setup link', function () {
     Notification::fake();
 
     $barangay = Barangay::create(['name' => 'Invite Barangay']);
-    $admin = User::factory()->create(['role' => 'admin']);
     $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
 
     $child = ChildProfile::create([
@@ -23,7 +22,7 @@ test('linking a new parent sends a password setup link', function () {
         'guardian_name' => 'Parent Lopez',
     ]);
 
-    $this->actingAs($admin)
+    $this->actingAs($nurse)
         ->post(route('children.parents.store', $child), [
             'name' => 'Parent Lopez',
             'email' => 'parent.lopez@example.com',
@@ -42,11 +41,44 @@ test('linking a new parent sends a password setup link', function () {
     Notification::assertSentTo($parent, ResetPassword::class);
 });
 
+test('linking a phone-only parent creates a pending parent account without sending email', function () {
+    Notification::fake();
+
+    $barangay = Barangay::create(['name' => 'Phone Barangay']);
+    $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
+
+    $child = ChildProfile::create([
+        'barangay_id' => $barangay->id,
+        'created_by' => $nurse->id,
+        'first_name' => 'Lia',
+        'last_name' => 'Santos',
+        'birthdate' => now()->subMonths(7)->toDateString(),
+        'sex' => 'female',
+        'guardian_name' => 'Parent Santos',
+    ]);
+
+    $this->actingAs($nurse)
+        ->post(route('children.parents.store', $child), [
+            'name' => 'Parent Santos',
+            'phone' => '09179990000',
+            'relationship' => 'mother',
+        ])
+        ->assertRedirect(route('children.show', $child, absolute: false))
+        ->assertSessionHas('status', 'Parent account linked to child profile. The parent can finish sign up using this phone number and a password.');
+
+    $parent = User::where('phone', '09179990000')->firstOrFail();
+
+    expect($parent->email)->toBeNull()
+        ->and($parent->invitation_accepted_at)->toBeNull()
+        ->and($child->parents()->whereKey($parent->id)->exists())->toBeTrue();
+
+    Notification::assertNothingSent();
+});
+
 test('resending setup link works for linked parent accounts that are still pending', function () {
     Notification::fake();
 
     $barangay = Barangay::create(['name' => 'Pending Barangay']);
-    $admin = User::factory()->create(['role' => 'admin']);
     $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
     $parent = User::factory()->create([
         'role' => 'parent',
@@ -65,7 +97,7 @@ test('resending setup link works for linked parent accounts that are still pendi
 
     $child->parents()->attach($parent->id, ['relationship' => 'father']);
 
-    $this->actingAs($admin)
+    $this->actingAs($nurse)
         ->post(route('children.parents.setup-link', ['child' => $child, 'parent' => $parent]))
         ->assertRedirect(route('children.show', $child, absolute: false))
         ->assertSessionHas('status', 'Password setup link sent again.');
