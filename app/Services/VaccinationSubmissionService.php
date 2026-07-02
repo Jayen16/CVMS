@@ -40,7 +40,7 @@ class VaccinationSubmissionService
                     ->ignore($record?->id)
                     ->where(fn ($query) => $query
                         ->where('child_profile_id', $child->id)
-                        ->where('vaccine_type_id', (int) ($input['vaccine_type_id'] ?? 0))
+                        ->where('vaccine_type_id', (string) ($input['vaccine_type_id'] ?? ''))
                         ->where('verification_status', '!=', 'rejected')),
             ],
             'administered_at' => ['required', 'date', 'before_or_equal:today'],

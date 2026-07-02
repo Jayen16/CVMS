@@ -9,9 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('clinic_announcements', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('barangay_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('barangay_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignUuid('created_by')->constrained('users')->cascadeOnDelete();
             $table->string('title');
             $table->string('category')->default('schedule');
             $table->string('audience')->default('all');

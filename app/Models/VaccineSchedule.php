@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 class VaccineSchedule extends Model
 {
+    use UsesUuidPrimaryKey;
+
     protected $fillable = [
         'vaccine_type_id',
         'vaccine_schedule_version_id',

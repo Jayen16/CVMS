@@ -18,7 +18,7 @@ class VaccineScheduleController extends Controller
     {
         $this->authorizeAdmin();
 
-        $selectedVersionId = request()->integer('version') ?: VaccineScheduleVersion::query()->where('status', 'active')->value('id');
+        $selectedVersionId = request()->string('version')->toString() ?: VaccineScheduleVersion::query()->where('status', 'active')->value('id');
 
         return view('vaccine-schedules.index', [
             'versions' => VaccineScheduleVersion::query()->orderByDesc('effective_date')->orderByDesc('id')->get(),
@@ -204,14 +204,14 @@ class VaccineScheduleController extends Controller
             $validated['vaccine_type_id'] = $vaccine->id;
         }
 
-        $validated['vaccine_schedule_version_id'] = (int) ($validated['vaccine_schedule_version_id']
-            ?? VaccineScheduleVersion::query()->where('status', 'active')->value('id'));
+        $validated['vaccine_schedule_version_id'] = $validated['vaccine_schedule_version_id']
+            ?? VaccineScheduleVersion::query()->where('status', 'active')->value('id');
 
         $request->validate([
             'dose_number' => [
                 Rule::unique('vaccine_schedules', 'dose_number')
-                    ->where('vaccine_schedule_version_id', (int) $validated['vaccine_schedule_version_id'])
-                    ->where('vaccine_type_id', (int) $validated['vaccine_type_id'])
+                    ->where('vaccine_schedule_version_id', $validated['vaccine_schedule_version_id'])
+                    ->where('vaccine_type_id', $validated['vaccine_type_id'])
                     ->ignore($schedule?->id),
             ],
         ]);

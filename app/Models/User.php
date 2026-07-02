@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesUuidPrimaryKey;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -19,7 +20,7 @@ use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
- * @property int $id
+ * @property string $id
  * @property string $name
  * @property string|null $email
  * @property string|null $phone
@@ -37,7 +38,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable, UsesUuidPrimaryKey;
 
     /**
      * Get the attributes that should be cast.

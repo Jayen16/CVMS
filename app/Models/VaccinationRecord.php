@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,6 +10,8 @@ use Illuminate\Support\Str;
 
 class VaccinationRecord extends Model
 {
+    use UsesUuidPrimaryKey;
+
     protected $fillable = [
         'child_profile_id',
         'vaccine_type_id',

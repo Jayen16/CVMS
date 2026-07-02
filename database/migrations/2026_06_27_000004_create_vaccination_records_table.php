@@ -9,10 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('vaccination_records', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('child_profile_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('vaccine_type_id')->constrained()->restrictOnDelete();
-            $table->foreignId('recorded_by')->constrained('users')->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('child_profile_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('vaccine_type_id')->constrained()->restrictOnDelete();
+            $table->foreignUuid('recorded_by')->constrained('users')->cascadeOnDelete();
             $table->unsignedTinyInteger('dose_number')->nullable();
             $table->date('administered_at');
             $table->date('next_due_at')->nullable();

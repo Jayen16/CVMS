@@ -9,11 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('adverse_event_reports', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('child_profile_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('vaccination_record_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('vaccine_type_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('reported_by')->constrained('users')->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('child_profile_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('vaccination_record_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignUuid('vaccine_type_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignUuid('reported_by')->constrained('users')->cascadeOnDelete();
             $table->date('event_date');
             $table->string('severity')->default('mild');
             $table->string('outcome')->nullable();

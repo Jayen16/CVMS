@@ -18,7 +18,7 @@ class VaccineSchedulesPage extends Component
             ->orderByDesc('effective_date')
             ->orderByDesc('id')
             ->get();
-        $selectedVersionId = request()->integer('version') ?: $versions->firstWhere('status', 'active')?->id;
+        $selectedVersionId = request()->string('version')->toString() ?: $versions->firstWhere('status', 'active')?->id;
 
         return view('vaccine-schedules.index', [
             'versions' => $versions,

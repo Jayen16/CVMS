@@ -4,14 +4,15 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 return new class extends Migration
 {
     public function up(): void
     {
         Schema::create('vaccine_schedules', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('vaccine_type_id')->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('vaccine_type_id')->constrained()->cascadeOnDelete();
             $table->unsignedTinyInteger('dose_number');
             $table->unsignedSmallInteger('age_days')->default(0);
             $table->unsignedSmallInteger('age_weeks')->default(0);
@@ -58,6 +59,7 @@ return new class extends Migration
                 }
 
                 DB::table('vaccine_schedules')->insert([
+                    'id' => (string) Str::uuid(),
                     'vaccine_type_id' => $vaccineId,
                     'dose_number' => (int) $dose['dose'],
                     'age_days' => (int) ($dose['age']['days'] ?? 0),

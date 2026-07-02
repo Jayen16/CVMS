@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SyncStatus extends Model
 {
+    use UsesUuidPrimaryKey;
+
     protected $fillable = [
         'scope',
         'last_synced_by',
