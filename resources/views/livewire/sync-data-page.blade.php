@@ -30,7 +30,7 @@
         <div class="app-card-header">
             <h2 class="app-card-title">Latest sync status</h2>
         </div>
-        <dl class="grid gap-3 p-5 pt-0 text-sm md:grid-cols-2">
+        <dl class="grid gap-3 p-5 text-sm md:grid-cols-2">
             <div class="flex justify-between gap-4">
                 <dt class="text-zinc-500">Last synced at</dt>
                 <dd class="font-medium text-slate-950 dark:text-white">
