@@ -169,7 +169,7 @@
                                         @endif
                                         @foreach ($record->proofPaths() as $proofPath)
                                             <div class="text-xs">
-                                                <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($proofPath) }}" target="_blank" class="text-teal-700 hover:underline dark:text-teal-300">
+                                                <a href="{{ route('vaccinations.proofs.show', ['record' => $record, 'proofIndex' => $loop->iteration]) }}" target="_blank" class="text-teal-700 hover:underline dark:text-teal-300">
                                                     View proof photo {{ $loop->iteration }}
                                                 </a>
                                             </div>
@@ -249,6 +249,10 @@
 
             <div class="grid content-start gap-6">
                 @if (auth()->user()->isParent())
+                    @php
+                        $defaultClinicName = $editableRecord?->clinic_name ?? $child->barangay?->name ?? 'Current clinic barangay';
+                        $defaultClinicLocation = $editableRecord?->clinic_location ?? 'Indang, Cavite, Barangay 4 (pob.), Indang, Cavite, 4122';
+                    @endphp
                     <form method="POST" action="{{ $editableRecord ? route('vaccinations.update', $editableRecord) : route('children.vaccinations.store', $child) }}" class="app-panel grid content-start gap-4" enctype="multipart/form-data">
                         @csrf
                         @if ($editableRecord)
@@ -263,8 +267,8 @@
                         <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" :value="$editableRecord?->vaccine_type_id" />
                         <x-form-field label="Dose number" name="dose_number" type="number" :value="$editableRecord?->dose_number" />
                         <x-form-field label="Date given" name="administered_at" type="date" :value="$editableRecord?->administered_at?->toDateString()" />
-                        <x-form-field label="Facility or clinic name" name="clinic_name" :value="$editableRecord?->clinic_name" />
-                        <x-form-field label="Facility or clinic location" name="clinic_location" :value="$editableRecord?->clinic_location" />
+                        <x-form-field label="Facility or clinic name" name="clinic_name" :value="$defaultClinicName" />
+                        <x-form-field label="Facility or clinic location" name="clinic_location" :value="$defaultClinicLocation" />
                         <label class="grid gap-2 text-sm">
                             <span class="font-medium text-slate-800 dark:text-zinc-100">Photo proof of vaccine card or record</span>
                             <input type="file" name="proof_files[]" accept="image/*" multiple class="app-input">
@@ -272,7 +276,7 @@
                             @if ($editableRecord && $editableRecord->proofPaths() !== [])
                                 <div class="space-y-1 text-xs">
                                     @foreach ($editableRecord->proofPaths() as $proofPath)
-                                        <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($proofPath) }}" target="_blank" class="block text-teal-700 hover:underline dark:text-teal-300">
+                                        <a href="{{ route('vaccinations.proofs.show', ['record' => $editableRecord, 'proofIndex' => $loop->iteration]) }}" target="_blank" class="block text-teal-700 hover:underline dark:text-teal-300">
                                             Current proof photo {{ $loop->iteration }}
                                         </a>
                                     @endforeach
@@ -419,7 +423,21 @@
                                 <x-form-field label="Parent name" name="name" />
                                 <x-form-field label="Parent email" name="email" type="email" />
                                 <x-form-field label="Parent cellphone" name="phone" />
-                                <x-form-field label="Relationship" name="relationship" />
+                                <x-form-field
+                                    label="Relationship"
+                                    name="relationship"
+                                    type="select"
+                                    :options="[
+                                        'mother' => 'Mother',
+                                        'father' => 'Father',
+                                        'guardian' => 'Guardian',
+                                        'aunt' => 'Aunt',
+                                        'uncle' => 'Uncle',
+                                        'grandmother' => 'Grandmother',
+                                        'grandfather' => 'Grandfather',
+                                        'other' => 'Other',
+                                    ]"
+                                />
                                 <button class="app-button-primary">Link parent account</button>
                             </form>
                         </section>
@@ -430,8 +448,8 @@
                 @if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin())
                     <section class="app-panel grid gap-4">
                         <div>
-                            <h2 class="app-card-title">Transfer child to another barangay</h2>
-                            <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Use this when the child has relocated and the registry should move to a new barangay.</p>
+                            <h2 class="app-card-title">Transfer child to another clinic</h2>
+                            <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Use this when the child has relocated and the registry should move to a new clinic.</p>
                         </div>
                         <form method="POST" action="{{ route('children.transfer', $child) }}" class="grid gap-4">
                             @csrf
@@ -607,6 +625,3 @@
             })();
         </script>
     @endif
-
-
-

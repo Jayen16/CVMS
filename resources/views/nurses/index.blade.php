@@ -6,6 +6,16 @@
                 </div>
             @endif
 
+            @if (session('setup_link'))
+                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-100">
+                    <p class="font-semibold">Email delivery is set to log mode in this environment.</p>
+                    <p class="mt-1 break-all">
+                        Setup link:
+                        <a href="{{ session('setup_link') }}" class="font-semibold underline underline-offset-2">{{ session('setup_link') }}</a>
+                    </p>
+                </div>
+            @endif
+
             <div>
                 <p class="eyebrow">Administration</p>
                 <h1 class="page-title">{{ $managedRole === 'barangay_admin' ? 'Barangay admin accounts' : 'Nurse accounts' }}</h1>
@@ -37,14 +47,18 @@
                                 <td>{{ $member->displayRole() }}</td>
                                 <td>{{ $member->barangay?->name ?? 'Unassigned' }}</td>
                                 <td>
-                                    @if ($member->invitation_accepted_at)
+                                    @if ($member->isArchived())
+                                        <span class="status-pill status-rejected">Archived</span>
+                                    @elseif ($member->invitation_accepted_at)
                                         <span class="status-pill status-verified">Configured</span>
                                     @else
                                         <span class="status-pill status-pending">Pending</span>
                                     @endif
                                 </td>
                                 <td>
-                                    @if ($member->invitation_accepted_at)
+                                    @if ($member->isArchived())
+                                        <span class="text-xs font-medium text-slate-500">Archived account</span>
+                                    @elseif ($member->invitation_accepted_at)
                                         <span class="status-pill {{ $member->is_active ? 'status-verified' : 'status-rejected' }}">
                                             {{ $member->is_active ? 'Active' : 'Inactive' }}
                                         </span>
@@ -54,7 +68,12 @@
                                 </td>
                                 <td>
                                     <div class="flex flex-wrap gap-2">
-                                        @if ($member->invitation_accepted_at)
+                                        @if ($member->isArchived())
+                                            <form method="POST" action="{{ route('nurses.restore', $member) }}">
+                                                @csrf
+                                                <button class="app-button-secondary !px-3 !py-1.5 !text-xs">Restore</button>
+                                            </form>
+                                        @elseif ($member->invitation_accepted_at)
                                             <form method="POST" action="{{ route('nurses.toggle', $member) }}">
                                                 @csrf
                                                 <button class="app-button-secondary !px-3 !py-1.5 !text-xs">{{ $member->is_active ? 'Deactivate' : 'Activate' }}</button>
@@ -66,11 +85,13 @@
                                             </form>
                                         @endif
 
-                                        <form method="POST" action="{{ route('nurses.destroy', $member) }}" onsubmit="return confirm('Remove this account?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button class="app-button-danger !px-3 !py-1.5 !text-xs">Remove</button>
-                                        </form>
+                                        @unless ($member->isArchived())
+                                            <form method="POST" action="{{ route('nurses.destroy', $member) }}" onsubmit="return confirm('Archive this account?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="app-button-danger !px-3 !py-1.5 !text-xs">Archive</button>
+                                            </form>
+                                        @endunless
                                     </div>
                                 </td>
                             </tr>

@@ -18,10 +18,10 @@ class VerificationQueuePage extends Component
     use WithPagination;
 
     #[Url]
-    public ?int $barangay_id = null;
+    public ?string $barangay_id = null;
 
     #[Url]
-    public ?int $vaccine_type_id = null;
+    public ?string $vaccine_type_id = null;
 
     #[Url]
     public string $source = '';
@@ -32,6 +32,14 @@ class VerificationQueuePage extends Component
     #[Url]
     public string $to = '';
 
+    public bool $confirmingAction = false;
+
+    public string $pendingAction = 'verify';
+
+    public ?string $pendingRecordId = null;
+
+    public ?array $pendingRecordSummary = null;
+
     public function updating($name): void
     {
         if (in_array($name, ['barangay_id', 'vaccine_type_id', 'source', 'from', 'to'], true)) {
@@ -39,7 +47,36 @@ class VerificationQueuePage extends Component
         }
     }
 
-    public function verify(int $recordId): void
+    public function promptVerify(string $recordId): void
+    {
+        $this->openConfirmationModal($recordId, 'verify');
+    }
+
+    public function promptReject(string $recordId): void
+    {
+        $this->openConfirmationModal($recordId, 'reject');
+    }
+
+    public function cancelConfirmation(): void
+    {
+        $this->confirmingAction = false;
+        $this->pendingAction = 'verify';
+        $this->pendingRecordId = null;
+        $this->pendingRecordSummary = null;
+    }
+
+    public function confirmPendingAction(): void
+    {
+        abort_if($this->pendingRecordId === null, 404);
+
+        if ($this->pendingAction === 'verify') {
+            $this->verify($this->pendingRecordId);
+        } else {
+            $this->reject($this->pendingRecordId);
+        }
+    }
+
+    public function verify(string $recordId): void
     {
         $record = VaccinationRecord::findOrFail($recordId);
         abort_unless($record->isPendingVerification(), 403);
@@ -54,10 +91,11 @@ class VerificationQueuePage extends Component
             ]))->fresh(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier'])
         );
 
+        $this->cancelConfirmation();
         Flux::toast(variant: 'success', text: 'Vaccination record verified.');
     }
 
-    public function reject(int $recordId): void
+    public function reject(string $recordId): void
     {
         $record = VaccinationRecord::findOrFail($recordId);
         abort_unless($record->isPendingVerification(), 403);
@@ -72,6 +110,7 @@ class VerificationQueuePage extends Component
             ]))->fresh(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier'])
         );
 
+        $this->cancelConfirmation();
         Flux::toast(variant: 'success', text: 'Vaccination record rejected.');
     }
 
@@ -99,5 +138,28 @@ class VerificationQueuePage extends Component
             'barangays' => Barangay::orderBy('name')->get(),
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
         ])->layout('layouts.app', ['title' => 'Verification Queue']);
+    }
+
+    private function openConfirmationModal(string $recordId, string $action): void
+    {
+        $record = VaccinationRecord::query()
+            ->with(['child.barangay', 'vaccineType', 'submitter'])
+            ->findOrFail($recordId);
+
+        abort_unless($record->isPendingVerification(), 403);
+        abort_unless(auth()->user()->canVerifyVaccinations(), 403);
+        abort_if($record->child->barangay_id !== auth()->user()->barangay_id, 403);
+
+        $this->pendingAction = $action;
+        $this->pendingRecordId = $record->id;
+        $this->pendingRecordSummary = [
+            'child_name' => $record->child->full_name,
+            'barangay_name' => $record->child->barangay?->name ?? 'Unassigned',
+            'vaccine_name' => $record->vaccineType->name,
+            'date_given' => $record->administered_at?->format('M d, Y'),
+            'source' => (string) str($record->source)->replace('_', ' ')->title(),
+            'submitted_by' => $record->submitter?->name ?? 'N/A',
+        ];
+        $this->confirmingAction = true;
     }
 }

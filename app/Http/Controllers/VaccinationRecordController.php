@@ -9,6 +9,8 @@ use App\Services\OfflineSyncService;
 use App\Services\VaccinationSubmissionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class VaccinationRecordController extends Controller
 {
@@ -79,6 +81,19 @@ class VaccinationRecordController extends Controller
         return to_route('children.show', $record->child_profile_id)->with('status', 'Vaccination record rejected.');
     }
 
+    public function showProof(VaccinationRecord $record, int $proofIndex): StreamedResponse
+    {
+        $this->authorizeProofView($record);
+
+        $proofPaths = $record->proofPaths();
+        $proofPath = $proofPaths[$proofIndex - 1] ?? null;
+
+        abort_if($proofPath === null, 404);
+        abort_unless(Storage::disk('public')->exists($proofPath), 404);
+
+        return Storage::disk('public')->response($proofPath);
+    }
+
     private function authorizeCreate(ChildProfile $child): void
     {
         if (auth()->user()->canManageChildren()) {
@@ -113,6 +128,29 @@ class VaccinationRecordController extends Controller
         abort_unless($record->isPendingVerification(), 403);
         abort_unless(auth()->user()->canVerifyVaccinations(), 403);
         abort_if($record->child->barangay_id !== auth()->user()->barangay_id, 403);
+    }
+
+    private function authorizeProofView(VaccinationRecord $record): void
+    {
+        $record->loadMissing('child.parents');
+
+        if (auth()->user()->isSuperAdmin()) {
+            return;
+        }
+
+        if (auth()->user()->isBarangayAdmin() || auth()->user()->isNurse()) {
+            abort_if($record->child->barangay_id !== auth()->user()->barangay_id, 403);
+
+            return;
+        }
+
+        if (auth()->user()->isParent()) {
+            abort_unless($record->child->parents->contains('id', auth()->id()), 403);
+
+            return;
+        }
+
+        abort(403);
     }
 
 }

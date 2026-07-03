@@ -144,5 +144,7 @@ class DatabaseSeeder extends Seeder
             'email_verified_at' => $now,
             'invitation_accepted_at' => $now,
         ]);
+
+        $this->call(DemoDataSeeder::class);
     }
 }

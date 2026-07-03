@@ -8,6 +8,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,6 +19,7 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use App\Notifications\AccountAccessNotification;
 
 /**
  * @property string $id
@@ -33,7 +35,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'phone', 'password', 'role', 'roles', 'barangay_id', 'is_active', 'invitation_accepted_at'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'role', 'roles', 'barangay_id', 'is_active', 'invitation_accepted_at', 'archived_at'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -53,6 +55,7 @@ class User extends Authenticatable implements PasskeyUser
             'roles' => 'array',
             'is_active' => 'boolean',
             'invitation_accepted_at' => 'datetime',
+            'archived_at' => 'datetime',
         ];
     }
 
@@ -73,6 +76,7 @@ class User extends Authenticatable implements PasskeyUser
         $phone = self::normalizePhone($login);
 
         return self::query()
+            ->notArchived()
             ->where(function ($query) use ($login, $phone): void {
                 $query->where('email', $login);
 
@@ -83,6 +87,20 @@ class User extends Authenticatable implements PasskeyUser
             ->first();
     }
 
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeNotArchived(Builder $query): Builder
+    {
+        return $query->whereNull('archived_at');
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
     public function hasEmailLogin(): bool
     {
         return filled($this->email);
@@ -91,6 +109,11 @@ class User extends Authenticatable implements PasskeyUser
     public function hasSmsLogin(): bool
     {
         return filled($this->phone);
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new AccountAccessNotification($token));
     }
 
     /**

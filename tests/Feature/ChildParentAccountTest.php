@@ -3,7 +3,7 @@
 use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\AccountAccessNotification;
 use Illuminate\Support\Facades\Notification;
 
 test('linking a new parent sends a password setup link', function () {
@@ -38,7 +38,7 @@ test('linking a new parent sends a password setup link', function () {
         ->and($parent->invitation_accepted_at)->toBeNull()
         ->and($child->parents()->whereKey($parent->id)->exists())->toBeTrue();
 
-    Notification::assertSentTo($parent, ResetPassword::class);
+    Notification::assertSentTo($parent, AccountAccessNotification::class);
 });
 
 test('linking a phone-only parent creates a pending parent account without sending email', function () {
@@ -102,5 +102,5 @@ test('resending setup link works for linked parent accounts that are still pendi
         ->assertRedirect(route('children.show', $child, absolute: false))
         ->assertSessionHas('status', 'Password setup link sent again.');
 
-    Notification::assertSentTo($parent, ResetPassword::class);
+    Notification::assertSentTo($parent, AccountAccessNotification::class);
 });

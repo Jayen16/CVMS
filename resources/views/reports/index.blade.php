@@ -16,7 +16,7 @@
             </a>
         </div>
 
-        <section class="app-card">
+        <section class="app-card p-4">
             <form method="GET" action="{{ route('reports.index') }}" class="grid gap-4 md:grid-cols-[1fr_1fr_1fr_1fr_auto] md:items-end">
                 <label class="space-y-1.5">
                     <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Start date</span>
@@ -139,7 +139,7 @@
                 <div class="app-card-header">
                     <h2 class="app-card-title">Verification status</h2>
                 </div>
-                <div class="space-y-3 p-5 pt-0">
+                <div class="space-y-3 p-5">
                     @forelse ($verificationCounts as $status => $total)
                         <div class="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3 dark:bg-zinc-900">
                             <span class="text-sm font-medium capitalize text-slate-700 dark:text-zinc-200">{{ str_replace('_', ' ', $status) }}</span>
@@ -155,7 +155,7 @@
                 <div class="app-card-header">
                     <h2 class="app-card-title">Record source</h2>
                 </div>
-                <div class="space-y-3 p-5 pt-0">
+                <div class="space-y-3 p-5">
                     @forelse ($sourceCounts as $source => $total)
                         <div class="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3 dark:bg-zinc-900">
                             <span class="text-sm font-medium capitalize text-slate-700 dark:text-zinc-200">{{ str_replace('_', ' ', $source) }}</span>
@@ -171,7 +171,7 @@
                 <div class="app-card-header">
                     <h2 class="app-card-title">Report details</h2>
                 </div>
-                <dl class="grid gap-3 p-5 pt-0 text-sm">
+                <dl class="grid gap-3 p-5 text-sm">
                     <div class="flex justify-between gap-4">
                         <dt class="text-zinc-500">Date range</dt>
                         <dd class="font-medium text-slate-950 dark:text-white">{{ $startDate->format('M d, Y') }} - {{ $endDate->format('M d, Y') }}</dd>

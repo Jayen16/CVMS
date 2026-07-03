@@ -11,7 +11,7 @@
             <div class="app-card-header">
                 <h2 class="app-card-title">Posted announcements</h2>
             </div>
-            <div class="space-y-4">
+            <div class="space-y-4 p-4">
                 @forelse ($announcements as $announcement)
                     <article class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
                         <div class="flex flex-wrap items-start justify-between gap-3">

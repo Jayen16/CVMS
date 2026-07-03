@@ -20,7 +20,16 @@ class ChildParentController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255', 'required_without:phone'],
             'phone' => ['nullable', 'string', 'max:32', 'required_without:email'],
-            'relationship' => ['required', 'string', 'max:255'],
+            'relationship' => ['required', 'string', 'max:255', Rule::in([
+                'mother',
+                'father',
+                'guardian',
+                'aunt',
+                'uncle',
+                'grandmother',
+                'grandfather',
+                'other',
+            ])],
         ]);
 
         $validated['email'] = $validated['email'] ?? null;

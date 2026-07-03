@@ -104,6 +104,19 @@ class ChildProfile extends Model
         return (int) $birthdate->diffInYears().' years';
     }
 
+    public function ensureVaccineCardToken(): string
+    {
+        if (filled($this->vaccine_card_token)) {
+            return $this->vaccine_card_token;
+        }
+
+        $this->forceFill([
+            'vaccine_card_token' => (string) Str::uuid(),
+        ])->save();
+
+        return $this->vaccine_card_token;
+    }
+
     protected static function booted(): void
     {
         static::creating(function (ChildProfile $child): void {

@@ -19,7 +19,7 @@ class AnnouncementsPage extends Component
     public string $title = '';
     public string $category = 'schedule';
     public string $audience = 'all';
-    public ?int $barangay_id = null;
+    public ?string $barangay_id = null;
     public string $starts_on = '';
     public string $ends_on = '';
     public string $location = '';
@@ -65,7 +65,7 @@ class AnnouncementsPage extends Component
         Flux::toast(variant: 'success', text: 'Clinic announcement posted.');
     }
 
-    public function toggle(int $announcementId, OfflineSyncService $offlineSync): void
+    public function toggle(string $announcementId, OfflineSyncService $offlineSync): void
     {
         $announcement = ClinicAnnouncement::findOrFail($announcementId);
         $this->authorizeManage($announcement);
@@ -76,7 +76,7 @@ class AnnouncementsPage extends Component
         Flux::toast(variant: 'success', text: 'Announcement status updated.');
     }
 
-    public function remove(int $announcementId, OfflineSyncService $offlineSync): void
+    public function remove(string $announcementId, OfflineSyncService $offlineSync): void
     {
         $announcement = ClinicAnnouncement::findOrFail($announcementId);
         $this->authorizeManage($announcement);

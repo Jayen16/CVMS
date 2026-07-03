@@ -78,27 +78,44 @@ class NurseController extends Controller
             'invitation_accepted_at' => null,
         ]);
 
-        Password::sendResetLink(['email' => $staff->email]);
+        $status = Password::sendResetLink(['email' => $staff->email]);
 
-        return to_route('nurses.index')->with('status', $managesBarangayAdmins
-            ? 'Barangay admin account created. A password setup link was sent by email.'
-            : 'Nurse account created. A password setup link was sent by email.');
+        if ($status !== Password::RESET_LINK_SENT) {
+            return to_route('nurses.index')->withErrors([
+                'email' => __($status),
+            ])->withInput();
+        }
+
+        return $this->setupLinkResponse(
+            $staff,
+            $managesBarangayAdmins
+                ? 'Barangay admin account created. A password setup link was sent by email.'
+                : 'Nurse account created. A password setup link was sent by email.'
+        );
     }
 
     public function resendSetupLink(User $nurse): RedirectResponse
     {
         $this->authorizeStaffManager();
         $this->authorizeManagedUser($nurse);
+        abort_if($nurse->isArchived(), 422, 'Archived accounts cannot receive setup links.');
 
-        Password::sendResetLink(['email' => $nurse->email]);
+        $status = Password::sendResetLink(['email' => $nurse->email]);
 
-        return to_route('nurses.index')->with('status', 'Password setup link sent again.');
+        if ($status !== Password::RESET_LINK_SENT) {
+            return to_route('nurses.index')->withErrors([
+                'email' => __($status),
+            ]);
+        }
+
+        return $this->setupLinkResponse($nurse, 'Password setup link sent again.');
     }
 
     public function toggle(User $nurse): RedirectResponse
     {
         $this->authorizeStaffManager();
         $this->authorizeManagedUser($nurse);
+        abort_if($nurse->isArchived(), 422, 'Archived accounts cannot be activated.');
 
         abort_if($nurse->invitation_accepted_at === null, 422, 'Nurse must configure the account before status can be changed.');
 
@@ -107,14 +124,30 @@ class NurseController extends Controller
         return to_route('nurses.index')->with('status', 'Nurse status updated.');
     }
 
+    public function restore(User $nurse): RedirectResponse
+    {
+        $this->authorizeStaffManager();
+        $this->authorizeManagedUser($nurse);
+
+        $nurse->update([
+            'archived_at' => null,
+            'is_active' => false,
+        ]);
+
+        return to_route('nurses.index')->with('status', 'Account restored and set to inactive.');
+    }
+
     public function destroy(User $nurse): RedirectResponse
     {
         $this->authorizeStaffManager();
         $this->authorizeManagedUser($nurse);
 
-        $nurse->delete();
+        $nurse->update([
+            'is_active' => false,
+            'archived_at' => now(),
+        ]);
 
-        return to_route('nurses.index')->with('status', 'Account removed.');
+        return to_route('nurses.index')->with('status', 'Account archived.');
     }
 
     private function authorizeManagedUser(User $user): void
@@ -136,5 +169,21 @@ class NurseController extends Controller
     private function authorizeStaffManager(): void
     {
         abort_unless(auth()->user()->canManageBarangayStaff(), 403);
+    }
+
+    private function setupLinkResponse(User $user, string $statusMessage): RedirectResponse
+    {
+        $response = to_route('nurses.index')->with('status', $statusMessage);
+
+        if (! in_array(config('mail.default'), ['log', 'array'], true)) {
+            return $response;
+        }
+
+        $token = Password::broker()->createToken($user);
+
+        return $response->with('setup_link', route('password.reset', [
+            'token' => $token,
+            'email' => $user->email,
+        ]));
     }
 }

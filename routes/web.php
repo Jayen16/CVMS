@@ -58,12 +58,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('children/{child}/parents/{parent}', [ChildParentController::class, 'destroy'])->name('children.parents.destroy');
     Route::post('children/{child}/vaccinations', [VaccinationRecordController::class, 'store'])->name('children.vaccinations.store');
     Route::put('vaccinations/{record}', [VaccinationRecordController::class, 'update'])->name('vaccinations.update');
+    Route::get('vaccinations/{record}/proofs/{proofIndex}', [VaccinationRecordController::class, 'showProof'])->name('vaccinations.proofs.show');
     Route::post('vaccinations/{record}/verify', [VaccinationRecordController::class, 'verify'])->name('vaccinations.verify');
     Route::post('vaccinations/{record}/reject', [VaccinationRecordController::class, 'reject'])->name('vaccinations.reject');
     Route::get('nurses', NursesPage::class)->name('nurses.index');
     Route::post('nurses', [NurseController::class, 'store'])->name('nurses.store');
     Route::post('nurses/{nurse}/setup-link', [NurseController::class, 'resendSetupLink'])->name('nurses.setup-link');
     Route::post('nurses/{nurse}/toggle', [NurseController::class, 'toggle'])->name('nurses.toggle');
+    Route::post('nurses/{nurse}/restore', [NurseController::class, 'restore'])->name('nurses.restore');
     Route::delete('nurses/{nurse}', [NurseController::class, 'destroy'])->name('nurses.destroy');
     Route::get('reports', ReportsPage::class)->name('reports.index');
     Route::get('reports/pdf', [AdminReportController::class, 'pdf'])->name('reports.pdf');

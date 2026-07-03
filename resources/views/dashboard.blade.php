@@ -33,7 +33,7 @@
 
             <div class="mt-4 grid gap-4 md:grid-cols-2">
                 <x-stat-card label="Pending verification" :value="$stats['pending']" />
-                <div class="app-card flex items-center justify-between">
+                <div class="app-card flex items-center justify-between p-4">
                     <div>
                         <h2 class="app-card-title">Quick actions</h2>
                         <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Review pending submissions, duplicate children, and recall lists.</p>
