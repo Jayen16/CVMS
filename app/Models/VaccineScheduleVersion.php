@@ -5,27 +5,25 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class VaccineType extends Model
+class VaccineScheduleVersion extends Model
 {
     protected $fillable = [
-        'code',
         'name',
-        'active',
+        'version_code',
+        'effective_date',
+        'status',
+        'source',
+        'source_url',
+        'notes',
+        'published_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'active' => 'boolean',
+            'effective_date' => 'date',
+            'published_at' => 'datetime',
         ];
-    }
-
-    /**
-     * @return HasMany<VaccinationRecord, $this>
-     */
-    public function records(): HasMany
-    {
-        return $this->hasMany(VaccinationRecord::class);
     }
 
     /**
@@ -39,7 +37,7 @@ class VaccineType extends Model
     /**
      * @return HasMany<ChildVaccineSeriesVersion, $this>
      */
-    public function seriesVersions(): HasMany
+    public function seriesAssignments(): HasMany
     {
         return $this->hasMany(ChildVaccineSeriesVersion::class);
     }

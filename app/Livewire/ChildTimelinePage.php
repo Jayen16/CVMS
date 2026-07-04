@@ -6,6 +6,7 @@ use App\Models\ChildProfile;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineSchedule;
 use App\Models\VaccineType;
+use App\Services\VaccineScheduleVersionResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -30,7 +31,7 @@ class ChildTimelinePage extends Component
 
         return view('children.timeline', [
             'child' => $this->child,
-            'timeline' => $this->timeline($this->child, $selectedVaccine),
+            'timeline' => $this->timeline($this->child, $selectedVaccine, app(VaccineScheduleVersionResolver::class)),
             'selectedVaccine' => $selectedVaccine,
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
             'indications' => VaccineSchedule::indicationOptions(),
@@ -51,15 +52,9 @@ class ChildTimelinePage extends Component
     /**
      * @return list<array{name: string, code: string, doses: list<array<string, mixed>>, records: list<VaccinationRecord>}>
      */
-    private function timeline(ChildProfile $child, string $selectedVaccine): array
+    private function timeline(ChildProfile $child, string $selectedVaccine, VaccineScheduleVersionResolver $versions): array
     {
-        $scheduleRows = VaccineSchedule::query()
-            ->where('active', true)
-            ->with('vaccineType')
-            ->orderBy('vaccine_type_id')
-            ->orderBy('dose_number')
-            ->get()
-            ->groupBy(fn (VaccineSchedule $schedule) => $schedule->vaccineType->code);
+        $scheduleRows = $versions->scheduleRowsForChild($child);
         $rows = [];
 
         foreach ($scheduleRows as $code => $doses) {
@@ -80,6 +75,7 @@ class ChildTimelinePage extends Component
             $rows[] = [
                 'name' => $vaccine->name,
                 'code' => $code,
+                'version_name' => $doses->first()->scheduleVersion?->name,
                 'indication_label' => $doses->first()->indicationLabel(),
                 'indication_class' => $doses->first()->indicationClass(),
                 'doses' => $this->dosePoints($child, $doses->values(), $records),
@@ -124,9 +120,11 @@ class ChildTimelinePage extends Component
 
     private function positionForDueDate(Carbon $birthdate, Carbon $dueAt): int
     {
-        $months = max(0, (int) $birthdate->diffInMonths($dueAt));
+        $timelineEndsAt = $birthdate->copy()->addYearsNoOverflow(18);
+        $elapsedDays = max(0, (int) $birthdate->diffInDays($dueAt, false));
+        $totalDays = max(1, (int) $birthdate->diffInDays($timelineEndsAt));
 
-        return min(100, max(0, (int) round(($months / 60) * 100)));
+        return min(100, max(0, (int) round(($elapsedDays / $totalDays) * 100)));
     }
 
     private function actionDateFor(?VaccinationRecord $record, Carbon $dueAt): ?Carbon

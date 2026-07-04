@@ -23,10 +23,12 @@ class VaccinationRecord extends Model
         'clinic_name',
         'clinic_location',
         'proof_path',
+        'proof_paths',
         'client_submission_id',
         'sync_uuid',
         'next_due_at',
         'suggested_vaccine',
+        'suggested_schedule_version_id',
         'suggestion_note',
         'remarks',
     ];
@@ -37,6 +39,7 @@ class VaccinationRecord extends Model
             'administered_at' => 'date',
             'next_due_at' => 'date',
             'verified_at' => 'datetime',
+            'proof_paths' => 'array',
         ];
     }
 
@@ -81,6 +84,14 @@ class VaccinationRecord extends Model
     }
 
     /**
+     * @return BelongsTo<VaccineScheduleVersion, $this>
+     */
+    public function suggestedScheduleVersion(): BelongsTo
+    {
+        return $this->belongsTo(VaccineScheduleVersion::class, 'suggested_schedule_version_id');
+    }
+
+    /**
      * @return HasMany<AdverseEventReport, $this>
      */
     public function adverseEventReports(): HasMany
@@ -91,6 +102,20 @@ class VaccinationRecord extends Model
     public function isPendingVerification(): bool
     {
         return $this->verification_status === 'pending';
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function proofPaths(): array
+    {
+        $paths = $this->proof_paths ?? [];
+
+        if ($this->proof_path !== null && ! in_array($this->proof_path, $paths, true)) {
+            $paths[] = $this->proof_path;
+        }
+
+        return array_values(array_filter($paths, fn ($path) => is_string($path) && $path !== ''));
     }
 
     protected static function booted(): void

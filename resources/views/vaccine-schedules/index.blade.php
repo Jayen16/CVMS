@@ -7,12 +7,113 @@
             <div>
                 <p class="eyebrow">Administration</p>
                 <h1 class="page-title">Vaccine schedule rules</h1>
-                <p class="page-subtitle">Manage vaccines and dose timing used by the AI next-dose suggestion, reminders, and timeline chart.</p>
+                <p class="page-subtitle">Manage schedule versions, vaccines, and dose timing used by next-dose suggestions, reminders, and timeline markers.</p>
             </div>
             <a href="{{ route('vaccine-schedules.create') }}" class="app-button-primary">Add vaccine or dose rule</a>
         </div>
 
+        <section class="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+            <div class="app-card">
+                <div class="app-card-header">
+                    <div>
+                        <h2 class="app-card-title">Schedule versions</h2>
+                        <p class="page-subtitle">A child who already started a vaccine series keeps that series on its assigned version. New untouched series follow the active version.</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="app-table">
+                        <thead>
+                            <tr>
+                                <th>Version</th>
+                                <th>Effective</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($versions as $version)
+                                <tr class="app-table-row">
+                                    <td>
+                                        <div class="font-semibold text-slate-950 dark:text-white">{{ $version->name }}</div>
+                                        <div class="text-xs text-slate-500">{{ $version->version_code }}</div>
+                                    </td>
+                                    <td>{{ $version->effective_date?->format('M d, Y') ?? 'Not set' }}</td>
+                                    <td>
+                                        <span class="status-pill {{ $version->status === 'active' ? 'status-verified' : ($version->status === 'draft' ? '' : 'status-rejected') }}">
+                                            {{ str($version->status)->headline() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="flex flex-wrap gap-2">
+                                            <a href="{{ route('vaccine-schedules.index', ['version' => $version->id]) }}" class="app-button-secondary !px-3 !py-1.5 !text-xs">
+                                                {{ $selectedVersionId === $version->id ? 'Viewing' : 'View' }}
+                                            </a>
+                                            @if ($version->status !== 'active')
+                                                <form method="POST" action="{{ route('vaccine-schedule-versions.activate', $version) }}">
+                                                    @csrf
+                                                    <button class="app-button-secondary !px-3 !py-1.5 !text-xs">Set active</button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">No schedule versions yet.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="app-card">
+                <div class="app-card-header">
+                    <div>
+                        <h2 class="app-card-title">Create version</h2>
+                        <p class="page-subtitle">Use this to prepare the next year or publish a corrected revision.</p>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ route('vaccine-schedule-versions.store') }}" class="grid gap-4 p-5">
+                    @csrf
+                    <x-form-field label="Version name" name="name" />
+                    <x-form-field label="Version code" name="version_code" />
+                    <x-form-field label="Effective date" name="effective_date" type="date" />
+
+                    <label class="grid gap-2 text-sm">
+                        <span class="font-medium text-slate-800 dark:text-zinc-100">Clone existing version</span>
+                        <select name="clone_from_version_id" class="app-input">
+                            <option value="">Start empty</option>
+                            @foreach ($versions as $version)
+                                <option value="{{ $version->id }}">{{ $version->name }} ({{ $version->version_code }})</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <x-form-field label="Notes" name="notes" type="textarea" />
+
+                    <div class="flex justify-end">
+                        <button class="app-button-primary">Create version</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
         <div class="grid gap-5">
+            @php
+                $selectedVersion = $versions->firstWhere('id', $selectedVersionId);
+            @endphp
+
+            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300">
+                Viewing dose rules for:
+                <span class="font-semibold text-slate-950 dark:text-white">
+                    {{ $selectedVersion?->name ?? 'No selected version' }}
+                </span>
+                @if ($selectedVersion)
+                    <span>({{ $selectedVersion->version_code }})</span>
+                @endif
+            </div>
+
             @foreach ($vaccines as $vaccine)
                 <section class="app-card">
                     <div class="app-card-header">

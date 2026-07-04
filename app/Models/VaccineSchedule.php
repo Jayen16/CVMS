@@ -10,6 +10,7 @@ class VaccineSchedule extends Model
 {
     protected $fillable = [
         'vaccine_type_id',
+        'vaccine_schedule_version_id',
         'dose_number',
         'age_days',
         'age_weeks',
@@ -34,6 +35,14 @@ class VaccineSchedule extends Model
     public function vaccineType(): BelongsTo
     {
         return $this->belongsTo(VaccineType::class);
+    }
+
+    /**
+     * @return BelongsTo<VaccineScheduleVersion, $this>
+     */
+    public function scheduleVersion(): BelongsTo
+    {
+        return $this->belongsTo(VaccineScheduleVersion::class, 'vaccine_schedule_version_id');
     }
 
     public function dueDateFromBirthdate(Carbon $birthdate): Carbon

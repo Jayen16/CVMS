@@ -25,6 +25,10 @@ class VaccinationSubmissionService
      */
     public function validate(User $user, ChildProfile $child, array $input, ?VaccinationRecord $record = null): array
     {
+        if (isset($input['proof_file']) && ! isset($input['proof_files'])) {
+            $input['proof_files'] = [$input['proof_file']];
+        }
+
         $rules = [
             'vaccine_type_id' => ['required', 'exists:vaccine_types,id'],
             'dose_number' => [
@@ -52,7 +56,8 @@ class VaccinationSubmissionService
         if ($user->isParent()) {
             $rules['clinic_name'] = ['required', 'string', 'max:255'];
             $rules['clinic_location'] = ['nullable', 'string', 'max:255'];
-            $rules['proof_file'] = ['nullable', 'file', 'image', 'max:5120'];
+            $rules['proof_files'] = ['nullable', 'array', 'max:5'];
+            $rules['proof_files.*'] = ['image', 'max:5120'];
         }
 
         return Validator::make($input, $rules, [
@@ -65,7 +70,7 @@ class VaccinationSubmissionService
      */
     public function create(ChildProfile $child, User $user, array $validated): VaccinationRecord
     {
-        $proofPath = $user->isParent() ? $this->storeProof($validated['proof_file'] ?? null) : null;
+        $proofPaths = $user->isParent() ? $this->storeProofs($validated['proof_files'] ?? []) : [];
 
         $record = VaccinationRecord::create([
             ...$validated,
@@ -76,7 +81,8 @@ class VaccinationSubmissionService
             'verified_at' => $user->isNurse() ? now() : null,
             'source' => $user->isParent() ? 'outside_clinic' : 'barangay_clinic',
             'verification_status' => $user->isParent() ? 'pending' : 'verified',
-            'proof_path' => $proofPath,
+            'proof_path' => $proofPaths[0] ?? null,
+            'proof_paths' => $proofPaths === [] ? null : $proofPaths,
         ]);
 
         $this->offlineSync->queueUpsert($record->load(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier']));
@@ -89,23 +95,21 @@ class VaccinationSubmissionService
      */
     public function updatePendingParentRecord(VaccinationRecord $record, array $validated): VaccinationRecord
     {
-        $proofPath = $record->proof_path;
+        $proofPaths = $record->proofPaths();
 
-        if (array_key_exists('proof_file', $validated)) {
-            $newProofPath = $this->storeProof($validated['proof_file']);
+        if (array_key_exists('proof_files', $validated)) {
+            $newProofPaths = $this->storeProofs($validated['proof_files'] ?? []);
 
-            if ($newProofPath !== null) {
-                if ($proofPath !== null) {
-                    Storage::disk('public')->delete($proofPath);
-                }
-
-                $proofPath = $newProofPath;
+            if ($newProofPaths !== []) {
+                $this->deleteProofs($proofPaths);
+                $proofPaths = $newProofPaths;
             }
         }
 
         $record->update([
             ...$validated,
-            'proof_path' => $proofPath,
+            'proof_path' => $proofPaths[0] ?? null,
+            'proof_paths' => $proofPaths === [] ? null : $proofPaths,
             'verified_by' => null,
             'verified_at' => null,
             'verification_status' => 'pending',
@@ -143,12 +147,38 @@ class VaccinationSubmissionService
         return $saved;
     }
 
-    private function storeProof(mixed $proofFile): ?string
+    /**
+     * @param  mixed  $proofFiles
+     * @return list<string>
+     */
+    private function storeProofs(mixed $proofFiles): array
     {
-        if (! $proofFile instanceof UploadedFile) {
-            return null;
+        if (! is_array($proofFiles)) {
+            return [];
         }
 
-        return $proofFile->store('vaccination-proofs', 'public');
+        $stored = [];
+
+        foreach ($proofFiles as $proofFile) {
+            if (! $proofFile instanceof UploadedFile) {
+                continue;
+            }
+
+            $stored[] = $proofFile->store('vaccination-proofs', 'public');
+        }
+
+        return $stored;
+    }
+
+    /**
+     * @param  list<string>  $proofPaths
+     */
+    private function deleteProofs(array $proofPaths): void
+    {
+        if ($proofPaths === []) {
+            return;
+        }
+
+        Storage::disk('public')->delete($proofPaths);
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\VaccineSchedule;
+use App\Models\VaccineScheduleVersion;
 use App\Models\VaccineType;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
@@ -24,6 +25,7 @@ class VaccineScheduleFormPage extends Component
 
         return view('vaccine-schedules.form', [
             'schedule' => $schedule,
+            'versions' => VaccineScheduleVersion::query()->orderByDesc('effective_date')->orderByDesc('id')->get(),
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
             'indications' => VaccineSchedule::indicationOptions(),
             'allowNewVaccine' => ! $schedule->exists,
