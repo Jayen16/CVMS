@@ -29,6 +29,14 @@ class VaccineType extends Model
     }
 
     /**
+     * @return HasMany<AdverseEventReport, $this>
+     */
+    public function adverseEventReports(): HasMany
+    {
+        return $this->hasMany(AdverseEventReport::class);
+    }
+
+    /**
      * @return HasMany<VaccineSchedule, $this>
      */
     public function schedules(): HasMany

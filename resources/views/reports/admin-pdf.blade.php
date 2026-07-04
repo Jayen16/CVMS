@@ -45,6 +45,7 @@
         <div class="stat"><div class="stat-label">Nurses</div><div class="stat-value">{{ $stats['nurses'] }}</div></div>
         <div class="stat"><div class="stat-label">Children</div><div class="stat-value">{{ $stats['children'] }}</div></div>
         <div class="stat"><div class="stat-label">Vaccinations</div><div class="stat-value">{{ $stats['vaccinations'] }}</div></div>
+        <div class="stat"><div class="stat-label">AEFI</div><div class="stat-value">{{ $stats['aefi'] }}</div></div>
         <div class="stat"><div class="stat-label">Pending review</div><div class="stat-value">{{ $stats['pending'] }}</div></div>
     </div>
 
@@ -82,7 +83,8 @@
                     <tr>
                         <th>Vaccine</th>
                         <th>Code</th>
-                        <th>Records</th>
+                        <th>Administered</th>
+                        <th>AEFI found</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -91,9 +93,10 @@
                             <td>{{ $vaccine->name }}</td>
                             <td>{{ strtoupper($vaccine->code) }}</td>
                             <td>{{ $vaccine->report_records_count }}</td>
+                            <td>{{ $vaccine->report_aefi_count }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="3">No vaccines yet.</td></tr>
+                        <tr><td colspan="4">No vaccines yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -185,5 +188,35 @@
             @endforelse
         </tbody>
     </table>
+
+    @if ($includeAefi)
+        <h2>Recent AEFI reports</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Child</th>
+                    <th>Barangay</th>
+                    <th>Vaccine</th>
+                    <th>Event date</th>
+                    <th>Severity</th>
+                    <th>Symptoms</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($recentAefiReports as $report)
+                    <tr>
+                        <td>{{ $report->child?->full_name }}</td>
+                        <td>{{ $report->child?->barangay?->name ?? 'Unassigned' }}</td>
+                        <td>{{ $report->vaccineType?->name ?? 'Not linked' }}</td>
+                        <td>{{ $report->event_date?->format('M d, Y') }}</td>
+                        <td>{{ ucfirst($report->severity) }}</td>
+                        <td>{{ $report->symptoms }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="6">No AEFI reports in this period.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    @endif
 </body>
 </html>

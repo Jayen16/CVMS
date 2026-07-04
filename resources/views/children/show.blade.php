@@ -31,6 +31,7 @@
                 @endif
                 <a href="{{ route('children.card', $child) }}" class="app-button-secondary">Digital vaccine card</a>
                 <a href="{{ route('children.timeline', $child) }}" class="app-button-secondary">View timeline chart</a>
+                <a href="{{ route('children.timeline.pdf', $child) }}" class="app-button-secondary" target="_blank" rel="noopener">Timeline PDF</a>
             </div>
         </div>
 
@@ -388,6 +389,26 @@
                             </form>
                         </section>
                         @endif
+                    </section>
+                @endif
+
+                @if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin())
+                    <section class="app-panel grid gap-4">
+                        <div>
+                            <h2 class="app-card-title">Transfer child to another barangay</h2>
+                            <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Use this when the child has relocated and the registry should move to a new barangay.</p>
+                        </div>
+                        <form method="POST" action="{{ route('children.transfer', $child) }}" class="grid gap-4">
+                            @csrf
+                            <x-form-field
+                                label="New barangay"
+                                name="barangay_id"
+                                type="select"
+                                :options="\App\Models\Barangay::orderBy('name')->pluck('name', 'id')"
+                                :value="$child->barangay_id"
+                            />
+                            <button class="app-button-primary" onclick="return confirm('Transfer this child to another barangay?')">Transfer child</button>
+                        </form>
                     </section>
                 @endif
             </div>

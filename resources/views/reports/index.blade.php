@@ -7,7 +7,7 @@
             </div>
 
             <a
-                href="{{ route('reports.pdf', request()->only(['start_date', 'end_date', 'schedule_version'])) }}"
+                href="{{ route('reports.pdf', request()->only(['start_date', 'end_date', 'schedule_version', 'include_aefi'])) }}"
                 class="app-button-primary"
                 target="_blank"
                 rel="noopener"
@@ -17,7 +17,7 @@
         </div>
 
         <section class="app-card">
-            <form method="GET" action="{{ route('reports.index') }}" class="grid gap-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">
+            <form method="GET" action="{{ route('reports.index') }}" class="grid gap-4 md:grid-cols-[1fr_1fr_1fr_1fr_auto] md:items-end">
                 <label class="space-y-1.5">
                     <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Start date</span>
                     <input
@@ -51,16 +51,21 @@
                         @endforeach
                     </select>
                 </label>
+                <label class="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+                    <input type="checkbox" name="include_aefi" value="1" @checked($includeAefi) class="rounded border-slate-300 text-teal-600 focus:ring-teal-500">
+                    <span>Include AEFI in printable report</span>
+                </label>
                 <button type="submit" class="app-button-secondary">Generate</button>
             </form>
         </section>
 
-        <div class="grid gap-4 md:grid-cols-6">
+        <div class="grid gap-4 md:grid-cols-7">
             <x-stat-card label="Barangays" :value="$stats['barangays']" />
             <x-stat-card label="Barangay admins" :value="$stats['barangayAdmins']" />
             <x-stat-card label="Nurses" :value="$stats['nurses']" />
             <x-stat-card label="Children" :value="$stats['children']" />
             <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" />
+            <x-stat-card label="AEFI" :value="$stats['aefi']" />
             <x-stat-card label="Pending review" :value="$stats['pending']" />
         </div>
 
@@ -108,7 +113,8 @@
                             <tr>
                                 <th class="px-4 py-3 font-medium">Vaccine</th>
                                 <th class="px-4 py-3 font-medium">Code</th>
-                                <th class="px-4 py-3 font-medium">Records</th>
+                                <th class="px-4 py-3 font-medium">Administered</th>
+                                <th class="px-4 py-3 font-medium">AEFI found</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -117,9 +123,10 @@
                                     <td class="font-medium text-slate-950 dark:text-white">{{ $vaccine->name }}</td>
                                     <td>{{ strtoupper($vaccine->code) }}</td>
                                     <td>{{ $vaccine->report_records_count }}</td>
+                                    <td>{{ $vaccine->report_aefi_count }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="3" class="px-4 py-6 text-center text-zinc-500">No vaccines yet.</td></tr>
+                                <tr><td colspan="4" class="px-4 py-6 text-center text-zinc-500">No vaccines yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -248,6 +255,42 @@
                                 </tr>
                             @empty
                                 <tr><td colspan="7" class="px-4 py-6 text-center text-zinc-500">No records in this period.</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        @endif
+
+        @if ($includeAefi)
+            <section class="app-card">
+                <div class="app-card-header">
+                    <h2 class="app-card-title">Recent AEFI reports</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="app-table">
+                        <thead>
+                            <tr>
+                                <th class="px-4 py-3 font-medium">Child</th>
+                                <th class="px-4 py-3 font-medium">Barangay</th>
+                                <th class="px-4 py-3 font-medium">Vaccine</th>
+                                <th class="px-4 py-3 font-medium">Event date</th>
+                                <th class="px-4 py-3 font-medium">Severity</th>
+                                <th class="px-4 py-3 font-medium">Symptoms</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($recentAefiReports as $report)
+                                <tr class="app-table-row">
+                                    <td class="font-medium text-slate-950 dark:text-white">{{ $report->child?->full_name }}</td>
+                                    <td>{{ $report->child?->barangay?->name ?? 'Unassigned' }}</td>
+                                    <td>{{ $report->vaccineType?->name ?? 'Not linked' }}</td>
+                                    <td>{{ $report->event_date?->format('M d, Y') }}</td>
+                                    <td class="capitalize">{{ $report->severity }}</td>
+                                    <td>{{ $report->symptoms }}</td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="6" class="px-4 py-6 text-center text-zinc-500">No AEFI reports in this period.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

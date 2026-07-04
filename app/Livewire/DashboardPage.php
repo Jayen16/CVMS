@@ -39,7 +39,6 @@ class DashboardPage extends Component
         $pendingSync = config('offline.enabled')
             ? OfflineSyncOutbox::whereNull('synced_at')->count()
             : 0;
-
         if ($user->isSuperAdmin()) {
             return view('livewire.dashboard-page', [
                 'role' => 'superadmin',

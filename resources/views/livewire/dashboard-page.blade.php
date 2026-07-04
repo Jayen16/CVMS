@@ -16,6 +16,9 @@
             @if (auth()->user()->canViewChildrenRegistry())
                 <a href="{{ route('children.index') }}" class="app-button-secondary" wire:navigate>Children</a>
             @endif
+            @if (auth()->user()->isSuperAdmin() || auth()->user()->isBarangayAdmin() || auth()->user()->isNurse())
+                <a href="{{ route('sync.index') }}" class="app-button-secondary" wire:navigate>Sync data</a>
+            @endif
             @if (auth()->user()->canManageChildren())
                 <a href="{{ route('children.create') }}" class="app-button-primary" wire:navigate>New child</a>
             @elseif (auth()->user()->canManageBarangayStaff())

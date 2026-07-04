@@ -96,6 +96,38 @@ class ChildProfileController extends Controller
         return to_route('children.show', $child)->with('status', 'Child profile updated.');
     }
 
+    public function transfer(Request $request, ChildProfile $child, OfflineSyncService $offlineSync): RedirectResponse
+    {
+        $this->authorizeChildTransfer($child);
+
+        $validated = $request->validate([
+            'barangay_id' => ['required', 'exists:barangays,id'],
+        ]);
+
+        if ((int) $validated['barangay_id'] === (int) $child->barangay_id) {
+            return back()->with('status', 'Child is already assigned to that barangay.');
+        }
+
+        $this->ensureNoDuplicateChild([
+            'barangay_id' => $validated['barangay_id'],
+            'birthdate' => $child->birthdate->toDateString(),
+            'first_name' => $child->first_name,
+            'last_name' => $child->last_name,
+        ], $child);
+
+        $child->update([
+            'barangay_id' => $validated['barangay_id'],
+        ]);
+
+        $offlineSync->queueUpsert($child->fresh()->load(['barangay', 'creator']));
+
+        if (auth()->user()->isBarangayAdmin() && auth()->user()->barangay_id !== $child->barangay_id) {
+            return to_route('children.index')->with('status', 'Child transferred to a new barangay.');
+        }
+
+        return to_route('children.show', $child)->with('status', 'Child transferred to a new barangay.');
+    }
+
     public function show(ChildProfile $child, ImmunizationSuggestionService $suggestions): View
     {
         abort_unless(auth()->user()->canViewChildrenRegistry(), 403);
@@ -207,5 +239,15 @@ class ChildProfileController extends Controller
         abort_unless(auth()->user()->canManageChildren(), 403);
         abort_if(auth()->user()->barangay_id === null, 403);
         abort_if($child->barangay_id !== auth()->user()->barangay_id, 403);
+    }
+
+    private function authorizeChildTransfer(ChildProfile $child): void
+    {
+        abort_unless(auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin(), 403);
+
+        if (auth()->user()->isBarangayAdmin()) {
+            abort_if(auth()->user()->barangay_id === null, 403);
+            abort_if($child->barangay_id !== auth()->user()->barangay_id, 403);
+        }
     }
 }

@@ -46,6 +46,7 @@
                 </select>
             </label>
             <button class="app-button-primary">View</button>
+            <a href="{{ route('children.timeline.pdf', ['child' => $child, 'vaccine' => $selectedVaccine]) }}" class="app-button-secondary" target="_blank" rel="noopener">Export PDF</a>
         </form>
     </div>
 

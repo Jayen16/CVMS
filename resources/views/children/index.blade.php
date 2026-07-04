@@ -36,6 +36,7 @@
                         <th class="px-4 py-3 font-medium">Age</th>
                         <th class="px-4 py-3 font-medium">Barangay</th>
                         <th class="px-4 py-3 font-medium">Records</th>
+                        <th class="px-4 py-3 font-medium">Completed doses</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -50,9 +51,14 @@
                             <td>
                                 <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">{{ $child->vaccinations->count() }}</span>
                             </td>
+                            <td>
+                                <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:ring-emerald-900">
+                                    {{ $child->completed_doses_count }} out of {{ $child->total_doses_count }}
+                                </span>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="px-4 py-8 text-center text-zinc-500">No child profiles found.</td></tr>
+                        <tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500">No child profiles found.</td></tr>
                     @endforelse
                 </tbody>
             </table>
