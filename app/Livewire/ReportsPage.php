@@ -88,8 +88,8 @@ class ReportsPage extends Component
 
         $barangays = Barangay::query()
             ->withCount('children')
-            ->withCount(['users as nurses_count' => fn ($query) => $query->whereJsonContains('roles', 'nurse')])
-            ->withCount(['users as barangay_admins_count' => fn ($query) => $query->whereJsonContains('roles', 'barangay_admin')])
+            ->withCount(['users as nurses_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'nurse')])
+            ->withCount(['users as barangay_admins_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'barangay_admin')])
             ->when(! $user->isSuperAdmin(), fn ($query) => $query->whereKey($user->barangay_id))
             ->orderBy('name')
             ->get()
@@ -180,11 +180,11 @@ class ReportsPage extends Component
             'stats' => [
                 'barangays' => $user->isSuperAdmin() ? Barangay::count() : 1,
                 'barangayAdmins' => $user->isSuperAdmin()
-                    ? User::whereJsonContains('roles', 'barangay_admin')->count()
-                    : User::where('barangay_id', $user->barangay_id)->whereJsonContains('roles', 'barangay_admin')->count(),
+                    ? User::notArchived()->whereJsonContains('roles', 'barangay_admin')->count()
+                    : User::notArchived()->where('barangay_id', $user->barangay_id)->whereJsonContains('roles', 'barangay_admin')->count(),
                 'nurses' => $user->isSuperAdmin()
-                    ? User::whereJsonContains('roles', 'nurse')->count()
-                    : User::where('barangay_id', $user->barangay_id)->whereJsonContains('roles', 'nurse')->count(),
+                    ? User::notArchived()->whereJsonContains('roles', 'nurse')->count()
+                    : User::notArchived()->where('barangay_id', $user->barangay_id)->whereJsonContains('roles', 'nurse')->count(),
                 'children' => $user->isSuperAdmin()
                     ? ChildProfile::count()
                     : ChildProfile::where('barangay_id', $user->barangay_id)->count(),

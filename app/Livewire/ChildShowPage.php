@@ -38,7 +38,7 @@ class ChildShowPage extends Component
 
         if (auth()->user()->isParent() && request()->filled('edit_record')) {
             $editableRecord = $this->child->vaccinations
-                ->first(fn (VaccinationRecord $record) => $record->id === request()->integer('edit_record'));
+                ->first(fn (VaccinationRecord $record) => $record->id === request()->string('edit_record')->toString());
 
             abort_if($editableRecord === null, 404);
             abort_if($editableRecord->submitted_by !== auth()->id(), 403);

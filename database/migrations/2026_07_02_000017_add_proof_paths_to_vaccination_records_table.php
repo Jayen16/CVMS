@@ -17,7 +17,7 @@ return new class extends Migration
             ->select(['id', 'proof_path'])
             ->whereNotNull('proof_path')
             ->orderBy('id')
-            ->lazyById()
+            ->get()
             ->each(function (object $record): void {
                 DB::table('vaccination_records')
                     ->where('id', $record->id)

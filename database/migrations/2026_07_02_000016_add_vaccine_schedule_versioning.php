@@ -4,13 +4,14 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 return new class extends Migration
 {
     public function up(): void
     {
         Schema::create('vaccine_schedule_versions', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('name');
             $table->string('version_code')->unique();
             $table->date('effective_date')->nullable();
@@ -23,11 +24,13 @@ return new class extends Migration
         });
 
         Schema::table('vaccine_schedules', function (Blueprint $table) {
-            $table->foreignId('vaccine_schedule_version_id')->nullable()->after('vaccine_type_id')->constrained('vaccine_schedule_versions')->cascadeOnDelete();
+            $table->foreignUuid('vaccine_schedule_version_id')->nullable()->after('vaccine_type_id')->constrained('vaccine_schedule_versions')->cascadeOnDelete();
         });
 
         $version = config('immunization.version', []);
-        $versionId = DB::table('vaccine_schedule_versions')->insertGetId([
+        $versionId = (string) Str::uuid();
+        DB::table('vaccine_schedule_versions')->insert([
+            'id' => $versionId,
             'name' => $version['name'] ?? 'PIDSP 2026',
             'version_code' => $version['version_code'] ?? '2026.0',
             'effective_date' => $version['effective_date'] ?? '2026-01-01',
@@ -53,10 +56,10 @@ return new class extends Migration
         });
 
         Schema::create('child_vaccine_series_versions', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('child_profile_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('vaccine_type_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('vaccine_schedule_version_id')->constrained('vaccine_schedule_versions')->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('child_profile_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('vaccine_type_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('vaccine_schedule_version_id')->constrained('vaccine_schedule_versions')->cascadeOnDelete();
             $table->timestamp('assigned_at')->nullable();
             $table->string('assignment_reason')->nullable();
             $table->timestamps();
@@ -65,7 +68,7 @@ return new class extends Migration
         });
 
         Schema::table('vaccination_records', function (Blueprint $table) {
-            $table->foreignId('suggested_schedule_version_id')->nullable()->after('suggested_vaccine')->constrained('vaccine_schedule_versions')->nullOnDelete();
+            $table->foreignUuid('suggested_schedule_version_id')->nullable()->after('suggested_vaccine')->constrained('vaccine_schedule_versions')->nullOnDelete();
         });
     }
 

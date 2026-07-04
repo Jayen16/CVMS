@@ -15,7 +15,7 @@ class ChildrenIndexPage extends Component
     {
         abort_unless(auth()->user()->canViewChildrenRegistry(), 403);
 
-        $vaccineTypeId = request()->integer('vaccine_type_id') ?: null;
+        $vaccineTypeId = request()->string('vaccine_type_id')->toString() ?: null;
         $children = $this->visibleChildren()
             ->with(['barangay', 'vaccinations.vaccineType', 'seriesVersions.scheduleVersion'])
             ->withCount([
@@ -40,7 +40,7 @@ class ChildrenIndexPage extends Component
                 $child->total_doses_count = $scheduleRows
                     ->when(
                         $vaccineTypeId !== null,
-                        fn ($rows) => $rows->filter(fn ($doses) => (int) $doses->first()?->vaccine_type_id === $vaccineTypeId)
+                        fn ($rows) => $rows->filter(fn ($doses) => $doses->first()?->vaccine_type_id === $vaccineTypeId)
                     )
                     ->sum(fn ($doses) => $doses->count());
 

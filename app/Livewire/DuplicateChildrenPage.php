@@ -13,7 +13,7 @@ use Livewire\Component;
 #[Title('Duplicate Child Detection')]
 class DuplicateChildrenPage extends Component
 {
-    public function mergeGroup(string $signature, int $keepChildId, DuplicateChildDetectionService $duplicates, DuplicateChildMergeService $merger): void
+    public function mergeGroup(string $signature, string $keepChildId, DuplicateChildDetectionService $duplicates, DuplicateChildMergeService $merger): void
     {
         abort_unless(auth()->user()->canMergeDuplicates(), 403);
 

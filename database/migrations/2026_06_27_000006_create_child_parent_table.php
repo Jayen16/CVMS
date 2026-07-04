@@ -9,13 +9,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('child_parent', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('child_profile_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('child_profile_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
             $table->string('relationship')->default('parent');
             $table->timestamps();
 
-            $table->unique(['child_profile_id', 'user_id']);
+            $table->primary(['child_profile_id', 'user_id']);
         });
     }
 

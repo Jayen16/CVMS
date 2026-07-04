@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -11,6 +12,8 @@ use Illuminate\Support\Str;
 
 class ChildProfile extends Model
 {
+    use UsesUuidPrimaryKey;
+
     protected $fillable = [
         'barangay_id',
         'created_by',
@@ -99,6 +102,19 @@ class ChildProfile extends Model
         }
 
         return (int) $birthdate->diffInYears().' years';
+    }
+
+    public function ensureVaccineCardToken(): string
+    {
+        if (filled($this->vaccine_card_token)) {
+            return $this->vaccine_card_token;
+        }
+
+        $this->forceFill([
+            'vaccine_card_token' => (string) Str::uuid(),
+        ])->save();
+
+        return $this->vaccine_card_token;
     }
 
     protected static function booted(): void

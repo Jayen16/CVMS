@@ -9,9 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sync_statuses', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('scope')->unique();
-            $table->foreignId('last_synced_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignUuid('last_synced_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('last_synced_at')->nullable();
             $table->unsignedInteger('last_processed')->default(0);
             $table->unsignedInteger('last_failed')->default(0);

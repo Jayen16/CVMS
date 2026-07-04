@@ -1,7 +1,4 @@
-<div
-    class="app-page"
-    x-data="{ open: false, action: 'verify', recordId: null, childName: '', vaccineName: '' }"
->
+<div class="app-page">
     <div class="page-heading">
         <div>
             <h1 class="page-title">Pending verification queue</h1>
@@ -47,7 +44,7 @@
                                 @foreach ($record->proofPaths() as $proofPath)
                                     <div class="text-xs">
                                         <a
-                                            href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($proofPath) }}"
+                                            href="{{ route('vaccinations.proofs.show', ['record' => $record, 'proofIndex' => $loop->iteration]) }}"
                                             target="_blank"
                                             class="text-teal-700 hover:underline dark:text-teal-300"
                                         >
@@ -62,14 +59,14 @@
                                     <div class="flex gap-2">
                                         <button
                                             type="button"
-                                            @click="open = true; action = 'verify'; recordId = {{ $record->id }}; childName = @js($record->child->full_name); vaccineName = @js($record->vaccineType->name)"
+                                            wire:click="promptVerify('{{ $record->id }}')"
                                             class="app-button-primary !px-3 !py-1.5 !text-xs"
                                         >
                                             Verify
                                         </button>
                                         <button
                                             type="button"
-                                            @click="open = true; action = 'reject'; recordId = {{ $record->id }}; childName = @js($record->child->full_name); vaccineName = @js($record->vaccineType->name)"
+                                            wire:click="promptReject('{{ $record->id }}')"
                                             class="app-button-danger !px-3 !py-1.5 !text-xs"
                                         >
                                             Reject
@@ -87,39 +84,58 @@
         <div class="mt-4">{{ $records->links() }}</div>
     </section>
 
-    <div
-        x-cloak
-        x-show="open"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4"
-        x-transition.opacity
-    >
-        <div
-            @click.outside="open = false"
-            class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
-            x-transition
-        >
-            <h2 class="text-lg font-semibold text-slate-950 dark:text-white" x-text="action === 'verify' ? 'Verify vaccination history' : 'Reject vaccination history'"></h2>
-            <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-zinc-300">
-                <span x-text="action === 'verify' ? 'Confirm verification for' : 'Confirm rejection for'"></span>
-                <span class="font-semibold text-slate-950 dark:text-white" x-text="` ${childName}`"></span>
-                <span x-text="` - ${vaccineName}.`"></span>
-            </p>
-            <div class="mt-6 flex justify-end gap-2">
-                <button type="button" class="app-button-secondary" @click="open = false">Cancel</button>
-                <button
-                    type="button"
-                    class="app-button-primary"
-                    @click="
-                        if (action === 'verify') {
-                            $wire.verify(recordId);
-                        } else {
-                            $wire.reject(recordId);
-                        }
-                        open = false;
-                    "
-                    x-text="action === 'verify' ? 'Confirm verify' : 'Confirm reject'"
-                ></button>
+    @if ($confirmingAction && $pendingRecordSummary)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
+            <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900">
+                <h2 class="text-lg font-semibold text-slate-950 dark:text-white">
+                    {{ $pendingAction === 'verify' ? 'Verify vaccination history' : 'Reject vaccination history' }}
+                </h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-zinc-300">
+                    {{ $pendingAction === 'verify'
+                        ? 'Please review this submission before final verification.'
+                        : 'Please confirm that this submission should be rejected.' }}
+                </p>
+
+                <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/70">
+                    <dl class="grid gap-3 text-sm">
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500 dark:text-zinc-400">Child</dt>
+                            <dd class="text-right font-semibold text-slate-950 dark:text-white">{{ $pendingRecordSummary['child_name'] }}</dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500 dark:text-zinc-400">Barangay</dt>
+                            <dd class="text-right text-slate-950 dark:text-white">{{ $pendingRecordSummary['barangay_name'] }}</dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500 dark:text-zinc-400">Vaccine</dt>
+                            <dd class="text-right text-slate-950 dark:text-white">{{ $pendingRecordSummary['vaccine_name'] }}</dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500 dark:text-zinc-400">Date given</dt>
+                            <dd class="text-right text-slate-950 dark:text-white">{{ $pendingRecordSummary['date_given'] }}</dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500 dark:text-zinc-400">Source</dt>
+                            <dd class="text-right text-slate-950 dark:text-white">{{ $pendingRecordSummary['source'] }}</dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500 dark:text-zinc-400">Submitted by</dt>
+                            <dd class="text-right text-slate-950 dark:text-white">{{ $pendingRecordSummary['submitted_by'] }}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" class="app-button-secondary" wire:click="cancelConfirmation">Cancel</button>
+                    <button
+                        type="button"
+                        class="{{ $pendingAction === 'verify' ? 'app-button-primary' : 'app-button-danger' }}"
+                        wire:click="confirmPendingAction"
+                    >
+                        {{ $pendingAction === 'verify' ? 'Final verify' : 'Confirm reject' }}
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
+    @endif
 </div>

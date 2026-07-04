@@ -12,9 +12,11 @@
         <section class="app-card">
             <div class="grid gap-6 lg:grid-cols-[1fr_240px]">
                 <div>
-                    <h2 class="text-2xl font-semibold text-slate-950 dark:text-white">{{ $child->full_name }}</h2>
-                    <div class="mt-2 text-sm text-slate-600 dark:text-zinc-300">
-                        {{ ucfirst($child->sex) }} | {{ $child->birthdate->format('M d, Y') }} | {{ $child->barangay?->name }}
+                    <div class="p-4">
+                        <h2 class="text-2xl font-semibold text-slate-950 dark:text-white">{{ $child->full_name }}</h2>
+                        <div class="mt-2 text-sm text-slate-600 dark:text-zinc-300">
+                            {{ ucfirst($child->sex) }} | {{ $child->birthdate->format('M d, Y') }} | {{ $child->barangay?->name }}
+                        </div>
                     </div>
                     <div class="mt-6 overflow-x-auto">
                         <table class="app-table">

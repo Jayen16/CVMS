@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesUuidPrimaryKey;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,11 +19,12 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use App\Notifications\AccountAccessNotification;
 
 /**
- * @property int $id
+ * @property string $id
  * @property string $name
- * @property string $email
+ * @property string|null $email
  * @property string|null $phone
  * @property Carbon|null $email_verified_at
  * @property string $password
@@ -32,12 +35,12 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'phone', 'password', 'role', 'roles', 'barangay_id', 'is_active', 'invitation_accepted_at'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'role', 'roles', 'barangay_id', 'is_active', 'invitation_accepted_at', 'archived_at'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable, UsesUuidPrimaryKey;
 
     /**
      * Get the attributes that should be cast.
@@ -52,7 +55,65 @@ class User extends Authenticatable implements PasskeyUser
             'roles' => 'array',
             'is_active' => 'boolean',
             'invitation_accepted_at' => 'datetime',
+            'archived_at' => 'datetime',
         ];
+    }
+
+    public static function normalizePhone(?string $phone): ?string
+    {
+        if (blank($phone)) {
+            return null;
+        }
+
+        $phone = preg_replace('/(?!^\+)\D+/', '', trim($phone) ?? '');
+
+        return blank($phone) ? null : $phone;
+    }
+
+    public static function findByLogin(string $login): ?self
+    {
+        $login = trim($login);
+        $phone = self::normalizePhone($login);
+
+        return self::query()
+            ->notArchived()
+            ->where(function ($query) use ($login, $phone): void {
+                $query->where('email', $login);
+
+                if (filled($phone)) {
+                    $query->orWhere('phone', $phone);
+                }
+            })
+            ->first();
+    }
+
+    /**
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeNotArchived(Builder $query): Builder
+    {
+        return $query->whereNull('archived_at');
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    public function hasEmailLogin(): bool
+    {
+        return filled($this->email);
+    }
+
+    public function hasSmsLogin(): bool
+    {
+        return filled($this->phone);
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new AccountAccessNotification($token));
     }
 
     /**

@@ -33,7 +33,7 @@ return new class extends Migration
         }
 
         Schema::create('offline_sync_outbox', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->string('model_type');
             $table->uuid('model_sync_uuid')->nullable();
             $table->string('operation')->default('upsert');

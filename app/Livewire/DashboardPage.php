@@ -44,8 +44,8 @@ class DashboardPage extends Component
                 'role' => 'superadmin',
                 'stats' => [
                     'barangays' => Barangay::count(),
-                    'barangayAdmins' => User::whereJsonContains('roles', 'barangay_admin')->count(),
-                    'nurses' => User::whereJsonContains('roles', 'nurse')->count(),
+                    'barangayAdmins' => User::notArchived()->whereJsonContains('roles', 'barangay_admin')->count(),
+                    'nurses' => User::notArchived()->whereJsonContains('roles', 'nurse')->count(),
                     'children' => ChildProfile::count(),
                     'vaccinations' => VaccinationRecord::count(),
                     'pending' => VaccinationRecord::where('verification_status', 'pending')->count(),
@@ -53,8 +53,8 @@ class DashboardPage extends Component
                 ],
                 'barangays' => Barangay::query()
                     ->withCount('children')
-                    ->withCount(['users as barangay_admins_count' => fn ($query) => $query->whereJsonContains('roles', 'barangay_admin')])
-                    ->withCount(['users as nurses_count' => fn ($query) => $query->whereJsonContains('roles', 'nurse')])
+                    ->withCount(['users as barangay_admins_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'barangay_admin')])
+                    ->withCount(['users as nurses_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'nurse')])
                     ->with(['children.vaccinations'])
                     ->orderBy('name')
                     ->get(),
@@ -102,7 +102,7 @@ class DashboardPage extends Component
                 'role' => 'barangay_admin',
                 'stats' => [
                     'barangay' => $user->barangay()->value('name') ?? 'Unassigned',
-                    'nurses' => User::where('barangay_id', $user->barangay_id)->whereJsonContains('roles', 'nurse')->count(),
+                    'nurses' => User::notArchived()->where('barangay_id', $user->barangay_id)->whereJsonContains('roles', 'nurse')->count(),
                     'children' => ChildProfile::where('barangay_id', $user->barangay_id)->count(),
                     'vaccinations' => VaccinationRecord::whereHas('child', fn ($query) => $query->where('barangay_id', $user->barangay_id))->count(),
                     'pending' => VaccinationRecord::where('verification_status', 'pending')

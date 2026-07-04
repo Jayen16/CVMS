@@ -39,7 +39,7 @@
 
         <div class="mt-4 grid gap-4 md:grid-cols-2">
             <x-stat-card label="Pending verification" :value="$stats['pending']" />
-            <div class="app-card flex items-center justify-between">
+            <div class="app-card flex items-center justify-between p-4">
                 <div>
                     <h2 class="app-card-title">Quick actions</h2>
                     <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Review system-wide coverage and manage barangay admins.</p>
@@ -93,7 +93,7 @@
 
         <div class="mt-4 grid gap-4 md:grid-cols-2">
             <x-stat-card label="Pending verification" :value="$stats['pending']" />
-            <div class="app-card flex items-center justify-between">
+            <div class="app-card flex items-center justify-between p-4">
                 <div>
                     <h2 class="app-card-title">Quick actions</h2>
                     <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Monitor coverage in your barangay and manage your nurses.</p>
@@ -200,7 +200,7 @@
     @endif
 
     <section class="app-card">
-        <div class="app-card-header">
+        <div class="app-card-header flex items-center justify-between">
             <h2 class="app-card-title">Clinic announcements</h2>
             @if (auth()->user()->canManageAnnouncements())
                 <a href="{{ route('announcements.index') }}" class="app-button-secondary" wire:navigate>Manage announcements</a>
@@ -208,7 +208,7 @@
         </div>
         <div class="grid gap-3 md:grid-cols-2">
             @forelse ($announcements as $announcement)
-                <article class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                <article class="rounded-lg border border-slate-200 bg-slate-50 p-4 mx-2 my-2 dark:border-zinc-800 dark:bg-zinc-950">
                     <div class="flex items-center justify-between gap-3">
                         <div class="font-semibold text-slate-950 dark:text-white">{{ $announcement->title }}</div>
                         <span class="status-pill bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200">{{ ucfirst($announcement->category) }}</span>

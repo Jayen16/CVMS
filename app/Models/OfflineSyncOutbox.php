@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 
 class OfflineSyncOutbox extends Model
 {
+    use UsesUuidPrimaryKey;
+
     protected $table = 'offline_sync_outbox';
 
     protected $fillable = [

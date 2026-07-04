@@ -18,41 +18,73 @@ class ChildParentController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:32'],
-            'relationship' => ['required', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255', 'required_without:phone'],
+            'phone' => ['nullable', 'string', 'max:32', 'required_without:email'],
+            'relationship' => ['required', 'string', 'max:255', Rule::in([
+                'mother',
+                'father',
+                'guardian',
+                'aunt',
+                'uncle',
+                'grandmother',
+                'grandfather',
+                'other',
+            ])],
         ]);
 
-        $parent = User::where('email', $validated['email'])->first();
+        $validated['email'] = $validated['email'] ?? null;
+        $validated['phone'] = User::normalizePhone($validated['phone'] ?? null);
+
+        $parent = User::query()
+            ->when(filled($validated['email']), fn ($query) => $query->where('email', $validated['email']))
+            ->when(
+                filled($validated['phone']),
+                fn ($query) => $query->orWhere('phone', $validated['phone'])
+            )
+            ->first();
         $shouldSendSetupLink = false;
         $status = 'Parent account linked to child profile.';
 
         if ($parent === null) {
             $request->validate([
                 'email' => [Rule::unique('users', 'email')],
+                'phone' => [Rule::unique('users', 'phone')],
             ]);
 
             $parent = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
-                'phone' => $validated['phone'] ?? null,
+                'phone' => $validated['phone'],
                 'password' => Str::password(32),
                 'role' => 'parent',
+                'roles' => ['parent'],
                 'invitation_accepted_at' => null,
             ]);
 
-            $shouldSendSetupLink = true;
-            $status = 'Parent account linked to child profile. A password setup link was sent by email.';
+            if (filled($parent->email)) {
+                $shouldSendSetupLink = true;
+                $status = 'Parent account linked to child profile. A password setup link was sent by email.';
+            } else {
+                $status = 'Parent account linked to child profile. The parent can finish sign up using this phone number and a password.';
+            }
         } else {
-            abort_unless($parent->isParent(), 422, 'This email already belongs to a non-parent account.');
+            abort_unless($parent->isParent(), 422, 'This contact already belongs to a non-parent account.');
 
-            if (filled($validated['phone'] ?? null) && blank($parent->phone)) {
-                $parent->update(['phone' => $validated['phone']]);
+            $parent->fill([
+                'name' => $parent->name ?: $validated['name'],
+                'email' => $parent->email ?: $validated['email'],
+                'phone' => $parent->phone ?: $validated['phone'],
+            ]);
+
+            if ($parent->isDirty(['name', 'email', 'phone'])) {
+                $parent->save();
             }
 
-            if ($parent->invitation_accepted_at === null) {
+            if ($parent->invitation_accepted_at === null && filled($parent->email)) {
                 $shouldSendSetupLink = true;
                 $status = 'Parent account linked to child profile. A password setup link was sent again.';
+            } elseif ($parent->invitation_accepted_at === null && filled($parent->phone)) {
+                $status = 'Parent account linked to child profile. The parent can finish sign up using this phone number and a password.';
             }
         }
 
@@ -74,6 +106,7 @@ class ChildParentController extends Controller
         abort_unless($parent->isParent(), 404);
         abort_unless($child->parents()->whereKey($parent->id)->exists(), 404);
         abort_if($parent->invitation_accepted_at !== null, 422, 'Parent has already configured the account.');
+        abort_if(blank($parent->email), 422, 'This parent does not have an email address for password setup links.');
 
         Password::sendResetLink(['email' => $parent->email]);
 

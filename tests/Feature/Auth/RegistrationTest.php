@@ -25,3 +25,17 @@ test('new users can register', function () {
 
     $this->assertAuthenticated();
 });
+
+test('new users can register with a phone number only', function () {
+    $response = $this->post(route('register.store'), [
+        'name' => 'Jane Doe',
+        'phone' => '09171234567',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ]);
+
+    $response->assertSessionHasNoErrors()
+        ->assertRedirect(route('dashboard', absolute: false));
+
+    $this->assertAuthenticated();
+});

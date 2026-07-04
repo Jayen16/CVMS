@@ -31,7 +31,7 @@ class ChildProfileController extends Controller
     {
         abort_unless(auth()->user()->canViewChildrenRegistry(), 403);
 
-        $vaccineTypeId = $request->integer('vaccine_type_id') ?: null;
+        $vaccineTypeId = $request->string('vaccine_type_id')->toString() ?: null;
 
         return view('children.index', [
             'children' => $this->visibleChildren()
@@ -104,7 +104,7 @@ class ChildProfileController extends Controller
             'barangay_id' => ['required', 'exists:barangays,id'],
         ]);
 
-        if ((int) $validated['barangay_id'] === (int) $child->barangay_id) {
+        if ($validated['barangay_id'] === $child->barangay_id) {
             return back()->with('status', 'Child is already assigned to that barangay.');
         }
 
@@ -147,7 +147,7 @@ class ChildProfileController extends Controller
 
         if (auth()->user()->isParent() && request()->filled('edit_record')) {
             $editableRecord = $child->vaccinations
-                ->first(fn (VaccinationRecord $record) => $record->id === request()->integer('edit_record'));
+                ->first(fn (VaccinationRecord $record) => $record->id === request()->string('edit_record')->toString());
 
             abort_if($editableRecord === null, 404);
             abort_if($editableRecord->submitted_by !== auth()->id(), 403);

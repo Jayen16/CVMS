@@ -51,7 +51,7 @@ class SendVaccinationReminders extends Command
                     }
 
                     foreach ($child->parents as $parent) {
-                        foreach ($channels as $channel) {
+                        foreach ($this->availableChannels($child, $parent, $channels) as $channel) {
                             if ($this->alreadySent($child, $parent, $suggestion, $channel)) {
                                 $skippedCount++;
 
@@ -88,6 +88,21 @@ class SendVaccinationReminders extends Command
         }
 
         return array_values(array_intersect($channels, ['email', 'sms']));
+    }
+
+    /**
+     * @param  list<string>  $channels
+     * @return list<string>
+     */
+    private function availableChannels(ChildProfile $child, User $parent, array $channels): array
+    {
+        return array_values(array_filter($channels, function (string $channel) use ($child, $parent): bool {
+            if ($channel === 'email') {
+                return filled($parent->email);
+            }
+
+            return filled($parent->phone) || filled($child->guardian_contact);
+        }));
     }
 
     /**

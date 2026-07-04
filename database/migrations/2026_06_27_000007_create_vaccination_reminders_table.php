@@ -9,9 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('vaccination_reminders', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('child_profile_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('parent_id')->constrained('users')->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->foreignUuid('child_profile_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('parent_id')->constrained('users')->cascadeOnDelete();
             $table->string('vaccine_name');
             $table->unsignedTinyInteger('dose_number')->nullable();
             $table->date('due_at');

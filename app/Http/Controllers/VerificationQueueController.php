@@ -22,8 +22,8 @@ class VerificationQueueController extends Controller
             $query->whereHas('child', fn ($builder) => $builder->where('barangay_id', auth()->user()->barangay_id));
         }
 
-        $barangayId = $request->integer('barangay_id') ?: null;
-        $vaccineTypeId = $request->integer('vaccine_type_id') ?: null;
+        $barangayId = $request->string('barangay_id')->toString() ?: null;
+        $vaccineTypeId = $request->string('vaccine_type_id')->toString() ?: null;
         $source = $request->string('source')->toString();
         $from = $request->date('from');
         $to = $request->date('to');

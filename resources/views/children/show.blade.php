@@ -1,6 +1,33 @@
     <div
         class="app-page"
-        x-data="{ openVerificationModal: false, verificationActionUrl: '', verificationActionLabel: 'Verify', verificationSubject: '' }"
+        x-data="{
+            openVerificationModal: false,
+            verificationActionUrl: '',
+            verificationActionLabel: 'Verify',
+            verificationSubject: '',
+            openConfirmModal: false,
+            confirmActionLabel: 'Confirm',
+            confirmMessage: '',
+            confirmForm: null,
+            showConfirmModal(actionLabel, message, form) {
+                this.confirmActionLabel = actionLabel;
+                this.confirmMessage = message;
+                this.confirmForm = form;
+                this.openConfirmModal = true;
+            },
+            submitConfirmedAction() {
+                if (this.confirmForm) {
+                    this.confirmForm.requestSubmit();
+                }
+
+                this.openConfirmModal = false;
+                this.confirmForm = null;
+            },
+            closeConfirmModal() {
+                this.openConfirmModal = false;
+                this.confirmForm = null;
+            },
+        }"
     >
         @if (session('status'))
             <div class="app-alert-success">
@@ -20,7 +47,11 @@
             </div>
             <div class="flex flex-wrap gap-2">
                 @if (auth()->user()->isParent())
-                    <form method="POST" action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => auth()->user()]) }}" onsubmit="return confirm('Unlink this child from your account?')">
+                    <form
+                        method="POST"
+                        action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => auth()->user()]) }}"
+                        @submit.prevent="showConfirmModal('Unlink child', 'Unlink this child from your account?', $event.currentTarget)"
+                    >
                         @csrf
                         @method('DELETE')
                         <button class="app-button-danger">Unlink child</button>
@@ -138,7 +169,7 @@
                                         @endif
                                         @foreach ($record->proofPaths() as $proofPath)
                                             <div class="text-xs">
-                                                <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($proofPath) }}" target="_blank" class="text-teal-700 hover:underline dark:text-teal-300">
+                                                <a href="{{ route('vaccinations.proofs.show', ['record' => $record, 'proofIndex' => $loop->iteration]) }}" target="_blank" class="text-teal-700 hover:underline dark:text-teal-300">
                                                     View proof photo {{ $loop->iteration }}
                                                 </a>
                                             </div>
@@ -218,6 +249,10 @@
 
             <div class="grid content-start gap-6">
                 @if (auth()->user()->isParent())
+                    @php
+                        $defaultClinicName = $editableRecord?->clinic_name ?? $child->barangay?->name ?? 'Current clinic barangay';
+                        $defaultClinicLocation = $editableRecord?->clinic_location ?? 'Indang, Cavite, Barangay 4 (pob.), Indang, Cavite, 4122';
+                    @endphp
                     <form method="POST" action="{{ $editableRecord ? route('vaccinations.update', $editableRecord) : route('children.vaccinations.store', $child) }}" class="app-panel grid content-start gap-4" enctype="multipart/form-data">
                         @csrf
                         @if ($editableRecord)
@@ -232,8 +267,8 @@
                         <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" :value="$editableRecord?->vaccine_type_id" />
                         <x-form-field label="Dose number" name="dose_number" type="number" :value="$editableRecord?->dose_number" />
                         <x-form-field label="Date given" name="administered_at" type="date" :value="$editableRecord?->administered_at?->toDateString()" />
-                        <x-form-field label="Facility or clinic name" name="clinic_name" :value="$editableRecord?->clinic_name" />
-                        <x-form-field label="Facility or clinic location" name="clinic_location" :value="$editableRecord?->clinic_location" />
+                        <x-form-field label="Facility or clinic name" name="clinic_name" :value="$defaultClinicName" />
+                        <x-form-field label="Facility or clinic location" name="clinic_location" :value="$defaultClinicLocation" />
                         <label class="grid gap-2 text-sm">
                             <span class="font-medium text-slate-800 dark:text-zinc-100">Photo proof of vaccine card or record</span>
                             <input type="file" name="proof_files[]" accept="image/*" multiple class="app-input">
@@ -241,7 +276,7 @@
                             @if ($editableRecord && $editableRecord->proofPaths() !== [])
                                 <div class="space-y-1 text-xs">
                                     @foreach ($editableRecord->proofPaths() as $proofPath)
-                                        <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($proofPath) }}" target="_blank" class="block text-teal-700 hover:underline dark:text-teal-300">
+                                        <a href="{{ route('vaccinations.proofs.show', ['record' => $editableRecord, 'proofIndex' => $loop->iteration]) }}" target="_blank" class="block text-teal-700 hover:underline dark:text-teal-300">
                                             Current proof photo {{ $loop->iteration }}
                                         </a>
                                     @endforeach
@@ -363,7 +398,11 @@
                                                 </form>
                                             @endif
 
-                                            <form method="POST" action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => $parent]) }}" onsubmit="return confirm('Unlink this parent from the child profile?')">
+                                            <form
+                                                method="POST"
+                                                action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => $parent]) }}"
+                                                @submit.prevent="showConfirmModal('Unlink parent', 'Unlink this parent from the child profile?', $event.currentTarget)"
+                                            >
                                                 @csrf
                                                 @method('DELETE')
                                                 <button class="app-button-danger !px-3 !py-1.5 !text-xs">Unlink</button>
@@ -379,13 +418,27 @@
                                 @csrf
                                 <div>
                                     <h3 class="text-sm font-semibold text-slate-950 dark:text-white">Invite parent</h3>
-                                    <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">The parent will receive an email link to set their own password.</p>
+                                    <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Link the parent using either an email address or a phone number. Email can receive a password setup link, while phone-only parents can finish sign up using that phone number and a password.</p>
                                 </div>
                                 <x-form-field label="Parent name" name="name" />
                                 <x-form-field label="Parent email" name="email" type="email" />
                                 <x-form-field label="Parent cellphone" name="phone" />
-                                <x-form-field label="Relationship" name="relationship" />
-                                <button class="app-button-primary">Send password setup link</button>
+                                <x-form-field
+                                    label="Relationship"
+                                    name="relationship"
+                                    type="select"
+                                    :options="[
+                                        'mother' => 'Mother',
+                                        'father' => 'Father',
+                                        'guardian' => 'Guardian',
+                                        'aunt' => 'Aunt',
+                                        'uncle' => 'Uncle',
+                                        'grandmother' => 'Grandmother',
+                                        'grandfather' => 'Grandfather',
+                                        'other' => 'Other',
+                                    ]"
+                                />
+                                <button class="app-button-primary">Link parent account</button>
                             </form>
                         </section>
                         @endif
@@ -395,8 +448,8 @@
                 @if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin())
                     <section class="app-panel grid gap-4">
                         <div>
-                            <h2 class="app-card-title">Transfer child to another barangay</h2>
-                            <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Use this when the child has relocated and the registry should move to a new barangay.</p>
+                            <h2 class="app-card-title">Transfer child to another clinic</h2>
+                            <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Use this when the child has relocated and the registry should move to a new clinic.</p>
                         </div>
                         <form method="POST" action="{{ route('children.transfer', $child) }}" class="grid gap-4">
                             @csrf
@@ -407,7 +460,12 @@
                                 :options="\App\Models\Barangay::orderBy('name')->pluck('name', 'id')"
                                 :value="$child->barangay_id"
                             />
-                            <button class="app-button-primary" onclick="return confirm('Transfer this child to another barangay?')">Transfer child</button>
+                            <button
+                                class="app-button-primary"
+                                @click.prevent="showConfirmModal('Transfer child', 'Transfer this child to another barangay?', $event.currentTarget.form)"
+                            >
+                                Transfer child
+                            </button>
                         </form>
                     </section>
                 @endif
@@ -441,6 +499,32 @@
                         class="app-button-primary"
                         @click="$refs.verificationForm.action = verificationActionUrl; $refs.verificationForm.submit();"
                         x-text="`Confirm ${verificationActionLabel.toLowerCase()}`"
+                    ></button>
+                </div>
+            </div>
+        </div>
+
+        <div
+            x-cloak
+            x-show="openConfirmModal"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4"
+            x-transition.opacity
+            @keydown.escape.window="closeConfirmModal()"
+        >
+            <div
+                @click.outside="closeConfirmModal()"
+                class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
+                x-transition
+            >
+                <h2 class="text-lg font-semibold text-slate-950 dark:text-white" x-text="confirmActionLabel"></h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-zinc-300" x-text="confirmMessage"></p>
+                <div class="mt-6 flex justify-end gap-2">
+                    <button type="button" class="app-button-secondary" @click="closeConfirmModal()">Cancel</button>
+                    <button
+                        type="button"
+                        class="app-button-primary"
+                        @click="submitConfirmedAction()"
+                        x-text="confirmActionLabel"
                     ></button>
                 </div>
             </div>
@@ -541,6 +625,3 @@
             })();
         </script>
     @endif
-
-
-
