@@ -7,10 +7,13 @@
 
 <div
     class="relative grid gap-2 text-sm"
-    x-data="{ open: false, search: @js($selected['label'] ?? ''), selected: @js((string) ($value ?? '')), items: @js($items) }"
+    x-data="{ open: false, filtering: false, submitTimer: null, search: @js($selected['label'] ?? ''), selected: @js((string) ($value ?? '')), items: @js($items), scheduleSubmit() { this.filtering = true; clearTimeout(this.submitTimer); this.submitTimer = setTimeout(() => this.$el.closest('form')?.requestSubmit(), 400); } }"
     @click.outside="open = false"
 >
     <span class="font-medium text-slate-800 dark:text-zinc-100">{{ $label }}</span>
+    <span x-show="filtering" x-cloak class="absolute end-0 top-0 flex items-center gap-1 text-xs text-teal-700 dark:text-teal-300" role="status">
+        <span class="size-3 animate-spin rounded-full border-2 border-teal-200 border-t-teal-700"></span> Filtering…
+    </span>
     <div class="relative">
         <input
             type="text"
@@ -27,9 +30,9 @@
         </button>
         <input type="hidden" name="{{ $name }}" x-model="selected">
         <div x-show="open" x-cloak class="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-slate-300 bg-white p-1 shadow-xl dark:border-zinc-600 dark:bg-zinc-900">
-            <button type="button" @click="selected = ''; search = ''; open = false; setTimeout(() => $el.closest('form')?.requestSubmit(), 0)" class="block w-full rounded-md px-3 py-2 text-start text-sm text-zinc-500 hover:bg-slate-100 dark:hover:bg-zinc-800">All {{ strtolower($label) }} options</button>
+            <button type="button" @click="selected = ''; search = ''; open = false; scheduleSubmit()" class="block w-full rounded-md px-3 py-2 text-start text-sm text-zinc-500 hover:bg-slate-100 dark:hover:bg-zinc-800">All {{ strtolower($label) }} options</button>
             <template x-for="item in items.filter(item => item.label.toLowerCase().includes(search.toLowerCase()))" :key="item.id">
-                <button type="button" @click="selected = item.id; search = item.label; open = false; setTimeout(() => $el.closest('form')?.requestSubmit(), 0)" class="block w-full rounded-md px-3 py-2 text-start text-sm text-slate-800 hover:bg-teal-50 dark:text-zinc-100 dark:hover:bg-zinc-800" x-text="item.label"></button>
+                <button type="button" @click="selected = item.id; search = item.label; open = false; scheduleSubmit()" class="block w-full rounded-md px-3 py-2 text-start text-sm text-slate-800 hover:bg-teal-50 dark:text-zinc-100 dark:hover:bg-zinc-800" x-text="item.label"></button>
             </template>
             <p x-show="items.filter(item => item.label.toLowerCase().includes(search.toLowerCase())).length === 0" class="px-3 py-2 text-sm text-zinc-500">No matches found.</p>
         </div>

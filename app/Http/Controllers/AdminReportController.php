@@ -2,10 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\BuildReportExport;
 use App\Models\AdverseEventReport;
 use App\Models\AuditLog;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
+use App\Models\Municipality;
+use App\Models\Province;
+use App\Models\Region;
+use App\Models\ReportExport;
 use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineScheduleVersion;
@@ -52,7 +57,7 @@ class AdminReportController extends Controller
             ->whereBetween('administered_at', [$data['startDate']->toDateString(), $data['endDate']->toDateString()])
             ->when($data['scheduleVersionFilter'] === 'unassigned', fn ($query) => $query->whereNull('suggested_schedule_version_id'))
             ->when($data['scheduleVersionFilter'] !== 'all' && $data['scheduleVersionFilter'] !== 'unassigned', fn ($query) => $query->where('suggested_schedule_version_id', (int) $data['scheduleVersionFilter']))
-            ->when(! auth()->user()->isSuperAdmin(), fn ($query) => $query->whereHas('child', fn ($child) => $child->whereIn('barangay_id', auth()->user()->accessibleBarangayIds())))
+            ->whereHas('child', fn ($child) => $child->whereIn('barangay_id', $data['reportBarangayIds']))
             ->orderBy('administered_at')
             ->get();
 
@@ -89,6 +94,40 @@ class AdminReportController extends Controller
         ]));
     }
 
+    public function queueExport(Request $request, string $format)
+    {
+        $this->authorizeAdmin();
+        abort_unless(in_array($format, ['pdf', 'both'], true), 404);
+
+        $filters = $request->only(['start_date', 'end_date', 'region_id', 'province_id', 'municipality_id', 'barangay_id', 'schedule_version']);
+        $filters['start_date'] = $filters['start_date'] ?? now()->startOfMonth()->toDateString();
+        $filters['end_date'] = $filters['end_date'] ?? now()->toDateString();
+        foreach (['region_id', 'province_id', 'municipality_id', 'barangay_id', 'schedule_version'] as $key) {
+            $filters[$key] = $filters[$key] ?? 'all';
+        }
+
+        $export = ReportExport::create(['user_id' => auth()->id(), 'format' => $format, 'filters' => $filters]);
+        BuildReportExport::dispatch($export->id);
+
+        return to_route('reports.index', array_merge($request->query(), ['export' => $export->id]))
+            ->with('status', 'Your export is being prepared in the background.');
+    }
+
+    public function exportStatus(ReportExport $export)
+    {
+        abort_unless($export->user_id === auth()->id(), 403);
+
+        return response()->json(['status' => $export->status, 'progress' => $export->progress(), 'download_url' => $export->status === 'ready' ? route('reports.export.download', $export) : null]);
+    }
+
+    public function downloadExport(ReportExport $export)
+    {
+        abort_unless($export->user_id === auth()->id() && $export->status === 'ready' && $export->path, 403);
+        abort_unless(is_file($export->path), 404);
+
+        return response()->download($export->path, 'vaccination-export-'.$export->created_at->format('Ymd').'.zip')->deleteFileAfterSend(false);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -98,6 +137,13 @@ class AdminReportController extends Controller
         $validated = $request->validate([
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'region_id' => ['nullable', 'string', Rule::in(['all', ...Region::query()->pluck('id')->map(fn ($id) => (string) $id)->all()])],
+            'province_id' => ['nullable', 'string', Rule::in(['all', ...Province::query()->pluck('id')->map(fn ($id) => (string) $id)->all()])],
+            'municipality_id' => ['nullable', 'string', Rule::in(['all', ...Municipality::query()->pluck('id')->map(fn ($id) => (string) $id)->all()])],
+            'barangay_id' => ['nullable', 'string', Rule::in([
+                'all',
+                ...$user->accessibleBarangayIds()->map(fn ($id) => (string) $id)->all(),
+            ])],
             'schedule_version' => [
                 'nullable',
                 'string',
@@ -117,6 +163,24 @@ class AdminReportController extends Controller
         $endDate = filled($validated['end_date'] ?? null)
             ? Carbon::parse($validated['end_date'])->endOfDay()
             : now()->endOfDay();
+        $regionFilter = $user->isSuperAdmin() ? ($validated['region_id'] ?? 'all') : 'all';
+        $provinceFilter = $user->isSuperAdmin() ? ($validated['province_id'] ?? 'all') : 'all';
+        $municipalityFilter = $user->isSuperAdmin() ? ($validated['municipality_id'] ?? 'all') : 'all';
+        $barangayFilter = $validated['barangay_id'] ?? 'all';
+        $accessibleBarangayIds = $user->accessibleBarangayIds();
+        $reportBarangayIds = $accessibleBarangayIds;
+        if ($regionFilter !== 'all') {
+            $reportBarangayIds = Barangay::whereIn('id', $reportBarangayIds)->whereHas('municipalityRelation.province', fn ($query) => $query->where('region_id', $regionFilter))->pluck('id');
+        }
+        if ($provinceFilter !== 'all') {
+            $reportBarangayIds = Barangay::whereIn('id', $reportBarangayIds)->whereHas('municipalityRelation', fn ($query) => $query->where('province_id', $provinceFilter))->pluck('id');
+        }
+        if ($municipalityFilter !== 'all') {
+            $reportBarangayIds = Barangay::whereIn('id', $reportBarangayIds)->where('municipality_id', $municipalityFilter)->pluck('id');
+        }
+        if ($barangayFilter !== 'all') {
+            $reportBarangayIds = $reportBarangayIds->intersect([$barangayFilter])->values();
+        }
         $scheduleVersionFilter = $validated['schedule_version'] ?? 'all';
         $includeAefi = (bool) ($validated['include_aefi'] ?? false);
 
@@ -130,10 +194,7 @@ class AdminReportController extends Controller
                 $scheduleVersionFilter !== 'all' && $scheduleVersionFilter !== 'unassigned',
                 fn ($query) => $query->where('suggested_schedule_version_id', (int) $scheduleVersionFilter)
             )
-            ->when(
-                ! $user->isSuperAdmin(),
-                fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))
-            );
+            ->whereHas('child', fn ($child) => $child->whereIn('barangay_id', $reportBarangayIds));
 
         $barangayRecords = VaccinationRecord::query()
             ->select('child_profiles.barangay_id', DB::raw('count(*) as total'))
@@ -144,7 +205,7 @@ class AdminReportController extends Controller
                 $scheduleVersionFilter !== 'all' && $scheduleVersionFilter !== 'unassigned',
                 fn ($query) => $query->where('vaccination_records.suggested_schedule_version_id', (int) $scheduleVersionFilter)
             )
-            ->when(! $user->isSuperAdmin(), fn ($query) => $query->where('child_profiles.barangay_id', $user->barangay_id))
+            ->whereIn('child_profiles.barangay_id', $reportBarangayIds)
             ->groupBy('child_profiles.barangay_id')
             ->pluck('total', 'barangay_id');
 
@@ -152,7 +213,7 @@ class AdminReportController extends Controller
             ->withCount('children')
             ->withCount(['users as nurses_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'nurse')])
             ->withCount(['users as barangay_admins_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'barangay_admin')])
-            ->when(! $user->isSuperAdmin(), fn ($query) => $query->whereKey($user->barangay_id))
+            ->whereIn('id', $reportBarangayIds)
             ->orderBy('name')
             ->get()
             ->map(function (Barangay $barangay) use ($barangayRecords) {
@@ -173,13 +234,13 @@ class AdminReportController extends Controller
                         $scheduleVersionFilter !== 'all' && $scheduleVersionFilter !== 'unassigned',
                         fn ($builder) => $builder->where('suggested_schedule_version_id', (int) $scheduleVersionFilter)
                     )
-                    ->when(! $user->isSuperAdmin(), fn ($builder) => $builder->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))),
+                    ->whereHas('child', fn ($child) => $child->whereIn('barangay_id', $reportBarangayIds)),
                 'adverseEventReports as report_aefi_count' => fn ($query) => $query
                     ->whereBetween('event_date', [
                         $startDate->toDateString(),
                         $endDate->toDateString(),
                     ])
-                    ->when(! $user->isSuperAdmin(), fn ($builder) => $builder->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))),
+                    ->whereHas('child', fn ($child) => $child->whereIn('barangay_id', $reportBarangayIds)),
             ])
             ->orderBy('name')
             ->get();
@@ -211,10 +272,7 @@ class AdminReportController extends Controller
 
         $aefiScope = AdverseEventReport::query()
             ->whereBetween('event_date', [$startDate->toDateString(), $endDate->toDateString()])
-            ->when(
-                ! $user->isSuperAdmin(),
-                fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))
-            );
+            ->whereHas('child', fn ($child) => $child->whereIn('barangay_id', $reportBarangayIds));
 
         $recentAefiReports = $includeAefi
             ? (clone $aefiScope)->with(['child.barangay', 'vaccineType', 'reporter'])->latest('event_date')->take(25)->get()
@@ -235,21 +293,24 @@ class AdminReportController extends Controller
             'startDate' => $startDate,
             'endDate' => $endDate,
             'generatedAt' => now(),
+            'barangayFilter' => $barangayFilter,
+            'regionFilter' => $regionFilter,
+            'provinceFilter' => $provinceFilter,
+            'municipalityFilter' => $municipalityFilter,
+            'regionOptions' => Region::query()->orderBy('name')->get(),
+            'provinceOptions' => Province::query()->when($regionFilter !== 'all', fn ($query) => $query->where('region_id', $regionFilter))->orderBy('name')->get(),
+            'municipalityOptions' => Municipality::query()->when($provinceFilter !== 'all', fn ($query) => $query->where('province_id', $provinceFilter))->orderBy('name')->get(),
+            'barangayOptions' => Barangay::query()->whereIn('id', $accessibleBarangayIds)->when($municipalityFilter !== 'all', fn ($query) => $query->where('municipality_id', $municipalityFilter))->orderBy('name')->get(),
+            'reportBarangayIds' => $reportBarangayIds,
             'scheduleVersionFilter' => $scheduleVersionFilter,
             'includeAefi' => $includeAefi,
             'scheduleVersionOptions' => $versionOptions,
             'selectedScheduleVersion' => $selectedVersion,
             'stats' => [
-                'barangays' => $user->isSuperAdmin() ? Barangay::count() : 1,
-                'barangayAdmins' => $user->isSuperAdmin()
-                    ? User::notArchived()->whereJsonContains('roles', 'barangay_admin')->count()
-                    : User::notArchived()->where('barangay_id', $user->barangay_id)->whereJsonContains('roles', 'barangay_admin')->count(),
-                'nurses' => $user->isSuperAdmin()
-                    ? User::notArchived()->whereJsonContains('roles', 'nurse')->count()
-                    : User::notArchived()->where('barangay_id', $user->barangay_id)->whereJsonContains('roles', 'nurse')->count(),
-                'children' => $user->isSuperAdmin()
-                    ? ChildProfile::count()
-                    : ChildProfile::where('barangay_id', $user->barangay_id)->count(),
+                'barangays' => $reportBarangayIds->count(),
+                'barangayAdmins' => User::notArchived()->whereIn('barangay_id', $reportBarangayIds)->whereJsonContains('roles', 'barangay_admin')->count(),
+                'nurses' => User::notArchived()->whereIn('barangay_id', $reportBarangayIds)->whereJsonContains('roles', 'nurse')->count(),
+                'children' => ChildProfile::whereIn('barangay_id', $reportBarangayIds)->count(),
                 'vaccinations' => (clone $recordScope)->count(),
                 'aefi' => $includeAefi ? (clone $aefiScope)->count() : 0,
                 'pending' => VaccinationRecord::where('verification_status', 'pending')
@@ -258,7 +319,7 @@ class AdminReportController extends Controller
                         $scheduleVersionFilter !== 'all' && $scheduleVersionFilter !== 'unassigned',
                         fn ($query) => $query->where('suggested_schedule_version_id', (int) $scheduleVersionFilter)
                     )
-                    ->when(! $user->isSuperAdmin(), fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id)))
+                    ->whereHas('child', fn ($child) => $child->whereIn('barangay_id', $reportBarangayIds))
                     ->count(),
             ],
             'barangays' => $barangays,

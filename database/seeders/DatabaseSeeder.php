@@ -95,59 +95,30 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        $barangayOneId = Barangay::where('name', 'Barangay 1')->value('id');
-        $municipalityId = Municipality::query()->orderBy('name')->value('id');
+        $indang = Municipality::query()->where('name', 'Indang')->firstOrFail();
+        $bancod = Barangay::query()->where('municipality_id', $indang->id)->where('name', 'Bancod')->firstOrFail();
+        $kaytapos = Barangay::query()->where('municipality_id', $indang->id)->where('name', 'Kaytapos')->firstOrFail();
 
-        User::updateOrCreate([
-            'email' => 'admin@example.com',
-        ], [
-            'name' => 'System Admin',
-            'password' => Hash::make('password123'),
-            'role' => 'superadmin',
-            'roles' => ['superadmin'],
-            'is_active' => true,
-            'email_verified_at' => $now,
-            'invitation_accepted_at' => $now,
-        ]);
+        $instantUser = function (string $email, string $name, string $role, ?string $municipalityId = null, ?string $barangayId = null) use ($now): void {
+            User::updateOrCreate(['email' => $email], [
+                'name' => $name,
+                'password' => Hash::make('password123'),
+                'role' => $role,
+                'roles' => [$role],
+                'municipality_id' => $municipalityId,
+                'barangay_id' => $barangayId,
+                'is_active' => true,
+                'email_verified_at' => $now,
+                'invitation_accepted_at' => $now,
+            ]);
+        };
 
-        User::updateOrCreate([
-            'email' => 'barangay-admin@example.com',
-        ], [
-            'name' => 'Barangay Admin',
-            'password' => Hash::make('password123'),
-            'role' => 'barangay_admin',
-            'roles' => ['barangay_admin'],
-            'barangay_id' => $barangayOneId,
-            'is_active' => true,
-            'email_verified_at' => $now,
-            'invitation_accepted_at' => $now,
-        ]);
-
-        User::updateOrCreate([
-            'email' => 'municipal-admin@example.com',
-        ], [
-            'name' => 'Municipal Admin',
-            'password' => Hash::make('password123'),
-            'role' => 'municipal_admin',
-            'roles' => ['municipal_admin'],
-            'municipality_id' => $municipalityId,
-            'is_active' => true,
-            'email_verified_at' => $now,
-            'invitation_accepted_at' => $now,
-        ]);
-
-        User::updateOrCreate([
-            'email' => 'nurse@example.com',
-        ], [
-            'name' => 'Demo Nurse',
-            'password' => Hash::make('password123'),
-            'role' => 'nurse',
-            'roles' => ['nurse'],
-            'barangay_id' => $barangayOneId,
-            'is_active' => true,
-            'email_verified_at' => $now,
-            'invitation_accepted_at' => $now,
-        ]);
+        $instantUser('superadmin@example.com', 'Super Admin', 'superadmin');
+        $instantUser('municipality@example.com', 'Indang Admin', 'municipal_admin', $indang->id);
+        $instantUser('barangay-bancod@example.com', 'Barangay Bancod', 'barangay_admin', $indang->id, $bancod->id);
+        $instantUser('nurse-bancod@example.com', 'Nurse Bancod', 'nurse', $indang->id, $bancod->id);
+        $instantUser('nurse-bancod2@example.com', 'Nurse Bancod Second', 'nurse', $indang->id, $bancod->id);
+        $instantUser('nurse-kaytapos@example.com', 'Nurse Kaytapos', 'nurse', $indang->id, $kaytapos->id);
 
         User::updateOrCreate([
             'email' => 'parent@example.com',

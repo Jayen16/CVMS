@@ -63,7 +63,7 @@
             <h1 class="page-title">{{ $child->full_name }} vaccination timeline</h1>
         </div>
 
-        <form method="GET" action="{{ route('children.timeline', $child) }}" class="app-panel flex w-full flex-wrap items-end gap-3 sm:w-auto">
+        <form method="GET" action="{{ route('children.timeline', $child) }}" class="app-panel flex w-full flex-wrap items-end gap-3 sm:w-auto" x-data="{ loading: false }" @submit="loading = true">
             <label class="grid gap-2 text-sm">
                 <span class="font-medium text-slate-800 dark:text-zinc-100">Vaccine</span>
                 <select name="vaccine" class="app-input min-w-72">
@@ -73,7 +73,7 @@
                     @endforeach
                 </select>
             </label>
-            <button class="app-button-primary">View</button>
+            <button class="app-button-primary inline-flex items-center gap-2" :disabled="loading"><span x-show="loading" x-cloak class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span><span x-text="loading ? 'Loading…' : 'View'"></span></button>
             <a href="{{ route('children.timeline.csv', ['child' => $child, 'vaccine' => $selectedVaccine]) }}" class="app-button-secondary inline-flex items-center gap-2" aria-label="Export timeline data for Excel as CSV">
                 <flux:icon.arrow-down-tray class="size-4" />
                 <span>Export Excel</span>

@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Barangay;
+use App\Models\Municipality;
+use App\Models\Province;
+use App\Models\Region;
 use App\Models\User;
 use App\Models\VaccineInventoryItem;
 use App\Models\VaccineInventoryTransaction;
@@ -24,7 +27,10 @@ class VaccineInventoryController extends Controller
         $user = auth()->user();
         $this->authorizeInventory($user);
 
-        $selectedBarangay = $user->isSuperAdmin()
+        $regionFilter = $user->isSuperAdmin() ? request()->string('region')->toString() : '';
+        $provinceFilter = $user->isSuperAdmin() && $regionFilter !== '' ? request()->string('province')->toString() : '';
+        $municipalityFilter = $user->isSuperAdmin() && $provinceFilter !== '' ? request()->string('municipality')->toString() : '';
+        $selectedBarangay = $user->isSuperAdmin() || $user->isMunicipalAdmin()
             ? request()->string('barangay')->toString()
             : (string) $user->barangay_id;
 
@@ -59,7 +65,15 @@ class VaccineInventoryController extends Controller
         return view('vaccine-inventory.index', [
             'transactions' => $transactions,
             'balances' => $balances,
-            'barangays' => $user->isSuperAdmin() ? Barangay::orderBy('name')->get() : collect(),
+            'regions' => $user->isSuperAdmin() ? Region::orderBy('name')->get() : collect(),
+            'provinces' => $user->isSuperAdmin() && $regionFilter !== '' ? Province::where('region_id', $regionFilter)->orderBy('name')->get() : collect(),
+            'municipalities' => $user->isSuperAdmin() && $provinceFilter !== '' ? Municipality::where('province_id', $provinceFilter)->orderBy('name')->get() : collect(),
+            'barangays' => ($user->isSuperAdmin() && $municipalityFilter !== '') || $user->isMunicipalAdmin()
+                ? Barangay::whereIn('id', $user->accessibleBarangayIds())->when($municipalityFilter !== '', fn ($query) => $query->where('municipality_id', $municipalityFilter))->orderBy('name')->get()
+                : collect(),
+            'regionFilter' => $regionFilter ?: 'all',
+            'provinceFilter' => $provinceFilter ?: 'all',
+            'municipalityFilter' => $municipalityFilter ?: 'all',
             'selectedBarangay' => $selectedBarangay,
             'types' => VaccineInventoryTransaction::typeOptions(),
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),

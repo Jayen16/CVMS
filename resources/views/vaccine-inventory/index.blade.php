@@ -29,17 +29,11 @@
         </div>
     </div>
 
-    @if ($barangays->isNotEmpty())
-        <form method="GET" class="app-card flex flex-wrap items-end gap-3 p-4">
-            <label class="min-w-64 space-y-1.5">
-                <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Barangay</span>
-                <select name="barangay" class="app-input">
-                    <option value="">Select a barangay</option>
-                    @foreach ($barangays as $barangay)
-                        <option value="{{ $barangay->id }}" @selected((string) $selectedBarangay === (string) $barangay->id)>{{ $barangay->name }}</option>
-                    @endforeach
-                </select>
-            </label>
+    @if (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin())
+        <form method="GET" class="flex flex-wrap items-end gap-3">
+            <div class="basis-full">
+                <x-location-filters mode="query" :regions="$regions" :provinces="$provinces" :municipalities="$municipalities" :barangays="$barangays" :region-value="$regionFilter" :province-value="$provinceFilter" :municipality-value="$municipalityFilter" :barangay-value="$selectedBarangay ?: 'all'" region-name="region" province-name="province" municipality-name="municipality" barangay-name="barangay" />
+            </div>
             <button class="app-button-secondary">View inventory</button>
         </form>
     @endif

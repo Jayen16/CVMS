@@ -1,4 +1,7 @@
 <div class="app-page">
+    <div wire:loading.flex class="fixed inset-x-0 top-0 z-[60] items-center justify-center gap-2 bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite">
+        <span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span> Filtering data…
+    </div>
     <div class="page-heading">
         <div>
             <p class="eyebrow">SYSTEM OVERSIGHT</p>
@@ -8,11 +11,29 @@
     </div>
 
     <section class="app-card p-4">
-        <div class="grid gap-4 md:grid-cols-[1fr_180px_160px_160px] md:items-end">
-            <label class="space-y-1.5"><span class="text-sm font-medium">Search</span><input wire:model.live.debounce.300ms="search" type="search" placeholder="User, action, or record" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"></label>
-            <label class="space-y-1.5"><span class="text-sm font-medium">Action</span><select wire:model.live="event" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"><option value="all">All actions</option><option value="created">Created</option><option value="updated">Updated</option><option value="deleted">Deleted</option><option value="printed">Printed</option></select></label>
-            <label class="space-y-1.5"><span class="text-sm font-medium">From</span><input wire:model.live="dateFrom" type="date" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"></label>
-            <label class="space-y-1.5"><span class="text-sm font-medium">To</span><input wire:model.live="dateTo" type="date" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"></label>
+        <div class="space-y-4">
+            <div class="basis-full">
+                <p class="text-xs font-semibold uppercase tracking-wide text-teal-600 dark:text-teal-400">Activity filters</p>
+            </div>
+            <div class="flex flex-wrap items-end gap-3">
+                <label class="min-w-52 flex-1 space-y-1.5"><span class="text-sm font-medium">Search</span><input wire:model.live.debounce.300ms="search" type="search" placeholder="User, action, or record" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"></label>
+                <label class="space-y-1.5"><span class="text-sm font-medium">Action</span><select wire:model.live.debounce.400ms="event" class="min-w-40 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"><option value="all">All actions</option><option value="created">Created</option><option value="updated">Updated</option><option value="deleted">Deleted</option><option value="printed">Printed</option></select></label>
+                <label class="space-y-1.5"><span class="text-sm font-medium">From</span><input wire:model.live.debounce.400ms="dateFrom" type="date" class="min-w-40 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"></label>
+                <label class="space-y-1.5"><span class="text-sm font-medium">To</span><input wire:model.live.debounce.400ms="dateTo" type="date" class="min-w-40 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"></label>
+            </div>
+            <div class="basis-full">
+                <x-location-filters
+                    :regions="$regions"
+                    :provinces="$provinces"
+                    :municipalities="$municipalities"
+                    :barangays="$barangays"
+                    mode="wire"
+                    :region-value="$regionId"
+                    :province-value="$provinceId"
+                    :municipality-value="$municipalityId"
+                    :barangay-value="$barangayId"
+                />
+            </div>
         </div>
     </section>
 

@@ -1,4 +1,7 @@
 <div class="app-page">
+    <div wire:loading.flex class="fixed inset-x-0 top-0 z-[60] items-center justify-center gap-2 bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite">
+        <span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span> Filtering data…
+    </div>
     <div class="page-heading">
         <div>
             <h1 class="page-title">Pending verification queue</h1>
@@ -8,12 +11,12 @@
 
     <div class="app-panel grid gap-4 md:grid-cols-5">
         @if (auth()->user()->isSuperAdmin())
-            <x-form-field label="Barangay" name="barangay_id" type="select" :options="$barangays->pluck('name', 'id')" :value="$barangay_id" wire:model.live="barangay_id" />
+            <x-form-field label="Barangay" name="barangay_id" type="select" :options="$barangays->pluck('name', 'id')" :value="$barangay_id" wire:model.live.debounce.400ms="barangay_id" />
         @endif
-        <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" :value="$vaccine_type_id" wire:model.live="vaccine_type_id" />
-        <x-form-field label="Source" name="source" type="select" :options="['outside_clinic' => 'Outside clinic', 'barangay_clinic' => 'Barangay clinic']" :value="$source" wire:model.live="source" />
-        <x-form-field label="From" name="from" type="date" :value="$from" wire:model.live="from" />
-        <x-form-field label="To" name="to" type="date" :value="$to" wire:model.live="to" />
+        <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" :value="$vaccine_type_id" wire:model.live.debounce.400ms="vaccine_type_id" />
+        <x-form-field label="Source" name="source" type="select" :options="['outside_clinic' => 'Outside clinic', 'barangay_clinic' => 'Barangay clinic']" :value="$source" wire:model.live.debounce.400ms="source" />
+        <x-form-field label="From" name="from" type="date" :value="$from" wire:model.live.debounce.400ms="from" />
+        <x-form-field label="To" name="to" type="date" :value="$to" wire:model.live.debounce.400ms="to" />
     </div>
 
     <section class="app-card">

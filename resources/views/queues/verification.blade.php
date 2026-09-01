@@ -7,7 +7,7 @@
             </div>
         </div>
 
-        <form method="GET" action="{{ route('verification-queue.index') }}" class="app-panel grid gap-4 md:grid-cols-5">
+        <form method="GET" action="{{ route('verification-queue.index') }}" class="app-panel grid gap-4 md:grid-cols-5" x-data="{ loading: false }" @submit="loading = true">
             @if (auth()->user()->isAdmin())
                 <x-form-field label="Barangay" name="barangay_id" type="select" :options="$barangays->pluck('name', 'id')" :value="$filters['barangayId']" />
             @endif
@@ -16,7 +16,7 @@
             <x-form-field label="From" name="from" type="date" :value="request('from')" />
             <x-form-field label="To" name="to" type="date" :value="request('to')" />
             <div class="md:col-span-5 flex gap-2">
-                <button class="app-button-primary">Apply filters</button>
+                <button class="app-button-primary inline-flex items-center gap-2" :disabled="loading"><span x-show="loading" x-cloak class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span><span x-text="loading ? 'Filtering…' : 'Apply filters'"></span></button>
                 <a href="{{ route('verification-queue.index') }}" class="app-button-secondary">Reset</a>
             </div>
         </form>

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\UsesUuidPrimaryKey;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -12,6 +13,9 @@ class ClinicAnnouncement extends Model
     use UsesUuidPrimaryKey;
 
     protected $fillable = [
+        'region_id',
+        'province_id',
+        'municipality_id',
         'barangay_id',
         'created_by',
         'title',
@@ -40,6 +44,71 @@ class ClinicAnnouncement extends Model
     public function barangay(): BelongsTo
     {
         return $this->belongsTo(Barangay::class);
+    }
+
+    public function region(): BelongsTo
+    {
+        return $this->belongsTo(Region::class);
+    }
+
+    public function province(): BelongsTo
+    {
+        return $this->belongsTo(Province::class);
+    }
+
+    public function municipality(): BelongsTo
+    {
+        return $this->belongsTo(Municipality::class);
+    }
+
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if (! $user->isNurse() && ! $user->isBarangayAdmin()) {
+            return $query;
+        }
+
+        $regionId = $user->barangay?->municipalityRelation?->province?->region_id;
+        $provinceId = $user->barangay?->municipalityRelation?->province_id;
+        $municipalityId = $user->barangay?->municipality_id ?? $user->municipality_id;
+
+        return $query->where(function (Builder $scope) use ($user, $regionId, $provinceId, $municipalityId): void {
+            $scope->where(function (Builder $global): void {
+                $global->whereNull('region_id')->whereNull('province_id')->whereNull('municipality_id')->whereNull('barangay_id');
+            });
+
+            if ($user->barangay_id) {
+                $scope->orWhere('barangay_id', $user->barangay_id);
+            }
+
+            if ($regionId || $provinceId || $municipalityId) {
+                $scope->orWhere(function (Builder $target) use ($regionId, $provinceId, $municipalityId): void {
+                    $target->whereNull('barangay_id')->where(function (Builder $location) use ($regionId, $provinceId, $municipalityId): void {
+                        $location->where('region_id', $regionId);
+                        if ($provinceId) {
+                            $location->orWhere('province_id', $provinceId);
+                        }
+                        if ($municipalityId) {
+                            $location->orWhere('municipality_id', $municipalityId);
+                        }
+                    });
+                });
+            }
+        });
+    }
+
+    public function scopeInLocation(Builder $query, ?string $regionId, ?string $provinceId, ?string $municipalityId, ?string $barangayId): Builder
+    {
+        if (! $regionId) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $scope) use ($regionId, $provinceId, $municipalityId, $barangayId): void {
+            $scope->whereNull('region_id')->whereNull('province_id')->whereNull('municipality_id')->whereNull('barangay_id')
+                ->orWhere('region_id', $regionId)
+                ->when($provinceId, fn (Builder $target) => $target->orWhere('province_id', $provinceId))
+                ->when($municipalityId, fn (Builder $target) => $target->orWhere('municipality_id', $municipalityId))
+                ->when($barangayId, fn (Builder $target) => $target->orWhere('barangay_id', $barangayId));
+        });
     }
 
     /**

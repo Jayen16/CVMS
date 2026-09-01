@@ -1,4 +1,7 @@
 <div class="app-page">
+    <div wire:loading.flex class="fixed inset-x-0 top-0 z-[60] items-center justify-center gap-2 bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite">
+        <span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span> Filtering data…
+    </div>
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <h1 class="page-title">Notifications</h1>
@@ -6,7 +9,7 @@
         </div>
         <div class="flex items-center gap-3">
             <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-zinc-300">
-                <input type="checkbox" wire:model.live="unreadOnly" class="rounded border-slate-300 text-teal-600">
+                <input type="checkbox" wire:model.live.debounce.400ms="unreadOnly" class="rounded border-slate-300 text-teal-600">
                 Unread only
             </label>
             <button wire:click="markAllRead" class="app-button-secondary">Mark all as read</button>

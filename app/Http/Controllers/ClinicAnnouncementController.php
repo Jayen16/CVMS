@@ -42,7 +42,6 @@ class ClinicAnnouncementController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'category' => ['required', 'in:schedule,closure,campaign,stock'],
             'audience' => ['required', 'in:all,parents,staff'],
-            'barangay_id' => ['nullable', 'exists:barangays,id'],
             'starts_on' => ['required', 'date'],
             'ends_on' => ['nullable', 'date', 'after_or_equal:starts_on'],
             'location' => ['nullable', 'string', 'max:255'],

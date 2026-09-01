@@ -76,7 +76,7 @@
                                 <td>{{ $barangay->barangay_admins_count }}</td>
                                 <td>{{ $barangay->nurses_count }}</td>
                                 <td>{{ $barangay->children_count }}</td>
-                                <td>{{ $barangay->children->sum(fn ($child) => $child->vaccinations->count()) }}</td>
+                                <td>{{ $barangay->vaccinations_count }}</td>
                             </tr>
                         @empty
                             <tr><td colspan="5" class="px-4 py-6 text-center text-zinc-500">No barangays yet.</td></tr>
@@ -84,6 +84,9 @@
                     </tbody>
                 </table>
             </div>
+            @if (method_exists($barangays, 'links'))
+                <div class="border-t border-slate-200 px-5 py-3 dark:border-zinc-800">{{ $barangays->links() }}</div>
+            @endif
         </section>
     @elseif ($role === 'barangay_admin')
         <div class="grid gap-4 md:grid-cols-5">
