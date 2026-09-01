@@ -4,11 +4,12 @@ namespace App\Models;
 
 use App\Models\Concerns\UsesUuidPrimaryKey;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\AccountAccessNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,7 +20,6 @@ use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
-use App\Notifications\AccountAccessNotification;
 
 /**
  * @property string $id
@@ -267,6 +267,11 @@ class User extends Authenticatable implements PasskeyUser
     public function canViewAefiReports(): bool
     {
         return $this->isBarangayAdmin() || $this->isNurse();
+    }
+
+    public function canManageInventory(): bool
+    {
+        return $this->isSuperAdmin() || $this->isBarangayAdmin() || $this->isNurse();
     }
 
     public function canViewDuplicates(): bool

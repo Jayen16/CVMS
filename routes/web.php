@@ -2,8 +2,8 @@
 
 use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AdverseEventReportController;
-use App\Http\Controllers\Api\ParentChildController;
 use App\Http\Controllers\Api\OfflineVaccinationSyncController;
+use App\Http\Controllers\Api\ParentChildController;
 use App\Http\Controllers\ChildParentController;
 use App\Http\Controllers\ChildProfileController;
 use App\Http\Controllers\ChildTimelinePdfController;
@@ -12,14 +12,15 @@ use App\Http\Controllers\ManualSyncController;
 use App\Http\Controllers\NurseController;
 use App\Http\Controllers\VaccinationRecordController;
 use App\Http\Controllers\VaccineCardController;
+use App\Http\Controllers\VaccineInventoryController;
 use App\Http\Controllers\VaccineScheduleController;
 use App\Livewire\AefiReportsPage;
 use App\Livewire\AnnouncementsPage;
 use App\Livewire\ChildCreatePage;
 use App\Livewire\ChildEditPage;
+use App\Livewire\ChildrenIndexPage;
 use App\Livewire\ChildShowPage;
 use App\Livewire\ChildTimelinePage;
-use App\Livewire\ChildrenIndexPage;
 use App\Livewire\DashboardPage;
 use App\Livewire\DefaulterPage;
 use App\Livewire\DuplicateChildrenPage;
@@ -81,6 +82,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('aefi-reports', AefiReportsPage::class)->name('aefi-reports.index');
     Route::post('children/{child}/aefi-reports', [AdverseEventReportController::class, 'store'])->name('children.aefi-reports.store');
     Route::get('vaccine-schedules', VaccineSchedulesPage::class)->name('vaccine-schedules.index');
+    Route::get('vaccine-inventory', [VaccineInventoryController::class, 'index'])->name('vaccine-inventory.index');
+    Route::post('vaccine-inventory', [VaccineInventoryController::class, 'store'])->name('vaccine-inventory.store');
     Route::get('vaccine-schedules/create', VaccineScheduleFormPage::class)->name('vaccine-schedules.create');
     Route::post('vaccine-schedules', [VaccineScheduleController::class, 'store'])->name('vaccine-schedules.store');
     Route::get('vaccine-schedules/{vaccineSchedule}/edit', VaccineScheduleFormPage::class)->name('vaccine-schedules.edit');

@@ -46,4 +46,12 @@ class Barangay extends Model
     {
         return $this->hasMany(ClinicAnnouncement::class);
     }
+
+    /**
+     * @return HasMany<VaccineInventoryTransaction, $this>
+     */
+    public function inventoryTransactions(): HasMany
+    {
+        return $this->hasMany(VaccineInventoryTransaction::class);
+    }
 }
