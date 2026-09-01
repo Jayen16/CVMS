@@ -48,18 +48,20 @@ return new class extends Migration
             ->update(['vaccine_schedule_version_id' => $versionId]);
 
         Schema::table('vaccine_schedules', function (Blueprint $table) {
-            $table->dropUnique('vaccine_schedules_vaccine_type_id_dose_number_unique');
             $table->unique(
-                ['vaccine_schedule_version_id', 'vaccine_type_id', 'dose_number'],
+                ['vaccine_type_id', 'dose_number', 'vaccine_schedule_version_id'],
                 'vaccine_schedules_version_vaccine_dose_unique'
             );
+            $table->dropUnique('vaccine_schedules_vaccine_type_id_dose_number_unique');
         });
 
         Schema::create('child_vaccine_series_versions', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('child_profile_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('vaccine_type_id')->constrained()->cascadeOnDelete();
-            $table->foreignUuid('vaccine_schedule_version_id')->constrained('vaccine_schedule_versions')->cascadeOnDelete();
+            $table->foreignUuid('vaccine_schedule_version_id')
+                ->constrained('vaccine_schedule_versions', 'id', 'child_series_versions_schedule_version_fk')
+                ->cascadeOnDelete();
             $table->timestamp('assigned_at')->nullable();
             $table->string('assignment_reason')->nullable();
             $table->timestamps();
@@ -81,8 +83,8 @@ return new class extends Migration
         Schema::dropIfExists('child_vaccine_series_versions');
 
         Schema::table('vaccine_schedules', function (Blueprint $table) {
-            $table->dropUnique('vaccine_schedules_version_vaccine_dose_unique');
             $table->unique(['vaccine_type_id', 'dose_number'], 'vaccine_schedules_vaccine_type_id_dose_number_unique');
+            $table->dropUnique('vaccine_schedules_version_vaccine_dose_unique');
             $table->dropConstrainedForeignId('vaccine_schedule_version_id');
         });
 
