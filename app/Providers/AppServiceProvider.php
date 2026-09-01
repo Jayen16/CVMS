@@ -2,6 +2,18 @@
 
 namespace App\Providers;
 
+use App\Models\AdverseEventReport;
+use App\Models\Barangay;
+use App\Models\ChildProfile;
+use App\Models\ClinicAnnouncement;
+use App\Models\User;
+use App\Models\VaccinationRecord;
+use App\Models\VaccineInventoryItem;
+use App\Models\VaccineInventoryTransaction;
+use App\Models\VaccineSchedule;
+use App\Models\VaccineScheduleVersion;
+use App\Models\VaccineType;
+use App\Observers\AuditObserver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +36,22 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        foreach ([
+            User::class,
+            Barangay::class,
+            ChildProfile::class,
+            VaccinationRecord::class,
+            AdverseEventReport::class,
+            ClinicAnnouncement::class,
+            VaccineInventoryItem::class,
+            VaccineInventoryTransaction::class,
+            VaccineSchedule::class,
+            VaccineScheduleVersion::class,
+            VaccineType::class,
+        ] as $model) {
+            $model::observe(AuditObserver::class);
+        }
+
         if (request()->header('x-forwarded-proto') === 'https') {
             URL::forceScheme('https');
         }

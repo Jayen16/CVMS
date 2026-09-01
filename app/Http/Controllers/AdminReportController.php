@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Barangay;
 use App\Models\AdverseEventReport;
+use App\Models\AuditLog;
+use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\User;
 use App\Models\VaccinationRecord;
@@ -30,6 +31,7 @@ class AdminReportController extends Controller
         $this->authorizeAdmin();
 
         $data = $this->reportData($request);
+        AuditLog::recordAction('printed', 'Printed vaccination report', null, ['format' => 'pdf', 'start_date' => $data['startDate']->toDateString(), 'end_date' => $data['endDate']->toDateString()]);
         $name = 'vaccination-report-'.$data['startDate']->format('Ymd').'-'.$data['endDate']->format('Ymd').'.pdf';
 
         return Pdf::view('reports.admin-pdf', $data)

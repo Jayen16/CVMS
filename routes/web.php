@@ -16,6 +16,7 @@ use App\Http\Controllers\VaccineInventoryController;
 use App\Http\Controllers\VaccineScheduleController;
 use App\Livewire\AefiReportsPage;
 use App\Livewire\AnnouncementsPage;
+use App\Livewire\AuditLogsPage;
 use App\Livewire\ChildCreatePage;
 use App\Livewire\ChildEditPage;
 use App\Livewire\ChildrenIndexPage;
@@ -69,6 +70,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('nurses/{nurse}/restore', [NurseController::class, 'restore'])->name('nurses.restore');
     Route::delete('nurses/{nurse}', [NurseController::class, 'destroy'])->name('nurses.destroy');
     Route::get('reports', ReportsPage::class)->name('reports.index');
+    Route::get('audit-logs', AuditLogsPage::class)->name('audit-logs.index');
     Route::get('reports/pdf', [AdminReportController::class, 'pdf'])->name('reports.pdf');
     Route::get('sync', SyncDataPage::class)->name('sync.index');
     Route::post('sync/manual', [ManualSyncController::class, 'store'])->name('sync.manual');
