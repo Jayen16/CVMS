@@ -21,7 +21,7 @@
 
 @if ($drawerOnly)
 <flux:modal name="notifications-drawer" variant="flyout" position="right" class="!h-[36rem] !max-h-[calc(100dvh-2rem)] !w-[min(100vw,28rem)] !overflow-hidden !p-0" :closable="false">
-    <div class="-m-8 flex h-full min-h-0 flex-col overflow-hidden bg-white dark:bg-zinc-900">
+    <div class="flex h-full min-h-0 w-full flex-col overflow-hidden bg-white dark:bg-zinc-900">
         <div class="flex items-start justify-between border-b border-slate-200 bg-slate-50/80 px-6 py-5 dark:border-zinc-800 dark:bg-zinc-950/60">
             <div>
                 <h2 class="text-lg font-semibold text-slate-950 dark:text-white">Notifications</h2>
