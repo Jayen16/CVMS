@@ -8,6 +8,19 @@
             <p class="page-subtitle">Updates and actions relevant to your account.</p>
         </div>
         <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-end gap-2">
+                <label class="grid gap-1 text-xs text-slate-500 dark:text-zinc-400">
+                    From
+                    <input type="date" wire:model.live.debounce.400ms="from" class="app-input !w-auto !py-1.5 text-xs">
+                </label>
+                <label class="grid gap-1 text-xs text-slate-500 dark:text-zinc-400">
+                    To
+                    <input type="date" wire:model.live.debounce.400ms="to" class="app-input !w-auto !py-1.5 text-xs">
+                </label>
+                @if ($from || $to)
+                    <button type="button" wire:click="clearDateFilter" class="pb-1 text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300">Clear</button>
+                @endif
+            </div>
             <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-zinc-300">
                 <input type="checkbox" wire:model.live.debounce.400ms="unreadOnly" class="rounded border-slate-300 text-teal-600">
                 Unread only
