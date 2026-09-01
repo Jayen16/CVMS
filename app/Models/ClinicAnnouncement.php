@@ -63,6 +63,14 @@ class ClinicAnnouncement extends Model
 
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
+        if ($user->isMunicipalAdmin()) {
+            return $query->where(function (Builder $scope) use ($user): void {
+                $scope->whereNull('region_id')->whereNull('province_id')->whereNull('municipality_id')->whereNull('barangay_id')
+                    ->orWhere('municipality_id', $user->municipality_id)
+                    ->orWhereIn('barangay_id', $user->accessibleBarangayIds());
+            });
+        }
+
         if (! $user->isNurse() && ! $user->isBarangayAdmin()) {
             return $query;
         }
@@ -98,7 +106,7 @@ class ClinicAnnouncement extends Model
 
     public function scopeInLocation(Builder $query, ?string $regionId, ?string $provinceId, ?string $municipalityId, ?string $barangayId): Builder
     {
-        if (! $regionId) {
+        if (! $regionId && ! $provinceId && ! $municipalityId && ! $barangayId) {
             return $query;
         }
 

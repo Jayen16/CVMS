@@ -102,12 +102,22 @@ class DashboardPage extends Component
                 'role' => 'municipal_admin',
                 'stats' => [
                     'municipality' => $user->municipality()->value('name') ?? 'Unassigned',
+                    'barangays' => Barangay::where('municipality_id', $user->municipality_id)->count(),
+                    'barangayAdmins' => User::notArchived()->where('municipality_id', $user->municipality_id)->whereJsonContains('roles', 'barangay_admin')->count(),
                     'nurses' => User::notArchived()->where('municipality_id', $user->municipality_id)->whereJsonContains('roles', 'nurse')->count(),
                     'children' => ChildProfile::query()->visibleTo($user)->count(),
                     'vaccinations' => VaccinationRecord::whereHas('child', fn ($query) => $query->whereIn('barangay_id', $user->accessibleBarangayIds()))->count(),
                     'pending' => VaccinationRecord::where('verification_status', 'pending')->whereHas('child', fn ($query) => $query->whereIn('barangay_id', $user->accessibleBarangayIds()))->count(),
                     'pendingSync' => $pendingSync,
                 ],
+                'barangays' => Barangay::query()
+                    ->where('municipality_id', $user->municipality_id)
+                    ->withCount('children')
+                    ->withCount('vaccinations')
+                    ->withCount(['users as barangay_admins_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'barangay_admin')])
+                    ->withCount(['users as nurses_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'nurse')])
+                    ->orderBy('name')
+                    ->get(),
                 'children' => $children,
                 'announcements' => $announcements,
             ])->layout('layouts.app', ['title' => 'Dashboard']);

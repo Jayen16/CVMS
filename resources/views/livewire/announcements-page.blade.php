@@ -35,7 +35,7 @@
                     @endif
                 </div>
             </div>
-            @if (auth()->user()->isSuperAdmin() && ! $viewAll)
+            @if (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin())
                 <div class="px-4">
                     <x-location-filters mode="wire" :regions="$regions" :provinces="$provinces" :municipalities="$municipalities" :barangays="$barangays" :region-value="$region_id" :province-value="$province_id" :municipality-value="$municipality_id" :barangay-value="$barangay_id" region-model="region_id" province-model="province_id" municipality-model="municipality_id" barangay-model="barangay_id" />
                 </div>
@@ -129,11 +129,50 @@
                 <x-form-field label="Location" name="location" :value="$location" wire:model="location" />
                 <x-form-field label="Message" name="message" type="textarea" :value="$message" wire:model="message" />
                 @if (auth()->user()->isMunicipalAdmin())
-                    <x-form-field label="Barangay" name="barangay_id" type="select" :options="$barangays->pluck('name', 'id')" :value="$barangay_id" wire:model="barangay_id" />
+                    <label class="space-y-1.5">
+                        <span class="text-sm font-medium">Barangay target</span>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" wire:click="selectAllBarangays" class="{{ in_array('all', $barangay_ids, true) ? 'app-button-primary' : 'app-button-secondary' }}">
+                                All barangays
+                            </button>
+                            <flux:modal.trigger name="barangay-targets">
+                                <flux:button type="button" variant="ghost">Select specific barangays</flux:button>
+                            </flux:modal.trigger>
+                        </div>
+                        <span class="text-xs text-zinc-500">
+                            @if (in_array('all', $barangay_ids, true))
+                                This announcement will be posted to all barangays in {{ auth()->user()->municipality?->name ?? 'your municipality' }}.
+                            @else
+                                {{ count($barangay_ids) }} barangay{{ count($barangay_ids) === 1 ? '' : 's' }} selected.
+                            @endif
+                        </span>
+                    </label>
                 @endif
                 <flux:separator />
                 <button class="app-button-primary">Post announcement</button>
             </form>
+            @if (auth()->user()->isMunicipalAdmin())
+                <flux:modal name="barangay-targets" class="md:w-[34rem]">
+                    <div class="space-y-5">
+                        <div>
+                            <flux:heading size="lg">Select barangays</flux:heading>
+                            <flux:text class="mt-1">Choose one or more barangays for this announcement.</flux:text>
+                        </div>
+                        <div class="max-h-72 space-y-2 overflow-y-auto rounded-lg border border-slate-200 p-3 dark:border-zinc-700">
+                            @foreach ($barangays as $barangay)
+                                <label class="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-slate-50 dark:hover:bg-zinc-800">
+                                    <input type="checkbox" wire:click="toggleBarangay('{{ $barangay->id }}')" @checked(in_array($barangay->id, $barangay_ids, true))>
+                                    <span class="text-sm">{{ $barangay->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        <div class="flex justify-end gap-2">
+                            <flux:modal.close><flux:button type="button" variant="ghost">Cancel</flux:button></flux:modal.close>
+                            <flux:modal.close><flux:button type="button" variant="primary">Done</flux:button></flux:modal.close>
+                        </div>
+                    </div>
+                </flux:modal>
+            @endif
         @endif
     </div>
 </div>

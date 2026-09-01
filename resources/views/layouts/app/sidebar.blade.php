@@ -49,14 +49,14 @@
                     </flux:sidebar.group>
                 @endif
 
-                @if (auth()->user()->canManagePlatform() || auth()->user()->canManageInventory())
+                @if (auth()->user()->canManagePlatform() || auth()->user()->canViewInventory())
                     <flux:sidebar.group expandable :heading="__('Vaccination Program')" class="grid">
                         @if (auth()->user()->canManagePlatform())
                             <flux:sidebar.item icon="calendar-days" :href="route('vaccine-schedules.index')" :current="request()->routeIs('vaccine-schedules.*')" wire:navigate>
                                 {{ __('Schedules') }}
                             </flux:sidebar.item>
                         @endif
-                        @if (auth()->user()->canManageInventory())
+                        @if (auth()->user()->canViewInventory())
                             <flux:sidebar.item icon="archive-box" :href="route('vaccine-inventory.index')" :current="request()->routeIs('vaccine-inventory.*')" wire:navigate>
                                 {{ __('Vaccine Inventory') }}
                             </flux:sidebar.item>
@@ -83,7 +83,7 @@
                 @if ((auth()->user()->canManageBarangayStaff() && ! auth()->user()->isSuperAdmin()) || auth()->user()->isSuperAdmin())
                     <flux:sidebar.group expandable :heading="__('Administration')" class="grid">
                         @if (auth()->user()->canManageBarangayStaff() && ! auth()->user()->isSuperAdmin())
-                            <flux:sidebar.item icon="user-plus" :href="route('nurses.index')" :current="request()->routeIs('nurses.*')" wire:navigate>
+                            <flux:sidebar.item icon="user-plus" :href="route(auth()->user()->canManageBarangayAdmins() ? 'municipal-admins.index' : 'nurses.index')" :current="request()->routeIs('nurses.*', 'municipal-admins.*')" wire:navigate>
                                 {{ auth()->user()->canManageBarangayAdmins() ? __('Barangay Admins') : __('Nurses') }}
                             </flux:sidebar.item>
                         @endif

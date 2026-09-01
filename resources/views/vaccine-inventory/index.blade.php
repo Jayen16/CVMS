@@ -12,20 +12,22 @@
         </div>
         <div class="flex flex-wrap items-center justify-end gap-2">
             <span class="rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-sm font-medium text-teal-700 dark:text-teal-300">
-                {{ auth()->user()->isSuperAdmin() ? ($barangays->firstWhere('id', $selectedBarangay)?->name ?? 'Select barangay') : (auth()->user()->barangay?->name ?? 'Unassigned') }}
+                {{ $barangays->firstWhere('id', $selectedBarangay)?->name ?? (auth()->user()->isMunicipalAdmin() ? 'Select barangay' : (auth()->user()->barangay?->name ?? 'Unassigned')) }}
             </span>
-            <a href="{{ route('vaccine-inventory.csv', auth()->user()->isSuperAdmin() && $selectedBarangay ? ['barangay' => $selectedBarangay] : []) }}" class="app-button-secondary inline-flex items-center gap-2" aria-label="Export inventory data for Excel as CSV">
+            <a href="{{ route('vaccine-inventory.csv', (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin()) && $selectedBarangay ? ['barangay' => $selectedBarangay] : []) }}" class="app-button-secondary inline-flex items-center gap-2" aria-label="Export inventory data for Excel as CSV">
                 <flux:icon.arrow-down-tray class="size-4" />
                 <span>Export Excel</span>
             </a>
-            <a href="{{ route('vaccine-inventory.report', auth()->user()->isSuperAdmin() && $selectedBarangay ? ['barangay' => $selectedBarangay] : []) }}" class="app-button-secondary inline-flex items-center gap-2" target="_blank" rel="noopener" aria-label="Print inventory report as PDF">
+            <a href="{{ route('vaccine-inventory.report', (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin()) && $selectedBarangay ? ['barangay' => $selectedBarangay] : []) }}" class="app-button-secondary inline-flex items-center gap-2" target="_blank" rel="noopener" aria-label="Print inventory report as PDF">
                 <flux:icon.printer class="size-4" />
                 <span>Print PDF</span>
             </a>
+            @if (auth()->user()->canManageInventory())
             <a href="{{ route('vaccine-inventory.create') }}" class="app-button-primary inline-flex items-center gap-2" aria-label="Add vaccine stock">
                 <flux:icon.plus class="size-4" />
                 <span>Add stock</span>
             </a>
+            @endif
         </div>
     </div>
 
@@ -50,6 +52,7 @@
         @endforelse
     </div>
 
+    @if (auth()->user()->canManageInventory())
     <section class="app-card">
         <div class="app-card-header">
             <h2 class="app-card-title">Deduct stock</h2>
@@ -73,6 +76,7 @@
         </div>
         @if ($errors->any())<div class="px-5 pb-5 text-sm text-red-600">{{ $errors->first() }}</div>@endif
     </section>
+    @endif
 
     <section class="app-card">
         <div class="app-card-header"><h2 class="app-card-title">Transaction history</h2></div>

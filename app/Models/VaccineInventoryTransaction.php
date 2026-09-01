@@ -66,7 +66,10 @@ class VaccineInventoryTransaction extends Model
     public function scopeForUser(Builder $query, User $user): Builder
     {
         return $query->when(
-            ! $user->isSuperAdmin(),
+            $user->isMunicipalAdmin(),
+            fn (Builder $builder) => $builder->whereIn('barangay_id', $user->accessibleBarangayIds())
+        )->when(
+            ! $user->isSuperAdmin() && ! $user->isMunicipalAdmin(),
             fn (Builder $builder) => $builder->where('barangay_id', $user->barangay_id)
         );
     }

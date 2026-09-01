@@ -25,12 +25,8 @@ class NurseController extends Controller
         return view('nurses.index', [
             'staff' => User::query()
                 ->whereJsonContains('roles', $managedRole)
-                ->when(
-                    $user->canManageNurses(),
-                    fn ($query) => $user->isMunicipalAdmin()
-                        ? $query->where('municipality_id', $user->municipality_id)
-                        : $query->where('barangay_id', $user->barangay_id)
-                )
+                ->when($user->isMunicipalAdmin(), fn ($query) => $query->where('municipality_id', $user->municipality_id))
+                ->when($user->isBarangayAdmin(), fn ($query) => $query->where('barangay_id', $user->barangay_id))
                 ->with('barangay')
                 ->latest()
                 ->paginate(12),
@@ -50,29 +46,37 @@ class NurseController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-            'barangay_id' => [$managesBarangayAdmins || $user->isBarangayAdmin() ? 'required' : 'nullable', 'exists:barangays,id'],
-            'municipality_id' => [$user->isMunicipalAdmin() ? 'required' : 'nullable', 'exists:municipalities,id'],
+            'barangay_id' => [$managesBarangayAdmins ? 'required' : 'nullable', 'exists:barangays,id'],
+            'municipality_id' => ['nullable', 'exists:municipalities,id'],
             'barangay_name' => ['nullable', 'string', 'max:255'],
-            'assign_nurse_role' => ['nullable', 'boolean'],
         ]);
 
         $barangayId = $managesBarangayAdmins
             ? ($validated['barangay_id'] ?? null)
             : ($user->isMunicipalAdmin() ? null : $user->barangay_id);
 
-        $municipalityId = $managesBarangayAdmins ? null : ($user->isMunicipalAdmin() ? $validated['municipality_id'] : null);
+        $municipalityId = $user->isMunicipalAdmin()
+            ? $user->municipality_id
+            : Barangay::whereKey($barangayId)->value('municipality_id');
 
         if ($managesBarangayAdmins && ! $barangayId && filled($validated['barangay_name'] ?? null)) {
-            $barangayId = Barangay::firstOrCreate(['name' => $validated['barangay_name']])->id;
+            $barangayId = Barangay::firstOrCreate([
+                'name' => $validated['barangay_name'],
+                'municipality_id' => $user->isMunicipalAdmin() ? $user->municipality_id : null,
+            ])->id;
+        }
+
+        if ($managesBarangayAdmins) {
+            abort_unless(
+                $user->isSuperAdmin() || Barangay::whereKey($barangayId)->where('municipality_id', $user->municipality_id)->exists(),
+                403,
+                'Barangay must belong to your municipality.'
+            );
         }
 
         $roles = $managesBarangayAdmins
             ? ['barangay_admin']
             : ['nurse'];
-
-        if ($managesBarangayAdmins && filled($validated['assign_nurse_role'])) {
-            $roles[] = 'nurse';
-        }
 
         $staff = User::create([
             'name' => $validated['name'],
@@ -164,6 +168,7 @@ class NurseController extends Controller
 
         if ($manager->canManageBarangayAdmins()) {
             abort_unless($user->isBarangayAdmin(), 404);
+            abort_unless($manager->isSuperAdmin() || $user->municipality_id === $manager->municipality_id, 403);
 
             return;
         }

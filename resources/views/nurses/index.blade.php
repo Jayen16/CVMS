@@ -3,7 +3,7 @@
             <section class="app-card lg:col-span-2">
                 <p class="eyebrow">Platform administration</p>
                 <h1 class="page-title">Municipal admin accounts</h1>
-                <p class="page-subtitle">Assign each municipal admin to one municipality. Their reports and records are limited to that municipality’s barangays.</p>
+                <p class="page-subtitle">Assign barangay admins to barangays in your municipality. Nurses can be added by their Barangay Admin.</p>
                 <div class="mt-5 overflow-x-auto">
                     <table class="app-table">
                         <thead><tr><th class="px-4 py-3">Name</th><th class="px-4 py-3">Email</th><th class="px-4 py-3">Municipality</th><th class="px-4 py-3">Status</th></tr></thead>
@@ -15,13 +15,15 @@
                     </table>
                 </div>
             </section>
+            @if (auth()->user()->isSuperAdmin())
             <form method="POST" action="{{ route('municipal-admins.store') }}" class="app-panel lg:col-start-2 lg:row-start-2">
                 @csrf
                 <h2 class="app-card-title">Create municipal admin</h2>
                 <div class="mt-4 grid gap-4"><x-form-field label="Name" name="name" /><x-form-field label="Email" name="email" type="email" /><x-form-field label="Municipality" name="municipality_id" type="select" :options="$municipalities->pluck('name', 'id')" /><button class="app-button-primary">Send password setup link</button></div>
             </form>
+            @endif
         @endif
-        @if (! request()->routeIs('municipal-admins.*'))
+        @if (! auth()->user()->isSuperAdmin() || ! request()->routeIs('municipal-admins.*'))
         <section class="flex flex-col gap-4">
             @if (session('status'))
                 <div class="app-alert-success">
@@ -44,7 +46,7 @@
                 <h1 class="page-title">{{ $managedRole === 'barangay_admin' ? 'Barangay admin accounts' : 'Nurse accounts' }}</h1>
                 <p class="page-subtitle">
                     {{ $managedRole === 'barangay_admin'
-                        ? 'Create barangay admins for each assigned clinic area. You can optionally give them nurse access too.'
+                        ? 'Create barangay admins for barangays in your municipality. They are responsible for adding Nurses.'
                         : 'Invite nurses by email and assign them to the barangay where they record child vaccination data.' }}
                 </p>
             </div>
@@ -141,10 +143,6 @@
             @if ($managedRole === 'barangay_admin')
                 <x-form-field label="Existing barangay" name="barangay_id" type="select" :options="$barangays->pluck('name', 'id')" />
                 <x-form-field label="Or new barangay" name="barangay_name" />
-                <label class="flex items-start gap-3 text-sm text-slate-700 dark:text-zinc-200">
-                    <input type="checkbox" name="assign_nurse_role" value="1" @checked(old('assign_nurse_role')) class="mt-1">
-                    <span>Also allow this barangay admin to perform nurse actions.</span>
-                </label>
             @else
                 <div class="rounded-lg border border-teal-100 bg-teal-50 p-3 text-sm text-teal-950 dark:border-teal-900 dark:bg-teal-950 dark:text-teal-100">
                     Assigned barangay: <span class="font-semibold">{{ auth()->user()->barangay?->name }}</span>

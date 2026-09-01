@@ -48,7 +48,12 @@ class ClinicAnnouncementController extends Controller
             'message' => ['required', 'string', 'max:2000'],
         ]);
 
-        if (! auth()->user()->isSuperAdmin()) {
+        if (auth()->user()->isMunicipalAdmin()) {
+            $validated['region_id'] = null;
+            $validated['province_id'] = null;
+            $validated['municipality_id'] = auth()->user()->municipality_id;
+            $validated['barangay_id'] = null;
+        } elseif (! auth()->user()->isSuperAdmin()) {
             $validated['barangay_id'] = auth()->user()->barangay_id;
         }
 
@@ -88,6 +93,9 @@ class ClinicAnnouncementController extends Controller
         $user = auth()->user();
 
         abort_unless($user->canManageAnnouncements(), 403);
+        if ($user->isMunicipalAdmin()) {
+            abort_unless($announcement->municipality_id === $user->municipality_id && $announcement->barangay_id === null, 403);
+        }
         abort_if(! $user->isSuperAdmin() && $announcement->barangay_id !== $user->barangay_id, 403);
     }
 }

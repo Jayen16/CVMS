@@ -1,0 +1,89 @@
+<?php
+
+use App\Models\Barangay;
+use App\Models\Municipality;
+use App\Models\Province;
+use App\Models\Region;
+use App\Models\User;
+
+test('municipal admins can create barangay admins in their municipality', function () {
+    $region = Region::create(['name' => 'Staff Region']);
+    $province = Province::create(['name' => 'Staff Province', 'region_id' => $region->id]);
+    $municipality = Municipality::create(['name' => 'Staff Municipality', 'province_id' => $province->id]);
+    $barangay = Barangay::create(['name' => 'Staff Barangay', 'municipality_id' => $municipality->id]);
+    $municipalAdmin = User::factory()->create([
+        'role' => 'municipal_admin',
+        'roles' => ['municipal_admin'],
+        'municipality_id' => $municipality->id,
+    ]);
+
+    $this->actingAs($municipalAdmin)
+        ->get(route('municipal-admins.index'))
+        ->assertOk()
+        ->assertSee('Barangay admin accounts');
+
+    $this->actingAs($municipalAdmin)
+        ->post(route('nurses.store'), [
+            'name' => 'New Barangay Admin',
+            'email' => 'barangay-admin@example.com',
+            'barangay_id' => $barangay->id,
+        ])
+        ->assertRedirect();
+
+    $created = User::where('email', 'barangay-admin@example.com')->firstOrFail();
+    expect($created->rolesList())->toBe(['barangay_admin'])
+        ->and($created->municipality_id)->toBe($municipality->id)
+        ->and($created->barangay_id)->toBe($barangay->id);
+});
+
+test('municipal admins cannot create nurses, but barangay admins can', function () {
+    $region = Region::create(['name' => 'Nurse Region']);
+    $province = Province::create(['name' => 'Nurse Province', 'region_id' => $region->id]);
+    $municipality = Municipality::create(['name' => 'Nurse Municipality', 'province_id' => $province->id]);
+    $barangay = Barangay::create(['name' => 'Nurse Barangay', 'municipality_id' => $municipality->id]);
+    $otherBarangay = Barangay::create(['name' => 'Other Barangay', 'municipality_id' => $municipality->id]);
+    $municipalAdmin = User::factory()->create([
+        'role' => 'municipal_admin',
+        'roles' => ['municipal_admin'],
+        'municipality_id' => $municipality->id,
+    ]);
+    $barangayAdmin = User::factory()->create([
+        'role' => 'barangay_admin',
+        'roles' => ['barangay_admin'],
+        'municipality_id' => $municipality->id,
+        'barangay_id' => $barangay->id,
+    ]);
+
+    $this->actingAs($municipalAdmin)
+        ->post(route('nurses.store'), [
+            'name' => 'Not A Nurse',
+            'email' => 'not-a-nurse@example.com',
+            'barangay_id' => $otherBarangay->id,
+        ])
+        ->assertRedirect();
+
+    expect(User::where('email', 'not-a-nurse@example.com')->value('role'))->toBe('barangay_admin');
+
+    $this->actingAs($barangayAdmin)
+        ->post(route('nurses.store'), [
+            'name' => 'New Nurse',
+            'email' => 'nurse@example.com',
+        ])
+        ->assertRedirect();
+
+    expect(User::where('email', 'nurse@example.com')->value('role'))->toBe('nurse');
+});
+
+test('barangay admins have operational authority within their barangay', function () {
+    $admin = User::factory()->create([
+        'role' => 'barangay_admin',
+        'roles' => ['barangay_admin'],
+        'barangay_id' => Barangay::create(['name' => 'Authority Barangay'])->id,
+    ]);
+
+    expect($admin->canManageChildren())->toBeTrue()
+        ->and($admin->canVerifyVaccinations())->toBeTrue()
+        ->and($admin->canSubmitAefiReports())->toBeTrue()
+        ->and($admin->canManageInventory())->toBeTrue()
+        ->and($admin->canMergeDuplicates())->toBeTrue();
+});

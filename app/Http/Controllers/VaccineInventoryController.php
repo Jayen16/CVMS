@@ -25,7 +25,7 @@ class VaccineInventoryController extends Controller
     public function index(): View
     {
         $user = auth()->user();
-        $this->authorizeInventory($user);
+        $this->authorizeInventoryView($user);
 
         $regionFilter = $user->isSuperAdmin() ? request()->string('region')->toString() : '';
         $provinceFilter = $user->isSuperAdmin() && $regionFilter !== '' ? request()->string('province')->toString() : '';
@@ -84,9 +84,9 @@ class VaccineInventoryController extends Controller
     public function report(Request $request)
     {
         $user = auth()->user();
-        $this->authorizeInventory($user);
+        $this->authorizeInventoryView($user);
         $validated = $request->validate(['barangay' => ['nullable', 'exists:barangays,id']]);
-        $barangayId = $user->isSuperAdmin() ? ($validated['barangay'] ?? null) : $user->barangay_id;
+        $barangayId = $this->requestedBarangay($user, $validated['barangay'] ?? null);
 
         if (! $barangayId) {
             return back()->withErrors(['barangay' => 'Select a barangay before printing the inventory report.']);
@@ -143,9 +143,9 @@ class VaccineInventoryController extends Controller
     public function csv(Request $request)
     {
         $user = auth()->user();
-        $this->authorizeInventory($user);
+        $this->authorizeInventoryView($user);
         $validated = $request->validate(['barangay' => ['nullable', 'exists:barangays,id']]);
-        $barangayId = $user->isSuperAdmin() ? ($validated['barangay'] ?? null) : $user->barangay_id;
+        $barangayId = $this->requestedBarangay($user, $validated['barangay'] ?? null);
 
         if (! $barangayId) {
             return back()->withErrors(['barangay' => 'Select a barangay before exporting inventory data.']);
@@ -403,5 +403,25 @@ class VaccineInventoryController extends Controller
     private function authorizeInventory(?User $user): void
     {
         abort_unless($user?->canManageInventory(), 403);
+    }
+
+    private function authorizeInventoryView(?User $user): void
+    {
+        abort_unless($user?->canViewInventory(), 403);
+    }
+
+    private function requestedBarangay(User $user, ?string $barangayId): ?string
+    {
+        if ($user->isSuperAdmin()) {
+            return $barangayId;
+        }
+
+        if ($user->isMunicipalAdmin()) {
+            abort_unless($barangayId && $user->accessibleBarangayIds()->contains($barangayId), 403);
+
+            return $barangayId;
+        }
+
+        return $user->barangay_id;
     }
 }
