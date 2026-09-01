@@ -102,12 +102,19 @@ class ClinicAnnouncement extends Model
             return $query;
         }
 
-        return $query->where(function (Builder $scope) use ($regionId, $provinceId, $municipalityId, $barangayId): void {
+        $barangayIds = Barangay::query()
+            ->when($barangayId, fn (Builder $builder) => $builder->whereKey($barangayId))
+            ->when(! $barangayId && $municipalityId, fn (Builder $builder) => $builder->where('municipality_id', $municipalityId))
+            ->when(! $barangayId && ! $municipalityId && $provinceId, fn (Builder $builder) => $builder->whereHas('municipalityRelation', fn (Builder $location) => $location->where('province_id', $provinceId)))
+            ->when(! $barangayId && ! $municipalityId && ! $provinceId, fn (Builder $builder) => $builder->whereHas('municipalityRelation.province', fn (Builder $location) => $location->where('region_id', $regionId)))
+            ->pluck('id');
+
+        return $query->where(function (Builder $scope) use ($regionId, $provinceId, $municipalityId, $barangayIds): void {
             $scope->whereNull('region_id')->whereNull('province_id')->whereNull('municipality_id')->whereNull('barangay_id')
                 ->orWhere('region_id', $regionId)
                 ->when($provinceId, fn (Builder $target) => $target->orWhere('province_id', $provinceId))
                 ->when($municipalityId, fn (Builder $target) => $target->orWhere('municipality_id', $municipalityId))
-                ->when($barangayId, fn (Builder $target) => $target->orWhere('barangay_id', $barangayId));
+                ->when($barangayIds->isNotEmpty(), fn (Builder $target) => $target->orWhereIn('barangay_id', $barangayIds));
         });
     }
 
