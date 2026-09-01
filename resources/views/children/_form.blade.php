@@ -2,7 +2,7 @@
     $isEditing = $child->exists;
 @endphp
 
-<form method="POST" action="{{ $isEditing ? route('children.update', $child) : route('children.store') }}" class="app-panel grid gap-4">
+<form method="POST" action="{{ $isEditing ? route('children.update', $child) : route('children.store') }}" class="app-panel grid gap-6 {{ $formClass ?? '' }}">
     @csrf
     @if ($isEditing)
         @method('PUT')
@@ -16,6 +16,11 @@
         </div>
     @endif
 
+    <div class="border-t border-slate-200 pt-5 dark:border-zinc-800">
+        <div class="mb-4">
+            <h2 class="text-base font-semibold text-slate-950 dark:text-white">Child details</h2>
+            <p class="mt-1 text-sm text-slate-500 dark:text-zinc-400">Enter the child’s legal name and basic demographic information.</p>
+        </div>
     <div class="grid gap-4 md:grid-cols-3">
         <x-form-field label="First name" name="first_name" :value="$child->first_name" />
         <x-form-field label="Middle name" name="middle_name" :value="$child->middle_name" />
@@ -26,16 +31,26 @@
         <x-form-field label="Birthdate" name="birthdate" type="date" :value="$child->birthdate?->toDateString()" />
         <x-form-field label="Sex" name="sex" type="select" :options="['female' => 'Female', 'male' => 'Male']" :value="$child->sex" />
     </div>
+    </div>
 
+    <div class="border-t border-slate-200 pt-5 dark:border-zinc-800">
+        <div class="mb-4">
+            <h2 class="text-base font-semibold text-slate-950 dark:text-white">Guardian information</h2>
+            <p class="mt-1 text-sm text-slate-500 dark:text-zinc-400">Add a reliable contact and the child’s current home address.</p>
+        </div>
     <div class="grid gap-4 md:grid-cols-2">
         <x-form-field label="Guardian name" name="guardian_name" :value="$child->guardian_name" />
         <x-form-field label="Guardian contact" name="guardian_contact" :value="$child->guardian_contact" />
     </div>
 
     <x-form-field label="Address" name="address" type="textarea" :value="$child->address" />
+    </div>
 
-    <div class="flex justify-end gap-2">
+    <div class="flex flex-col-reverse justify-between gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center dark:border-zinc-800">
+        <p class="text-xs text-slate-500 dark:text-zinc-400">You can add vaccination records after saving this profile.</p>
+        <div class="flex justify-end gap-2">
         <a href="{{ $isEditing ? route('children.show', $child) : route('children.index') }}" class="app-button-secondary">Cancel</a>
-        <button class="app-button-primary">{{ $isEditing ? 'Save changes' : 'Save child' }}</button>
+        <button class="app-button-primary px-5">{{ $isEditing ? 'Save changes' : 'Save child' }}</button>
+        </div>
     </div>
 </form>
