@@ -21,7 +21,7 @@ class AdverseEventReportController extends Controller
             ->with(['child.barangay', 'vaccineType', 'reporter'])
             ->when(
                 ! auth()->user()->isSuperAdmin(),
-                fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', auth()->user()->barangay_id))
+                fn ($query) => $query->whereHas('child', fn ($child) => $child->whereIn('barangay_id', auth()->user()->accessibleBarangayIds()))
             )
             ->latest('event_date')
             ->paginate(15);
@@ -35,7 +35,7 @@ class AdverseEventReportController extends Controller
 
         $reports = AdverseEventReport::query()
             ->with(['child.barangay', 'vaccineType', 'reporter'])
-            ->when(! auth()->user()->isSuperAdmin(), fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', auth()->user()->barangay_id)))
+            ->when(! auth()->user()->isSuperAdmin(), fn ($query) => $query->whereHas('child', fn ($child) => $child->whereIn('barangay_id', auth()->user()->accessibleBarangayIds())))
             ->orderBy('event_date')
             ->get();
 

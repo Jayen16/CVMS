@@ -51,7 +51,7 @@ class ChildProfileController extends Controller
         abort_if(auth()->user()->barangay_id === null, 403, 'A nurse must be assigned to a barangay before creating child profiles.');
 
         return view('children.create', [
-            'child' => new ChildProfile(),
+            'child' => new ChildProfile,
             'barangays' => Barangay::orderBy('name')->get(),
         ]);
     }
@@ -169,25 +169,14 @@ class ChildProfileController extends Controller
     {
         $query = ChildProfile::query();
 
-        if (auth()->user()->isNurse()) {
-            $query->where('barangay_id', auth()->user()->barangay_id);
-        }
-
-        if (auth()->user()->isBarangayAdmin()) {
-            $query->where('barangay_id', auth()->user()->barangay_id);
-        }
-
-        if (auth()->user()->isParent()) {
-            $query->whereHas('parents', fn (Builder $query) => $query->whereKey(auth()->id()));
-        }
-
-        return $query;
+        return $query->visibleTo(auth()->user());
     }
 
     private function authorizeChild(ChildProfile $child): void
     {
         abort_if(auth()->user()->isNurse() && $child->barangay_id !== auth()->user()->barangay_id, 403);
         abort_if(auth()->user()->isBarangayAdmin() && $child->barangay_id !== auth()->user()->barangay_id, 403);
+        abort_if(auth()->user()->isMunicipalAdmin() && ! auth()->user()->accessibleBarangayIds()->contains($child->barangay_id), 403);
         abort_if(
             auth()->user()->isParent() && ! $child->parents()->whereKey(auth()->id())->exists(),
             403

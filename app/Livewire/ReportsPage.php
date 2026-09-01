@@ -2,8 +2,8 @@
 
 namespace App\Livewire;
 
-use App\Models\Barangay;
 use App\Models\AdverseEventReport;
+use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\User;
 use App\Models\VaccinationRecord;
@@ -70,7 +70,7 @@ class ReportsPage extends Component
             )
             ->when(
                 ! $user->isSuperAdmin(),
-                fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))
+                fn ($query) => $query->whereHas('child', fn ($child) => $child->whereIn('barangay_id', $user->accessibleBarangayIds()))
             );
 
         $barangayRecords = VaccinationRecord::query()
@@ -82,7 +82,7 @@ class ReportsPage extends Component
                 $scheduleVersionFilter !== 'all' && $scheduleVersionFilter !== 'unassigned',
                 fn ($query) => $query->where('vaccination_records.suggested_schedule_version_id', (int) $scheduleVersionFilter)
             )
-            ->when(! $user->isSuperAdmin(), fn ($query) => $query->where('child_profiles.barangay_id', $user->barangay_id))
+            ->when(! $user->isSuperAdmin(), fn ($query) => $query->whereIn('child_profiles.barangay_id', $user->accessibleBarangayIds()))
             ->groupBy('child_profiles.barangay_id')
             ->pluck('total', 'barangay_id');
 
@@ -111,7 +111,7 @@ class ReportsPage extends Component
                         $scheduleVersionFilter !== 'all' && $scheduleVersionFilter !== 'unassigned',
                         fn ($builder) => $builder->where('suggested_schedule_version_id', (int) $scheduleVersionFilter)
                     )
-                    ->when(! $user->isSuperAdmin(), fn ($builder) => $builder->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))),
+                    ->when(! $user->isSuperAdmin(), fn ($builder) => $builder->whereHas('child', fn ($child) => $child->whereIn('barangay_id', $user->accessibleBarangayIds()))),
                 'adverseEventReports as report_aefi_count' => fn ($query) => $query
                     ->whereBetween('event_date', [
                         $startDate->toDateString(),
@@ -151,7 +151,7 @@ class ReportsPage extends Component
             ->whereBetween('event_date', [$startDate->toDateString(), $endDate->toDateString()])
             ->when(
                 ! $user->isSuperAdmin(),
-                fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id))
+                fn ($query) => $query->whereHas('child', fn ($child) => $child->whereIn('barangay_id', $user->accessibleBarangayIds()))
             );
 
         $recentAefiReports = $includeAefi
@@ -196,7 +196,7 @@ class ReportsPage extends Component
                         $scheduleVersionFilter !== 'all' && $scheduleVersionFilter !== 'unassigned',
                         fn ($query) => $query->where('suggested_schedule_version_id', (int) $scheduleVersionFilter)
                     )
-                    ->when(! $user->isSuperAdmin(), fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', $user->barangay_id)))
+                    ->when(! $user->isSuperAdmin(), fn ($query) => $query->whereHas('child', fn ($child) => $child->whereIn('barangay_id', $user->accessibleBarangayIds())))
                     ->count(),
             ],
             'barangays' => $barangays,

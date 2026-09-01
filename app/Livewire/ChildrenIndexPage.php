@@ -64,18 +64,6 @@ class ChildrenIndexPage extends Component
     {
         $query = ChildProfile::query();
 
-        if (auth()->user()->isNurse()) {
-            $query->where('barangay_id', auth()->user()->barangay_id);
-        }
-
-        if (auth()->user()->isBarangayAdmin()) {
-            $query->where('barangay_id', auth()->user()->barangay_id);
-        }
-
-        if (auth()->user()->isParent()) {
-            $query->whereHas('parents', fn (Builder $builder) => $builder->whereKey(auth()->id()));
-        }
-
-        return $query;
+        return $query->visibleTo(auth()->user());
     }
 }

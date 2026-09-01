@@ -52,7 +52,7 @@ class AdminReportController extends Controller
             ->whereBetween('administered_at', [$data['startDate']->toDateString(), $data['endDate']->toDateString()])
             ->when($data['scheduleVersionFilter'] === 'unassigned', fn ($query) => $query->whereNull('suggested_schedule_version_id'))
             ->when($data['scheduleVersionFilter'] !== 'all' && $data['scheduleVersionFilter'] !== 'unassigned', fn ($query) => $query->where('suggested_schedule_version_id', (int) $data['scheduleVersionFilter']))
-            ->when(! auth()->user()->isSuperAdmin(), fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', auth()->user()->barangay_id)))
+            ->when(! auth()->user()->isSuperAdmin(), fn ($query) => $query->whereHas('child', fn ($child) => $child->whereIn('barangay_id', auth()->user()->accessibleBarangayIds())))
             ->orderBy('administered_at')
             ->get();
 

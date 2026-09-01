@@ -123,6 +123,22 @@
                 @endforelse
             </div>
         </section>
+    @elseif ($role === 'municipal_admin')
+        <div class="grid gap-4 md:grid-cols-5">
+            <x-stat-card label="Assigned municipality" :value="$stats['municipality']" />
+            <x-stat-card label="Nurses" :value="$stats['nurses']" />
+            <x-stat-card label="Children" :value="$stats['children']" />
+            <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" />
+            <x-stat-card label="Pending verification" :value="$stats['pending']" />
+        </div>
+        <section class="app-card mt-4">
+            <div class="app-card-header"><h2 class="app-card-title">Recent child profiles</h2></div>
+            <div class="divide-y divide-slate-200 dark:divide-zinc-800">
+                @forelse ($children as $child)
+                    <a href="{{ route('children.show', $child) }}" class="flex items-center justify-between px-5 py-4" wire:navigate><span class="font-medium">{{ $child->full_name }}</span><span>{{ $child->vaccinations_count }} records</span></a>
+                @empty <p class="px-4 py-6 text-sm text-zinc-500">No child profiles yet.</p> @endforelse
+            </div>
+        </section>
     @elseif ($role === 'parent')
         <div class="grid gap-4 md:grid-cols-3">
             <x-stat-card label="Linked children" :value="$stats['children']" />

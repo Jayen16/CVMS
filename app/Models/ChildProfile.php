@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\UsesUuidPrimaryKey;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -42,6 +43,19 @@ class ChildProfile extends Model
     public function barangay(): BelongsTo
     {
         return $this->belongsTo(Barangay::class);
+    }
+
+    /** @param Builder<self> $query */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->isSuperAdmin()) {
+            return $query;
+        }
+        if ($user->isParent()) {
+            return $query->whereHas('parents', fn (Builder $parents) => $parents->whereKey($user->id));
+        }
+
+        return $query->whereIn('barangay_id', $user->accessibleBarangayIds());
     }
 
     /**
