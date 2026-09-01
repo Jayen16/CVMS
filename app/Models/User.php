@@ -36,7 +36,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'phone', 'password', 'role', 'roles', 'barangay_id', 'municipality_id', 'is_active', 'invitation_accepted_at', 'archived_at'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'role', 'roles', 'permissions', 'barangay_id', 'municipality_id', 'is_active', 'invitation_accepted_at', 'archived_at'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -54,6 +54,7 @@ class User extends Authenticatable implements PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'roles' => 'array',
+            'permissions' => 'array',
             'is_active' => 'boolean',
             'invitation_accepted_at' => 'datetime',
             'archived_at' => 'datetime',
@@ -257,22 +258,22 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canManageChildren(): bool
     {
-        return $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('manage_children'));
     }
 
     public function canViewChildrenRegistry(): bool
     {
-        return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || $this->isNurse() || $this->isParent();
+        return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('view_children')) || $this->isParent();
     }
 
     public function canVerifyVaccinations(): bool
     {
-        return $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('verify_vaccinations'));
     }
 
     public function canSubmitAefiReports(): bool
     {
-        return $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('submit_aefi_reports'));
     }
 
     public function canViewOversight(): bool
@@ -282,12 +283,12 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canViewVerificationQueue(): bool
     {
-        return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('view_verification_queue'));
     }
 
     public function canViewAefiReports(): bool
     {
-        return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('view_aefi_reports'));
     }
 
     /** @return Collection<int, string> */
@@ -305,32 +306,110 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canManageInventory(): bool
     {
-        return $this->isSuperAdmin() || $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isSuperAdmin() || $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('manage_inventory'));
     }
 
     public function canViewInventory(): bool
     {
-        return $this->isSuperAdmin() || $this->isMunicipalAdmin() || $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isSuperAdmin() || $this->isMunicipalAdmin() || $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('view_inventory'));
     }
 
     public function canViewDuplicates(): bool
     {
-        return $this->isSuperAdmin() || $this->isMunicipalAdmin() || $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isSuperAdmin() || $this->isMunicipalAdmin() || $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('view_duplicates'));
     }
 
     public function canMergeDuplicates(): bool
     {
-        return $this->isSuperAdmin() || $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isSuperAdmin() || $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('merge_duplicates'));
     }
 
     public function canViewDefaulters(): bool
     {
-        return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('view_defaulters'));
     }
 
     public function canManageAnnouncements(): bool
     {
-        return $this->canManageBarangayStaff() || $this->isNurse();
+        return $this->canManageBarangayStaff() || ($this->isNurse() && $this->hasNursePermission('manage_announcements'));
+    }
+
+    /** @return array<string, string> */
+    public static function nursePermissionDefinitions(): array
+    {
+        return [
+            'view_children' => 'View child registry',
+            'manage_children' => 'Create and update child records',
+            'verify_vaccinations' => 'Verify or reject vaccinations',
+            'view_verification_queue' => 'View verification queue',
+            'submit_aefi_reports' => 'Submit AEFI reports',
+            'view_aefi_reports' => 'View AEFI reports',
+            'manage_inventory' => 'Manage vaccine inventory',
+            'view_inventory' => 'View vaccine inventory',
+            'view_duplicates' => 'View possible duplicates',
+            'merge_duplicates' => 'Merge duplicate child records',
+            'view_defaulters' => 'View defaulters',
+            'manage_announcements' => 'Manage clinic announcements',
+        ];
+    }
+
+    /** @return array<int, string> */
+    public static function defaultNursePermissions(): array
+    {
+        return array_keys(self::nursePermissionDefinitions());
+    }
+
+    /** @return array<string, array<string, string>> */
+    public static function nursePermissionGroups(): array
+    {
+        $permissions = self::nursePermissionDefinitions();
+
+        return [
+            'Child Records' => array_intersect_key($permissions, array_flip([
+                'view_children',
+                'manage_children',
+                'view_defaulters',
+                'view_duplicates',
+                'merge_duplicates',
+            ])),
+            'Vaccination' => array_intersect_key($permissions, array_flip([
+                'verify_vaccinations',
+                'view_verification_queue',
+                'submit_aefi_reports',
+                'view_aefi_reports',
+            ])),
+            'Inventory' => array_intersect_key($permissions, array_flip([
+                'view_inventory',
+                'manage_inventory',
+            ])),
+            'Communications' => array_intersect_key($permissions, array_flip([
+                'manage_announcements',
+            ])),
+        ];
+    }
+
+    /** @return array<int, string> */
+    public function nursePermissions(): array
+    {
+        $permissions = $this->permissions;
+
+        return is_array($permissions)
+            ? array_values(array_intersect(array_keys(self::nursePermissionDefinitions()), $permissions))
+            : self::defaultNursePermissions();
+    }
+
+    public function hasNursePermission(string $permission): bool
+    {
+        return in_array($permission, $this->nursePermissions(), true);
+    }
+
+    /** @param array<int, string> $permissions */
+    public function syncNursePermissions(array $permissions): void
+    {
+        $this->permissions = array_values(array_intersect(
+            array_keys(self::nursePermissionDefinitions()),
+            array_unique($permissions),
+        ));
     }
 
     /**
