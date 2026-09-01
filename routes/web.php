@@ -50,12 +50,15 @@ Route::get('vaccine-cards/{token}', [VaccineCardController::class, 'validateToke
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardPage::class)->name('dashboard');
     Route::get('children', ChildrenIndexPage::class)->name('children.index');
+    Route::get('children/archive', [ChildProfileController::class, 'archiveIndex'])->name('children.archive.index');
     Route::get('children/create', ChildCreatePage::class)->name('children.create');
     Route::post('children', [ChildProfileController::class, 'store'])->name('children.store');
     Route::get('children/{child}', ChildShowPage::class)->name('children.show');
     Route::get('children/{child}/edit', ChildEditPage::class)->name('children.edit');
     Route::put('children/{child}', [ChildProfileController::class, 'update'])->name('children.update');
     Route::post('children/{child}/transfer', [ChildProfileController::class, 'transfer'])->name('children.transfer');
+    Route::post('children/{childId}/archive', [ChildProfileController::class, 'archive'])->name('children.archive');
+    Route::post('children/{childId}/restore', [ChildProfileController::class, 'restore'])->name('children.restore');
     Route::get('children/{child}/timeline', ChildTimelinePage::class)->name('children.timeline');
     Route::get('children/{child}/timeline/pdf', ChildTimelinePdfController::class)->name('children.timeline.pdf');
     Route::get('children/{child}/timeline/csv', [ChildTimelinePdfController::class, 'csv'])->name('children.timeline.csv');

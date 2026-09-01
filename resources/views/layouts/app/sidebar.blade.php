@@ -40,6 +40,7 @@
                 </flux:sidebar.item>
 
                 @if (auth()->user()->canViewChildrenRegistry()
+                    || auth()->user()->canArchiveChildren()
                     || auth()->user()->canViewVerificationQueue()
                     || auth()->user()->canViewDefaulters()
                     || (auth()->user()->canViewDuplicates() && ! auth()->user()->isSuperAdmin())
@@ -48,6 +49,11 @@
                         @if (auth()->user()->canViewChildrenRegistry())
                             <flux:sidebar.item icon="users" :href="route('children.index')" :current="request()->routeIs('children.*')" wire:navigate>
                                 {{ __('Children') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if (auth()->user()->canArchiveChildren())
+                            <flux:sidebar.item icon="archive-box" :href="route('children.archive.index')" :current="request()->routeIs('children.archive.*')" wire:navigate>
+                                {{ __('Archived Children') }}
                             </flux:sidebar.item>
                         @endif
                         @if (auth()->user()->canViewVerificationQueue())

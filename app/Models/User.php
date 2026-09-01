@@ -261,6 +261,14 @@ class User extends Authenticatable implements PasskeyUser
         return $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('manage_children'));
     }
 
+    public function canArchiveChildren(): bool
+    {
+        return $this->isSuperAdmin()
+            || $this->isMunicipalAdmin()
+            || $this->isBarangayAdmin()
+            || ($this->isNurse() && $this->hasNursePermission('archive_children'));
+    }
+
     public function canViewChildrenRegistry(): bool
     {
         return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('view_children')) || $this->isParent();
@@ -340,6 +348,7 @@ class User extends Authenticatable implements PasskeyUser
         return [
             'view_children' => 'View child registry',
             'manage_children' => 'Create and update child records',
+            'archive_children' => 'Archive and restore child records',
             'verify_vaccinations' => 'Verify or reject vaccinations',
             'view_verification_queue' => 'View verification queue',
             'submit_aefi_reports' => 'Submit AEFI reports',
@@ -368,6 +377,7 @@ class User extends Authenticatable implements PasskeyUser
             'Child Records' => array_intersect_key($permissions, array_flip([
                 'view_children',
                 'manage_children',
+                'archive_children',
                 'view_defaulters',
                 'view_duplicates',
                 'merge_duplicates',

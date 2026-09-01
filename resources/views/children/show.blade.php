@@ -60,6 +60,20 @@
                 @if (auth()->user()->canManageChildren())
                     <a href="{{ route('children.edit', $child) }}" class="app-button-secondary">Edit child info</a>
                 @endif
+                @if (auth()->user()->canArchiveChildren())
+                    <form method="POST" action="{{ route('children.archive', $child->id) }}" class="flex flex-wrap items-center gap-2" onsubmit="return confirm('Archive this child record? Clinical history will be retained.')">
+                        @csrf
+                        <select name="archive_reason" class="app-input !w-auto !py-2 text-sm" aria-label="Archive reason" required>
+                            <option value="">Archive reason…</option>
+                            <option value="Inactive">Inactive</option>
+                            <option value="Transferred">Transferred</option>
+                            <option value="Duplicate">Duplicate</option>
+                            <option value="Deceased">Deceased</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <button class="app-button-danger">Archive child</button>
+                    </form>
+                @endif
                 <a href="{{ route('children.card', $child) }}" class="app-button-secondary">Digital vaccine card</a>
                 <a href="{{ route('children.timeline', $child) }}" class="app-button-secondary">View timeline chart</a>
                 <a href="{{ route('children.timeline.pdf', $child) }}" class="app-button-secondary" target="_blank" rel="noopener">Timeline PDF</a>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\VaccinationRecord;
@@ -43,6 +44,65 @@ class ChildProfileController extends Controller
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
             'selectedVaccineTypeId' => $vaccineTypeId,
         ]);
+    }
+
+    public function archiveIndex(): View
+    {
+        abort_unless(auth()->user()->canArchiveChildren(), 403);
+
+        $children = ChildProfile::withoutGlobalScope('not_archived')
+            ->whereNotNull('archived_at')
+            ->whereIn('barangay_id', auth()->user()->accessibleBarangayIds())
+            ->with(['barangay', 'archiver'])
+            ->latest('archived_at')
+            ->paginate(12);
+
+        return view('children.archive', ['children' => $children]);
+    }
+
+    public function archive(Request $request, string $childId): RedirectResponse
+    {
+        abort_unless(auth()->user()->canArchiveChildren(), 403);
+
+        $child = ChildProfile::withoutGlobalScope('not_archived')->findOrFail($childId);
+        $this->authorizeChildArchive($child);
+
+        $validated = $request->validate([
+            'archive_reason' => ['required', 'string', 'max:100'],
+        ]);
+
+        abort_if($child->isArchived(), 422, 'This child record is already archived.');
+
+        $child->update([
+            'archived_at' => now(),
+            'archived_by' => auth()->id(),
+            'archive_reason' => $validated['archive_reason'],
+        ]);
+
+        AuditLog::recordAction('child_archived', 'Archived child record '.$child->full_name, $child, [
+            'reason' => $validated['archive_reason'],
+        ]);
+
+        return to_route('children.index')->with('status', 'Child record archived. Clinical history was retained.');
+    }
+
+    public function restore(string $childId): RedirectResponse
+    {
+        abort_unless(auth()->user()->canArchiveChildren(), 403);
+
+        $child = ChildProfile::withoutGlobalScope('not_archived')->findOrFail($childId);
+        $this->authorizeChildArchive($child);
+        abort_unless($child->isArchived(), 422, 'This child record is not archived.');
+
+        $child->update([
+            'archived_at' => null,
+            'archived_by' => null,
+            'archive_reason' => null,
+        ]);
+
+        AuditLog::recordAction('child_restored', 'Restored child record '.$child->full_name, $child);
+
+        return to_route('children.archive.index')->with('status', 'Child record restored to the active registry.');
     }
 
     public function create(): View
@@ -238,5 +298,12 @@ class ChildProfileController extends Controller
             abort_if(auth()->user()->barangay_id === null, 403);
             abort_if($child->barangay_id !== auth()->user()->barangay_id, 403);
         }
+    }
+
+    private function authorizeChildArchive(ChildProfile $child): void
+    {
+        $user = auth()->user();
+
+        abort_unless($user->isSuperAdmin() || $user->accessibleBarangayIds()->contains($child->barangay_id), 403);
     }
 }

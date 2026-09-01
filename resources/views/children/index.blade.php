@@ -37,6 +37,9 @@
                         <th class="px-4 py-3 font-medium">Barangay</th>
                         <th class="px-4 py-3 font-medium">Records</th>
                         <th class="px-4 py-3 font-medium">Completed doses</th>
+                        @if (auth()->user()->canArchiveChildren())
+                            <th class="px-4 py-3 font-medium">Actions</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -46,6 +49,22 @@
                                 <a href="{{ route('children.show', $child) }}" class="font-semibold text-teal-700 hover:underline dark:text-teal-300">{{ $child->full_name }}</a>
                                 <div class="text-xs text-zinc-500">{{ ucfirst($child->sex) }} | Born {{ $child->birthdate->format('M d, Y') }}</div>
                             </td>
+                            @if (auth()->user()->canArchiveChildren())
+                                <td>
+                                    <form method="POST" action="{{ route('children.archive', $child->id) }}" class="flex flex-wrap items-center gap-2" onsubmit="return confirm('Archive this child record? Clinical history will be retained.')">
+                                        @csrf
+                                        <select name="archive_reason" class="app-input !w-auto !py-1.5 text-xs" aria-label="Archive reason for {{ $child->full_name }}" required>
+                                            <option value="">Reason…</option>
+                                            <option value="Inactive">Inactive</option>
+                                            <option value="Transferred">Transferred</option>
+                                            <option value="Duplicate">Duplicate</option>
+                                            <option value="Deceased">Deceased</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                        <button class="app-button-danger !px-3 !py-1.5 !text-xs">Archive</button>
+                                    </form>
+                                </td>
+                            @endif
                             <td>{{ $child->ageLabel() }}</td>
                             <td>{{ $child->barangay->name }}</td>
                             <td>
@@ -58,7 +77,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500">No child profiles found.</td></tr>
+                        <tr><td colspan="{{ auth()->user()->canArchiveChildren() ? 6 : 5 }}" class="px-4 py-8 text-center text-zinc-500">No child profiles found.</td></tr>
                     @endforelse
                 </tbody>
             </table>

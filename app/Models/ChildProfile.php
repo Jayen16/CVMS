@@ -28,12 +28,16 @@ class ChildProfile extends Model
         'address',
         'vaccine_card_token',
         'sync_uuid',
+        'archived_at',
+        'archived_by',
+        'archive_reason',
     ];
 
     protected function casts(): array
     {
         return [
             'birthdate' => 'date',
+            'archived_at' => 'datetime',
         ];
     }
 
@@ -58,12 +62,29 @@ class ChildProfile extends Model
         return $query->whereIn('barangay_id', $user->accessibleBarangayIds());
     }
 
+    /** @param Builder<self> $query */
+    public function scopeNotArchived(Builder $query): Builder
+    {
+        return $query->whereNull($query->getModel()->qualifyColumn('archived_at'));
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
     /**
      * @return BelongsTo<User, $this>
      */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function archiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'archived_by');
     }
 
     /**
@@ -133,6 +154,8 @@ class ChildProfile extends Model
 
     protected static function booted(): void
     {
+        static::addGlobalScope('not_archived', fn (Builder $query) => $query->whereNull($query->getModel()->qualifyColumn('archived_at')));
+
         static::creating(function (ChildProfile $child): void {
             if (blank($child->vaccine_card_token)) {
                 $child->vaccine_card_token = (string) Str::uuid();
