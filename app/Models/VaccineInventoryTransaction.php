@@ -22,6 +22,7 @@ class VaccineInventoryTransaction extends Model
     protected $fillable = [
         'barangay_id',
         'vaccine_type_id',
+        'vaccine_inventory_item_id',
         'recorded_by',
         'transaction_type',
         'movement',
@@ -50,6 +51,11 @@ class VaccineInventoryTransaction extends Model
     public function vaccineType(): BelongsTo
     {
         return $this->belongsTo(VaccineType::class);
+    }
+
+    public function inventoryItem(): BelongsTo
+    {
+        return $this->belongsTo(VaccineInventoryItem::class, 'vaccine_inventory_item_id');
     }
 
     public function recorder(): BelongsTo

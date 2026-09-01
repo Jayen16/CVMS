@@ -83,7 +83,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('children/{child}/aefi-reports', [AdverseEventReportController::class, 'store'])->name('children.aefi-reports.store');
     Route::get('vaccine-schedules', VaccineSchedulesPage::class)->name('vaccine-schedules.index');
     Route::get('vaccine-inventory', [VaccineInventoryController::class, 'index'])->name('vaccine-inventory.index');
+    Route::get('vaccine-inventory/report', [VaccineInventoryController::class, 'report'])->name('vaccine-inventory.report');
+    Route::get('vaccine-inventory/create', [VaccineInventoryController::class, 'create'])->name('vaccine-inventory.create');
     Route::post('vaccine-inventory', [VaccineInventoryController::class, 'store'])->name('vaccine-inventory.store');
+    Route::delete('vaccine-inventory/{inventoryItem}', [VaccineInventoryController::class, 'destroy'])->name('vaccine-inventory.destroy');
     Route::get('vaccine-schedules/create', VaccineScheduleFormPage::class)->name('vaccine-schedules.create');
     Route::post('vaccine-schedules', [VaccineScheduleController::class, 'store'])->name('vaccine-schedules.store');
     Route::get('vaccine-schedules/{vaccineSchedule}/edit', VaccineScheduleFormPage::class)->name('vaccine-schedules.edit');
