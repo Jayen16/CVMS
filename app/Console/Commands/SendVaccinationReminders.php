@@ -7,6 +7,7 @@ use App\Models\ChildProfile;
 use App\Models\User;
 use App\Models\VaccinationReminder;
 use App\Services\ImmunizationSuggestionService;
+use App\Services\InAppNotificationService;
 use App\Services\Sms\SmsGatewayFactory;
 use Carbon\CarbonInterface;
 use Illuminate\Console\Command;
@@ -20,7 +21,7 @@ class SendVaccinationReminders extends Command
 
     protected $description = 'Send due vaccination reminders to linked parents by email and/or SMS.';
 
-    public function handle(ImmunizationSuggestionService $suggestions, SmsGatewayFactory $smsFactory): int
+    public function handle(ImmunizationSuggestionService $suggestions, SmsGatewayFactory $smsFactory, InAppNotificationService $notifications): int
     {
         if (! config('reminders.enabled')) {
             $this->info('Vaccination reminders are disabled.');
@@ -38,7 +39,7 @@ class SendVaccinationReminders extends Command
             ->with('parents')
             ->whereHas('parents')
             ->orderBy('id')
-            ->chunkById(100, function ($children) use ($suggestions, $smsFactory, $channels, $today, $latestDueDate, &$sentCount, &$skippedCount): void {
+            ->chunkById(100, function ($children) use ($suggestions, $smsFactory, $notifications, $channels, $today, $latestDueDate, &$sentCount, &$skippedCount): void {
                 foreach ($children as $child) {
                     $suggestion = $suggestions->suggestNextDose($child);
 
@@ -64,7 +65,7 @@ class SendVaccinationReminders extends Command
                                 continue;
                             }
 
-                            $this->sendReminder($child, $parent, $suggestion, $channel, $smsFactory, $today);
+                            $this->sendReminder($child, $parent, $suggestion, $channel, $smsFactory, $today, $notifications);
                             $sentCount++;
                         }
                     }
@@ -124,7 +125,7 @@ class SendVaccinationReminders extends Command
     /**
      * @param  array{vaccine_code: string|null, vaccine_name: string|null, dose_number: int|null, due_at: Carbon|null, note: string}  $suggestion
      */
-    private function sendReminder(ChildProfile $child, User $parent, array $suggestion, string $channel, SmsGatewayFactory $smsFactory, CarbonInterface $today): void
+    private function sendReminder(ChildProfile $child, User $parent, array $suggestion, string $channel, SmsGatewayFactory $smsFactory, CarbonInterface $today, InAppNotificationService $notifications): void
     {
         $reminder = VaccinationReminder::updateOrCreate([
             'child_profile_id' => $child->id,
@@ -161,6 +162,13 @@ class SendVaccinationReminders extends Command
                 'status' => 'sent',
                 'sent_at' => $today,
             ]);
+
+            $notifications->vaccinationDue(
+                $parent,
+                "vaccination-due:{$child->id}:{$suggestion['vaccine_name']}:{$suggestion['dose_number']}:{$suggestion['due_at']->toDateString()}",
+                $this->smsMessage($child, $suggestion),
+                route('children.show', $child),
+            );
         } catch (Throwable $exception) {
             $reminder->update([
                 'status' => 'failed',

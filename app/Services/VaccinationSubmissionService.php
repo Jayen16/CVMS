@@ -13,9 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 class VaccinationSubmissionService
 {
-    public function __construct(private readonly OfflineSyncService $offlineSync)
-    {
-    }
+    public function __construct(private readonly OfflineSyncService $offlineSync) {}
 
     /**
      * @param  array<string, mixed>  $input
@@ -85,7 +83,12 @@ class VaccinationSubmissionService
             'proof_paths' => $proofPaths === [] ? null : $proofPaths,
         ]);
 
-        $this->offlineSync->queueUpsert($record->load(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier']));
+        $record->load(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier']);
+        $this->offlineSync->queueUpsert($record);
+
+        if ($user->isParent()) {
+            app(InAppNotificationService::class)->vaccinationSubmitted($record);
+        }
 
         return $record;
     }
@@ -148,7 +151,6 @@ class VaccinationSubmissionService
     }
 
     /**
-     * @param  mixed  $proofFiles
      * @return list<string>
      */
     private function storeProofs(mixed $proofFiles): array

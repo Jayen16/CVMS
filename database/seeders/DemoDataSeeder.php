@@ -11,11 +11,12 @@ use App\Models\ClinicAnnouncement;
 use App\Models\OfflineSyncOutbox;
 use App\Models\SyncStatus;
 use App\Models\User;
-use App\Models\VaccinationReminder;
 use App\Models\VaccinationRecord;
+use App\Models\VaccinationReminder;
 use App\Models\VaccineSchedule;
 use App\Models\VaccineScheduleVersion;
 use App\Models\VaccineType;
+use App\Notifications\InAppNotification;
 use App\Services\ImmunizationSuggestionService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -60,6 +61,7 @@ class DemoDataSeeder extends Seeder
         $this->seedChildrenAndVaccinationHistories();
         $this->seedAefiReports();
         $this->seedReminders();
+        $this->seedNotifications();
         $this->seedSyncData();
         $this->seedAuditLogs();
     }
@@ -868,6 +870,78 @@ class DemoDataSeeder extends Seeder
             $this->users['ana_santos']->phone,
             'pending',
         );
+    }
+
+    private function seedNotifications(): void
+    {
+        $child = $this->children['starter_defaulter'] ?? ChildProfile::query()->first();
+
+        if ($child === null) {
+            return;
+        }
+
+        $this->upsertNotification(
+            $this->users['starter_parent'],
+            'demo-vaccination-reminder',
+            'Vaccination reminder',
+            "{$child->full_name} is overdue for a vaccination. Please visit the clinic.",
+            route('children.show', $child),
+            'bell-alert',
+        );
+
+        $this->upsertNotification(
+            $this->users['starter_parent'],
+            'demo-submission-approved',
+            'Vaccination submission approved',
+            "The vaccination record for {$child->full_name} was approved by the clinic.",
+            route('children.show', $child),
+            'check-circle',
+            read: true,
+        );
+
+        $this->upsertNotification(
+            $this->users['starter_nurse'],
+            'demo-new-submission',
+            'New vaccination submission',
+            'A parent submitted a vaccination record that needs verification.',
+            route('verification-queue.index'),
+            'clipboard-document-check',
+        );
+
+        $this->upsertNotification(
+            $this->users['starter_nurse'],
+            'demo-clinic-announcement',
+            'Saturday well-baby clinic',
+            'The next well-baby clinic schedule has been posted.',
+            route('announcements.index'),
+            'megaphone',
+            read: true,
+        );
+    }
+
+    private function upsertNotification(
+        User $user,
+        string $key,
+        string $title,
+        string $body,
+        string $actionUrl,
+        string $icon,
+        bool $read = false,
+    ): void {
+        $exists = $user->notifications()
+            ->where('type', InAppNotification::class)
+            ->get()
+            ->contains(fn ($notification) => ($notification->data['key'] ?? null) === $key);
+
+        if ($exists) {
+            return;
+        }
+
+        $user->notify(new InAppNotification($key, $title, $body, $actionUrl, $icon));
+
+        if ($read) {
+            $user->notifications()->latest()->first()?->markAsRead();
+        }
     }
 
     private function seedSyncData(): void

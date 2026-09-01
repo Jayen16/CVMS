@@ -79,20 +79,28 @@
             <flux:spacer />
 
             <div class="hidden px-3 pb-3 lg:block">
+                <x-notification-bell />
+
+                <div class="mt-3">
                 <flux:radio.group x-data variant="segmented" x-model="$flux.appearance" class="app-appearance-toggle">
                     <flux:radio value="light" icon="sun">Day</flux:radio>
                     <flux:radio value="dark" icon="moon">Night</flux:radio>
                 </flux:radio.group>
+                </div>
             </div>
 
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>
+
+        <x-notification-bell drawer-only />
 
         <!-- Mobile User Menu -->
         <flux:header class="border-b border-slate-200 bg-white/95 dark:border-zinc-800 dark:bg-zinc-950/95 lg:hidden">
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
 
             <flux:spacer />
+
+            <x-notification-bell compact />
 
             <flux:dropdown position="top" align="end">
                 <flux:profile

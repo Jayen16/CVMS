@@ -5,6 +5,8 @@ namespace App\Livewire;
 use App\Models\Barangay;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineType;
+use App\Services\InAppNotificationService;
+use App\Services\OfflineSyncService;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Title;
@@ -76,39 +78,41 @@ class VerificationQueuePage extends Component
         }
     }
 
-    public function verify(string $recordId): void
+    public function verify(string $recordId, InAppNotificationService $notifications): void
     {
         $record = VaccinationRecord::findOrFail($recordId);
         abort_unless($record->isPendingVerification(), 403);
         abort_unless(auth()->user()->canVerifyVaccinations(), 403);
         abort_if($record->child->barangay_id !== auth()->user()->barangay_id, 403);
 
-        app(\App\Services\OfflineSyncService::class)->queueUpsert(
+        app(OfflineSyncService::class)->queueUpsert(
             tap($record, fn ($model) => $model->update([
                 'verification_status' => 'verified',
                 'verified_by' => auth()->id(),
                 'verified_at' => now(),
             ]))->fresh(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier'])
         );
+        $notifications->vaccinationVerified($record);
 
         $this->cancelConfirmation();
         Flux::toast(variant: 'success', text: 'Vaccination record verified.');
     }
 
-    public function reject(string $recordId): void
+    public function reject(string $recordId, InAppNotificationService $notifications): void
     {
         $record = VaccinationRecord::findOrFail($recordId);
         abort_unless($record->isPendingVerification(), 403);
         abort_unless(auth()->user()->canVerifyVaccinations(), 403);
         abort_if($record->child->barangay_id !== auth()->user()->barangay_id, 403);
 
-        app(\App\Services\OfflineSyncService::class)->queueUpsert(
+        app(OfflineSyncService::class)->queueUpsert(
             tap($record, fn ($model) => $model->update([
                 'verification_status' => 'rejected',
                 'verified_by' => auth()->id(),
                 'verified_at' => now(),
             ]))->fresh(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier'])
         );
+        $notifications->vaccinationRejected($record);
 
         $this->cancelConfirmation();
         Flux::toast(variant: 'success', text: 'Vaccination record rejected.');
