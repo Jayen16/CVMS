@@ -15,7 +15,10 @@
         @if (auth()->user()->canManageBarangayStaff() || auth()->user()->isSuperAdmin())
             <form method="POST" action="{{ route('sync.manual') }}">
                 @csrf
-                <button class="app-button-primary">Sync now</button>
+            <button class="app-button-primary inline-flex items-center gap-2" aria-label="Sync data now">
+                <flux:icon.arrow-path class="size-4" />
+                <span>Sync now</span>
+            </button>
             </form>
         @endif
     </div>

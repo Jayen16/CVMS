@@ -6,14 +6,16 @@
                 <p class="page-subtitle">Generate barangay, vaccine, verification, and source statistics for a selected reporting period.</p>
             </div>
 
-            <a
-                href="{{ route('reports.pdf', request()->only(['start_date', 'end_date', 'schedule_version', 'include_aefi'])) }}"
-                class="app-button-primary"
-                target="_blank"
-                rel="noopener"
-            >
-                Export PDF
-            </a>
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ route('reports.csv', request()->only(['start_date', 'end_date', 'schedule_version', 'include_aefi'])) }}" class="app-button-secondary inline-flex items-center gap-2" aria-label="Export report data for Excel as CSV">
+                    <flux:icon.arrow-down-tray class="size-4" />
+                    <span>Export Excel</span>
+                </a>
+                <a href="{{ route('reports.pdf', request()->only(['start_date', 'end_date', 'schedule_version', 'include_aefi'])) }}" class="app-button-primary inline-flex items-center gap-2" target="_blank" rel="noopener" aria-label="Print report as PDF">
+                    <flux:icon.printer class="size-4" />
+                    <span>Print PDF</span>
+                </a>
+            </div>
         </div>
 
         <section class="app-card p-4">

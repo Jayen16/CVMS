@@ -6,7 +6,10 @@
                 <h1 class="page-title mt-2">Digital child vaccine card</h1>
                 <p class="page-subtitle">Download or present this QR-enabled card for quick clinic validation.</p>
             </div>
-            <a href="{{ route('children.card.pdf', $child) }}" class="app-button-primary">Download PDF</a>
+            <a href="{{ route('children.card.pdf', $child) }}" class="app-button-primary inline-flex items-center gap-2" aria-label="Download vaccine card as PDF">
+                <flux:icon.printer class="size-4" />
+                <span>Print PDF</span>
+            </a>
         </div>
 
         <section class="app-card">

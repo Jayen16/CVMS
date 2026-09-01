@@ -14,8 +14,18 @@
             <span class="rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-sm font-medium text-teal-700 dark:text-teal-300">
                 {{ auth()->user()->isSuperAdmin() ? ($barangays->firstWhere('id', $selectedBarangay)?->name ?? 'Select barangay') : (auth()->user()->barangay?->name ?? 'Unassigned') }}
             </span>
-            <a href="{{ route('vaccine-inventory.report', auth()->user()->isSuperAdmin() && $selectedBarangay ? ['barangay' => $selectedBarangay] : []) }}" class="app-button-secondary" target="_blank" rel="noopener">Print report</a>
-            <a href="{{ route('vaccine-inventory.create') }}" class="app-button-primary">Add stock</a>
+            <a href="{{ route('vaccine-inventory.csv', auth()->user()->isSuperAdmin() && $selectedBarangay ? ['barangay' => $selectedBarangay] : []) }}" class="app-button-secondary inline-flex items-center gap-2" aria-label="Export inventory data for Excel as CSV">
+                <flux:icon.arrow-down-tray class="size-4" />
+                <span>Export Excel</span>
+            </a>
+            <a href="{{ route('vaccine-inventory.report', auth()->user()->isSuperAdmin() && $selectedBarangay ? ['barangay' => $selectedBarangay] : []) }}" class="app-button-secondary inline-flex items-center gap-2" target="_blank" rel="noopener" aria-label="Print inventory report as PDF">
+                <flux:icon.printer class="size-4" />
+                <span>Print PDF</span>
+            </a>
+            <a href="{{ route('vaccine-inventory.create') }}" class="app-button-primary inline-flex items-center gap-2" aria-label="Add vaccine stock">
+                <flux:icon.plus class="size-4" />
+                <span>Add stock</span>
+            </a>
         </div>
     </div>
 

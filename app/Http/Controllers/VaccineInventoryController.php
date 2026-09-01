@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\VaccineInventoryItem;
 use App\Models\VaccineInventoryTransaction;
 use App\Models\VaccineType;
+use App\Support\CsvExport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -123,6 +124,50 @@ class VaccineInventoryController extends Controller
             ->landscape()
             ->margins(8, 8, 8, 8)
             ->name('vaccine-inventory-'.$barangay->id.'-'.now()->format('Ymd').'.pdf');
+    }
+
+    public function csv(Request $request)
+    {
+        $user = auth()->user();
+        $this->authorizeInventory($user);
+        $validated = $request->validate(['barangay' => ['nullable', 'exists:barangays,id']]);
+        $barangayId = $user->isSuperAdmin() ? ($validated['barangay'] ?? null) : $user->barangay_id;
+
+        if (! $barangayId) {
+            return back()->withErrors(['barangay' => 'Select a barangay before exporting inventory data.']);
+        }
+
+        $barangay = Barangay::findOrFail($barangayId);
+        $transactions = VaccineInventoryTransaction::query()
+            ->where('barangay_id', $barangayId)
+            ->with(['vaccineType', 'inventoryItem', 'recorder'])
+            ->orderBy('transaction_date')
+            ->orderBy('created_at')
+            ->get();
+
+        AuditLog::recordAction('exported', 'Exported vaccine inventory data', $barangay, ['format' => 'csv']);
+
+        return CsvExport::download('vaccine-inventory-'.$barangay->id.'-'.now()->format('Ymd').'.csv', [
+            'transaction_id', 'barangay', 'transaction_date', 'item_code', 'vaccine', 'vaccine_code',
+            'batch_number', 'expiry_date', 'transaction_type', 'movement', 'quantity', 'signed_quantity',
+            'reference_number', 'recorded_by', 'notes',
+        ], $transactions->map(fn (VaccineInventoryTransaction $transaction): array => [
+            $transaction->id,
+            $barangay->name,
+            $transaction->transaction_date?->toDateString(),
+            $transaction->inventoryItem?->item_code ?? 'Legacy entry',
+            $transaction->vaccineType?->name,
+            $transaction->vaccineType?->code,
+            $transaction->inventoryItem?->batch_number ?? $transaction->batch_number,
+            ($transaction->inventoryItem?->expiry_date ?? $transaction->expiry_date)?->toDateString(),
+            VaccineInventoryTransaction::TYPES[$transaction->transaction_type] ?? $transaction->transaction_type,
+            $transaction->movement,
+            $transaction->quantity,
+            $transaction->signedQuantity(),
+            $transaction->reference_number,
+            $transaction->recorder?->name,
+            $transaction->notes,
+        ]));
     }
 
     public function create(): View
