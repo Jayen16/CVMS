@@ -10,6 +10,30 @@
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
+            @php
+                $sidebarUser = auth()->user()->loadMissing([
+                    'barangay.municipalityRelation.province.region',
+                    'municipality.province.region',
+                ]);
+                $sidebarBarangay = $sidebarUser->barangay;
+                $sidebarMunicipality = $sidebarBarangay?->municipalityRelation ?? $sidebarUser->municipality;
+                $sidebarProvince = $sidebarMunicipality?->province;
+                $sidebarRegion = $sidebarProvince?->region;
+                $sidebarPrimaryLocation = collect([$sidebarBarangay?->name, $sidebarMunicipality?->name])->filter()->implode(' · ');
+                $sidebarSecondaryLocation = collect([$sidebarProvince?->name, $sidebarRegion?->name])->filter()->implode(' · ');
+            @endphp
+
+            @if ($sidebarRegion || $sidebarProvince || $sidebarMunicipality || $sidebarBarangay)
+                <div class="space-y-0.5 px-3 py-2 text-[10px] leading-4 text-slate-500 dark:text-zinc-400">
+                    @if ($sidebarPrimaryLocation !== '')
+                        <div class="truncate font-medium text-slate-600 dark:text-zinc-300">{{ $sidebarPrimaryLocation }}</div>
+                    @endif
+                    @if ($sidebarSecondaryLocation !== '')
+                        <div class="truncate">{{ $sidebarSecondaryLocation }}</div>
+                    @endif
+                </div>
+            @endif
+
             <flux:sidebar.nav>
                 <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                     {{ __('Dashboard') }}
