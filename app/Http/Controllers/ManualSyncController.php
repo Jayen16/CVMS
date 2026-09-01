@@ -10,7 +10,7 @@ class ManualSyncController extends Controller
 {
     public function store(OfflineSyncService $offlineSync): RedirectResponse
     {
-        abort_unless(auth()->user()->canManageBarangayStaff() || auth()->user()->isSuperAdmin(), 403);
+        abort_unless(auth()->user()->isBarangayAdmin(), 403);
 
         $result = $offlineSync->syncPending();
 

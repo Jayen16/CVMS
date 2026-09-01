@@ -73,3 +73,16 @@ test('parents cannot access the sync data page', function () {
         ->get(route('sync.index'))
         ->assertForbidden();
 });
+
+test('nurses cannot access or run manual sync', function () {
+    $barangay = Barangay::create(['name' => 'Nurse Sync Barangay']);
+    $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
+
+    $this->actingAs($nurse)
+        ->get(route('sync.index'))
+        ->assertForbidden();
+
+    $this->actingAs($nurse)
+        ->post(route('sync.manual'))
+        ->assertForbidden();
+});

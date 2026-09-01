@@ -74,7 +74,7 @@
                 @endif
 
                 @if (auth()->user()->canManagePlatform() || auth()->user()->canViewInventory())
-                    <flux:sidebar.group expandable :heading="__('Vaccination Program')" class="grid">
+                    <flux:sidebar.group expandable :heading="__('Inventory')" class="grid">
                         @if (auth()->user()->canManagePlatform())
                             <flux:sidebar.item icon="calendar-days" :href="route('vaccine-schedules.index')" :current="request()->routeIs('vaccine-schedules.*')" wire:navigate>
                                 {{ __('Schedules') }}
@@ -88,7 +88,7 @@
                     </flux:sidebar.group>
                 @endif
 
-                @if (auth()->user()->isSuperAdmin() || auth()->user()->isBarangayAdmin() || auth()->user()->isNurse())
+                @if (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin() || auth()->user()->isBarangayAdmin())
                     <flux:sidebar.group expandable :heading="__('Operations')" class="grid">
                         <flux:sidebar.item icon="arrow-path" :href="route('sync.index')" :current="request()->routeIs('sync.*')" wire:navigate>
                             {{ __('Sync Data') }}

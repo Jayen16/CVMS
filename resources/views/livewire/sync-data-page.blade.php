@@ -15,7 +15,7 @@
             <p class="page-subtitle">Review pending sync items, last completed sync, and run a manual sync when needed.</p>
         </div>
 
-        @if (! auth()->user()->isSuperAdmin())
+        @if (auth()->user()->isBarangayAdmin())
             <form method="POST" action="{{ route('sync.manual') }}">
                 @csrf
             <button class="app-button-primary inline-flex items-center gap-2" aria-label="Sync data now">
@@ -34,7 +34,7 @@
         </div>
     @endunless
 
-    @if (auth()->user()->isSuperAdmin() && ! $viewAll)
+    @if ((auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin()) && ! $viewAll)
         <x-location-filters mode="wire" :regions="$regions" :provinces="$provinces" :municipalities="$municipalities" :barangays="$barangays" :region-value="$regionFilter" :province-value="$provinceFilter" :municipality-value="$municipalityFilter" :barangay-value="$barangayFilter" />
     @endif
 
