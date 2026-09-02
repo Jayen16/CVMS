@@ -42,7 +42,7 @@ class ChildShowPage extends Component
 
             abort_if($editableRecord === null, 404);
             abort_if($editableRecord->submitted_by !== auth()->id(), 403);
-            abort_if(! $editableRecord->isPendingVerification(), 403);
+            abort_if(! $editableRecord->isParentEditable(), 403);
         }
 
         return view('children.show', [

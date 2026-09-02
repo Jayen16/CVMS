@@ -145,6 +145,8 @@ class ParentChildController extends Controller
             'administered_at' => Carbon::parse($record->administered_at)->toDateString(),
             'source' => $record->source,
             'verification_status' => $record->verification_status,
+            'parent_can_edit' => auth()->user()->isParent() && $record->submitted_by === auth()->id() && $record->isParentEditable(),
+            'sync_locked' => ! $record->isParentEditable() && $record->verification_status === 'pending',
             'clinic_name' => $record->clinic_name,
             'clinic_location' => $record->clinic_location,
             'proof_url' => $record->proof_path ? asset('storage/'.$record->proof_path) : null,

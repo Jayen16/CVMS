@@ -120,6 +120,19 @@ class VaccinationRecord extends Model
         return $this->verification_status === 'pending';
     }
 
+    public function isParentEditable(): bool
+    {
+        if (! $this->isPendingVerification()) {
+            return false;
+        }
+
+        return ! \App\Models\OfflineSyncOutbox::query()
+            ->where('entity', 'immunization_records')
+            ->where('model_sync_uuid', $this->sync_uuid)
+            ->whereNotNull('synced_at')
+            ->exists();
+    }
+
     /**
      * @return list<string>
      */
