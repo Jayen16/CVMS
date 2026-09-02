@@ -49,7 +49,7 @@
     </section>
 
     <section class="app-card overflow-hidden">
-        <div class="overflow-x-auto"><table class="app-table"><thead><tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">User</th><th class="px-4 py-3">Action</th><th class="px-4 py-3">Record</th><th class="px-4 py-3">Details</th></tr></thead>
+        <div class="overflow-x-auto" x-data="{ openDetails: null }"><table class="app-table min-w-[1200px]"><thead><tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">User</th><th class="px-4 py-3">Action</th><th class="px-4 py-3">Record</th><th class="w-[42%] px-4 py-3">Details</th></tr></thead>
         <tbody>
         @forelse($logs as $log)
             <tr class="app-table-row">
@@ -57,15 +57,20 @@
                 <td class="font-medium text-slate-950 dark:text-white">{{ $log->actorName() }}</td>
                 <td><span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $log->event === 'deleted' ? 'bg-red-100 text-red-700' : ($log->event === 'created' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700') }}">{{ ucfirst($log->event) }}</span></td>
                 <td>{{ $log->targetName() }}<div class="text-xs text-zinc-500">{{ $log->auditable_id }}</div></td>
-                <td class="max-w-md text-sm">
-                    <details>
-                        <summary class="cursor-pointer">{{ $log->description }}</summary>
-                        <div class="mt-3 space-y-3 text-xs text-zinc-500">
-                            <div><span class="font-semibold">Previous values</span><pre class="mt-1 max-h-32 overflow-auto rounded bg-slate-50 p-2 dark:bg-zinc-900">{{ json_encode($log->old_values ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre></div>
-                            <div><span class="font-semibold">New values</span><pre class="mt-1 max-h-32 overflow-auto rounded bg-slate-50 p-2 dark:bg-zinc-900">{{ json_encode($log->new_values ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre></div>
-                            <dl class="space-y-1"><div><dt class="inline font-semibold">URL:</dt> <dd class="inline break-all">{{ $log->url ?: '—' }}</dd></div><div><dt class="inline font-semibold">IP address:</dt> <dd class="inline">{{ $log->ip_address ?: '—' }}</dd></div><div><dt class="inline font-semibold">User agent:</dt> <dd class="inline break-all">{{ $log->user_agent ?: '—' }}</dd></div></dl>
-                        </div>
-                    </details>
+                <td class="w-[42%] text-sm">
+                    <button type="button" @click="openDetails = openDetails === '{{ $log->id }}' ? null : '{{ $log->id }}'" class="flex w-full items-center gap-1 text-left" :aria-expanded="openDetails === '{{ $log->id }}'">
+                        <span class="text-xs" x-text="openDetails === '{{ $log->id }}' ? '▼' : '▶'"></span>
+                        <span>{{ $log->description }}</span>
+                    </button>
+                </td>
+            </tr>
+            <tr x-show="openDetails === '{{ $log->id }}'" x-cloak>
+                <td colspan="5" class="bg-slate-50 p-5 text-sm dark:bg-zinc-950">
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div><span class="text-xs font-semibold text-zinc-500">Previous values</span><pre class="mt-1 max-h-48 overflow-auto rounded bg-white p-3 text-xs dark:bg-zinc-900">{{ json_encode($log->old_values ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre></div>
+                        <div><span class="text-xs font-semibold text-zinc-500">New values</span><pre class="mt-1 max-h-48 overflow-auto rounded bg-white p-3 text-xs dark:bg-zinc-900">{{ json_encode($log->new_values ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre></div>
+                    </div>
+                    <dl class="mt-4 grid gap-1 text-xs text-zinc-500 md:grid-cols-3"><div><dt class="inline font-semibold">URL:</dt> <dd class="inline break-all">{{ $log->url ?: '—' }}</dd></div><div><dt class="inline font-semibold">IP address:</dt> <dd class="inline">{{ $log->ip_address ?: '—' }}</dd></div><div><dt class="inline font-semibold">User agent:</dt> <dd class="inline break-all">{{ $log->user_agent ?: '—' }}</dd></div></dl>
                 </td>
             </tr>
         @empty
