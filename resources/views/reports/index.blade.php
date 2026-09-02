@@ -37,12 +37,22 @@
             </div>
         @endif
 
-        <section class="app-card p-4">
+        <section class="app-card overflow-hidden" x-data="{ optionsOpen: true }">
+            <button
+                type="button"
+                @click="optionsOpen = !optionsOpen"
+                class="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-semibold transition hover:bg-slate-50 dark:hover:bg-zinc-900"
+                :class="optionsOpen ? 'bg-teal-50/60 text-teal-800 dark:bg-teal-950/30 dark:text-teal-300' : 'text-slate-700 dark:text-zinc-200'"
+                :aria-expanded="optionsOpen"
+                aria-controls="report-period-options"
+            >
+                <span>Report Filter</span>
+                <span class="text-lg" x-text="optionsOpen ? '−' : '+'"></span>
+            </button>
+
+            <div id="report-period-options" x-show="optionsOpen" role="region" aria-label="Report Filter" class="border-t border-slate-200 p-5 dark:border-zinc-800">
             <form method="GET" action="{{ route('reports.index') }}" class="flex flex-wrap items-end gap-3" x-data="{loading:false}" @submit="loading=true">
-                <div class="basis-full">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-teal-600 dark:text-teal-400">Report period and options</p>
-                </div>
-                <div class="flex my-2">
+                <div class="flex basis-full flex-wrap items-end gap-3">
                     <label class="space-y-1.5">
                         <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Start date</span>
                         <input
@@ -98,6 +108,7 @@
                     <span x-text="loading ? 'Generating…' : 'Generate'"></span>
                 </button>
             </form>
+            </div>
         </section>
 
         <div class="grid gap-4 md:grid-cols-7">

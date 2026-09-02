@@ -10,11 +10,21 @@
         </div>
     </div>
 
-    <section class="app-card p-4">
+    <section class="app-card overflow-hidden" x-data="{ filtersOpen: true }">
+        <button
+            type="button"
+            @click="filtersOpen = !filtersOpen"
+            class="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-semibold transition hover:bg-slate-50 dark:hover:bg-zinc-900"
+            :class="filtersOpen ? 'bg-teal-50/60 text-teal-800 dark:bg-teal-950/30 dark:text-teal-300' : 'text-slate-700 dark:text-zinc-200'"
+            :aria-expanded="filtersOpen"
+            aria-controls="audit-activity-filters"
+        >
+            <span>Activity filters</span>
+            <span class="text-lg" x-text="filtersOpen ? '−' : '+'"></span>
+        </button>
+
+        <div id="audit-activity-filters" x-show="filtersOpen" role="region" aria-label="Activity filters" class="border-t border-slate-200 p-5 dark:border-zinc-800">
         <div class="space-y-4">
-            <div class="basis-full">
-                <p class="text-xs font-semibold uppercase tracking-wide text-teal-600 dark:text-teal-400">Activity filters</p>
-            </div>
             <div class="flex flex-wrap items-end gap-3">
                 <label class="min-w-52 flex-1 space-y-1.5"><span class="text-sm font-medium">Search</span><input wire:model.live.debounce.300ms="search" type="search" placeholder="User, action, or record" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"></label>
                 <label class="space-y-1.5"><span class="text-sm font-medium">Action</span><select wire:model.live.debounce.400ms="event" class="min-w-40 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"><option value="all">All actions</option><option value="created">Created</option><option value="updated">Updated</option><option value="deleted">Deleted</option><option value="printed">Printed</option></select></label>
@@ -34,6 +44,7 @@
                     :barangay-value="$barangayId"
                 />
             </div>
+        </div>
         </div>
     </section>
 
