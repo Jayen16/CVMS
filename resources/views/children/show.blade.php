@@ -172,7 +172,32 @@
         @endif
 
         <div class="grid gap-6">
-            <section
+        @if ($child->transferHistory->isNotEmpty())
+            <section class="app-card">
+                <div class="app-card-header">
+                    <div>
+                        <p class="eyebrow">Child Records</p>
+                        <h2 class="app-card-title">Barangay transfer history</h2>
+                    </div>
+                </div>
+                <div class="divide-y divide-slate-100 dark:divide-zinc-800">
+                    @foreach ($child->transferHistory->sortByDesc('transferred_at') as $transfer)
+                        <div class="px-5 py-4">
+                            <p class="font-medium">{{ $transfer->from_barangay_name }} → {{ $transfer->to_barangay_name }}</p>
+                            <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">
+                                {{ $transfer->transferred_at->format('M d, Y g:i A') }}
+                                · Processed by {{ $transfer->transferred_by_name ?? 'System' }}
+                            </p>
+                            @if ($transfer->reason)
+                                <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Reason: {{ $transfer->reason }}</p>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
+        <section
                 class="app-card {{ auth()->user()->isParent() ? 'order-2' : '' }} {{ auth()->user()->canManageChildren() && $activeTab !== 'vaccination' ? 'hidden' : '' }}"
                 @if (auth()->user()->canManageChildren()) data-tab-panel="vaccination" @endif
             >
@@ -232,6 +257,7 @@
                                         >
                                             {{ ucfirst($record->verification_status) }}
                                         </span>
+                                        <div class="mt-1 text-xs text-zinc-500">Recorded by {{ $record->recordedByDisplayName() }}</div>
                                         @if ($record->submitter)
                                             <div class="mt-1 text-xs text-zinc-500">Submitted by {{ $record->submitter->name }}</div>
                                         @endif
