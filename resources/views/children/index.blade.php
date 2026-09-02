@@ -28,7 +28,7 @@
                 </div>
             </form>
         @endif
-        <div class="app-card">
+        <div class="app-card overflow-visible">
             <table class="app-table">
                 <thead>
                     <tr>
@@ -49,11 +49,6 @@
                                 <a href="{{ route('children.show', $child) }}" class="font-semibold text-teal-700 hover:underline dark:text-teal-300">{{ $child->full_name }}</a>
                                 <div class="text-xs text-zinc-500">{{ ucfirst($child->sex) }} | Born {{ $child->birthdate->format('M d, Y') }}</div>
                             </td>
-                            @if (auth()->user()->canArchiveChildren())
-                                <td>
-                                    <button type="button" class="app-button-danger !px-3 !py-1.5 !text-xs" @click="archiveAction = @js(route('children.archive', $child->id)); archiveName = @js($child->full_name); archiveOpen = true">Archive</button>
-                                </td>
-                            @endif
                             <td>{{ $child->ageLabel() }}</td>
                             <td>{{ $child->barangay->name }}</td>
                             <td>
@@ -64,6 +59,15 @@
                                     {{ $child->completed_doses_count }} out of {{ $child->total_doses_count }}
                                 </span>
                             </td>
+                            @if (auth()->user()->canArchiveChildren())
+                                <td class="relative" x-data="{ open: false }">
+                                    <button type="button" class="inline-flex size-8 items-center justify-center rounded-lg text-lg font-bold leading-none text-zinc-500 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-zinc-800 dark:hover:text-white" @click="open = !open" :aria-expanded="open.toString()" aria-label="Actions for {{ $child->full_name }}">•••</button>
+                                    <div x-show="open" x-cloak @click.outside="open = false" class="absolute right-3 top-11 z-10 min-w-36 rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                                        <a href="{{ route('children.show', $child) }}" class="block rounded-md px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800">View profile</a>
+                                        <button type="button" class="block w-full rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40" @click="archiveAction = @js(route('children.archive', $child->id)); archiveName = @js($child->full_name); archiveOpen = true; open = false">Archive</button>
+                                    </div>
+                                </td>
+                            @endif
                         </tr>
                     @empty
                         <tr><td colspan="{{ auth()->user()->canArchiveChildren() ? 6 : 5 }}" class="px-4 py-8 text-center text-zinc-500">No child profiles found.</td></tr>

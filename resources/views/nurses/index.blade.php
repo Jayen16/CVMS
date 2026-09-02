@@ -54,7 +54,8 @@
                 <button type="button" class="app-button-primary" @click="inviteOpen = true">{{ $managedRole === 'barangay_admin' ? 'Invite Barangay Admin' : 'Invite nurse' }}</button>
             </div>
 
-            <div class="app-card overflow-x-auto">
+            <div class="app-card !overflow-visible">
+                <div class="overflow-x-auto">
                 <table class="app-table">
                     <thead>
                         <tr>
@@ -69,7 +70,7 @@
                         </tr>
                     </thead>
                     @forelse ($staff as $member)
-                        <tbody x-data="{ accessOpen: false }">
+                        <tbody x-data="{ accessOpen: false, actionsOpen: false, actionsStyle: '' }">
                             <tr class="app-table-row">
                                 <td class="font-medium text-slate-950 dark:text-white">{{ $member->name }}</td>
                                 <td>{{ $member->email }}{{ $member->phone ? ' · '.$member->phone : '' }}</td>
@@ -106,33 +107,38 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <div class="flex flex-wrap gap-2">
-                                        @if ($member->isArchived())
-                                            <form method="POST" action="{{ route('nurses.restore', $member) }}">
-                                                @csrf
-                                                <button class="app-button-secondary !px-3 !py-1.5 !text-xs">Restore</button>
-                                            </form>
-                                        @elseif ($member->invitation_accepted_at)
-                                            @if ($member->email)
-                                                <form method="POST" action="{{ route('users.password-link', $member) }}">@csrf<input type="hidden" name="channel" value="email"><button class="app-button-secondary !px-3 !py-1.5 !text-xs">Reset by email</button></form>
+                                    <div class="relative inline-block text-left" @click.outside="actionsOpen = false">
+                                        <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-lg leading-none text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800" aria-label="Open account actions" :aria-expanded="actionsOpen.toString()" @click.prevent.stop="actionsOpen = !actionsOpen; if (actionsOpen) { const button = $event.currentTarget.getBoundingClientRect(); actionsStyle = `top: ${button.bottom + 8}px; left: ${Math.max(8, button.right - 192)}px`; }">
+                                            <span aria-hidden="true">&hellip;</span>
+                                        </button>
+                                        <div x-show="actionsOpen" x-cloak x-transition x-bind:style="actionsStyle" class="fixed z-50 w-48 origin-top-right rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900" role="menu">
+                                            @if ($member->isArchived())
+                                                <form method="POST" action="{{ route('nurses.restore', $member) }}">
+                                                    @csrf
+                                                    <button type="submit" class="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-zinc-800" role="menuitem">Restore</button>
+                                                </form>
+                                            @elseif ($member->invitation_accepted_at)
+                                                @if ($member->email)
+                                                    <form method="POST" action="{{ route('users.password-link', $member) }}">@csrf<input type="hidden" name="channel" value="email"><button type="submit" class="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-zinc-800" role="menuitem">Reset by email</button></form>
+                                                @endif
+                                                @if ($member->phone)
+                                                    <form method="POST" action="{{ route('users.password-link', $member) }}">@csrf<input type="hidden" name="channel" value="sms"><button type="submit" class="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-zinc-800" role="menuitem">Reset by text</button></form>
+                                                @endif
+                                                <form method="POST" action="{{ route('nurses.toggle', $member) }}">
+                                                    @csrf
+                                                    <button type="submit" class="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-zinc-800" role="menuitem">{{ $member->is_active ? 'Deactivate' : 'Activate' }}</button>
+                                                </form>
+                                            @else
+                                                <form method="POST" action="{{ route('nurses.setup-link', $member) }}">
+                                                    @csrf
+                                                    <button type="submit" class="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-zinc-800" role="menuitem">Resend link</button>
+                                                </form>
                                             @endif
-                                            @if ($member->phone)
-                                                <form method="POST" action="{{ route('users.password-link', $member) }}">@csrf<input type="hidden" name="channel" value="sms"><button class="app-button-secondary !px-3 !py-1.5 !text-xs">Reset by text</button></form>
-                                            @endif
-                                            <form method="POST" action="{{ route('nurses.toggle', $member) }}">
-                                                @csrf
-                                                <button class="app-button-secondary !px-3 !py-1.5 !text-xs">{{ $member->is_active ? 'Deactivate' : 'Activate' }}</button>
-                                            </form>
-                                        @else
-                                            <form method="POST" action="{{ route('nurses.setup-link', $member) }}">
-                                                @csrf
-                                                <button class="app-button-secondary !px-3 !py-1.5 !text-xs">Resend link</button>
-                                            </form>
-                                        @endif
 
-                                        @unless ($member->isArchived())
-                                            <button type="button" class="app-button-danger !px-3 !py-1.5 !text-xs" @click="archiveAction = @js(route('nurses.destroy', $member)); archiveName = @js($member->name); archiveOpen = true">Archive</button>
-                                        @endunless
+                                            @unless ($member->isArchived())
+                                                <button type="button" class="block w-full rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40" role="menuitem" @click.prevent.stop="actionsOpen = false; archiveAction = @js(route('nurses.destroy', $member)); archiveName = @js($member->name); archiveOpen = true">Archive</button>
+                                            @endunless
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -174,6 +180,7 @@
                         <tbody><tr><td colspan="8" class="px-4 py-8 text-center text-zinc-500">No accounts yet.</td></tr></tbody>
                     @endforelse
                 </table>
+                </div>
             </div>
 
             {{ $staff->links() }}
