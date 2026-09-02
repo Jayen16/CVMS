@@ -138,6 +138,7 @@ class InAppNotificationService
 
         if (! $alreadyExists) {
             $user->notify($notification);
+            app(\App\Services\OfflineSyncService::class)->queueNotification($user, $notification->toArray($user));
         }
     }
 }

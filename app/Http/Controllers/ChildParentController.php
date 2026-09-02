@@ -91,6 +91,8 @@ class ChildParentController extends Controller
         $child->parents()->syncWithoutDetaching([
             $parent->id => ['relationship' => $validated['relationship']],
         ]);
+        app(\App\Services\OfflineSyncService::class)->queueGuardian($parent);
+        app(\App\Services\OfflineSyncService::class)->queueRelationship($child, $parent, $validated['relationship']);
 
         if ($shouldSendSetupLink) {
             Password::sendResetLink(['email' => $parent->email]);
@@ -117,7 +119,9 @@ class ChildParentController extends Controller
     {
         $this->authorizeUnlink($child, $parent);
 
+        $relationship = (string) ($child->parents()->whereKey($parent->id)->first()?->pivot?->relationship ?? 'guardian');
         $child->parents()->detach($parent->id);
+        app(\App\Services\OfflineSyncService::class)->queueRelationship($child, $parent, $relationship, 'deleted');
 
         if (auth()->user()->isParent()) {
             return to_route('children.index')->with('status', 'Child profile unlinked from your parent account.');

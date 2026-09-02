@@ -33,6 +33,7 @@ class FacilityPullSyncService
             $this->applyVaccines($payload['data']['vaccines'] ?? []);
             $this->applySchedules($payload['data']['schedule_rules'] ?? []);
             $this->applyAnnouncements($payload['data']['announcements'] ?? []);
+            $this->applyParentChangeRequests($payload['data']['parent_change_requests'] ?? []);
             $installation->update([
                 'pull_cursor' => $payload['cursor'],
                 'last_synchronized_at' => now(),
@@ -82,6 +83,18 @@ class FacilityPullSyncService
                 'title' => $record['title'], 'category' => $record['category'], 'audience' => $record['audience'],
                 'starts_on' => $record['starts_on'], 'ends_on' => $record['ends_on'], 'location' => $record['location'],
                 'message' => $record['message'], 'active' => $record['active'], 'updated_at' => $record['updated_at'],
+            ]);
+        }
+    }
+
+    private function applyParentChangeRequests(array $records): void
+    {
+        foreach ($records as $record) {
+            DB::table('parent_change_requests')->updateOrInsert(['request_uuid' => $record['uuid']], [
+                'id' => $record['uuid'], 'facility_id' => app(FacilityActivationService::class)->localInstallation()->facility_id,
+                'child_uuid' => $record['child_uuid'], 'parent_uuid' => $record['parent_uuid'], 'request_type' => $record['request_type'],
+                'requested_data' => json_encode($record['requested_data'] ?? []), 'status' => $record['status'], 'reviewer_name' => $record['reviewer_name'] ?? null,
+                'reviewer_note' => $record['reviewer_note'] ?? null, 'created_at' => now(), 'updated_at' => $record['updated_at'] ?? now(),
             ]);
         }
     }
