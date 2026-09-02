@@ -17,6 +17,8 @@
                 :label="__('Email')"
                 type="email"
                 required
+                readonly
+                aria-readonly="true"
                 autocomplete="email"
             />
 
