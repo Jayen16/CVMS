@@ -1,0 +1,78 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\ClinicAnnouncement;
+use App\Models\FacilityConnection;
+use App\Models\VaccineSchedule;
+use App\Models\VaccineType;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Laravel\Passport\Client;
+
+class CentralSyncService
+{
+    /** @return array<string, mixed> */
+    public function pull(Request $request, ?string $cursor, ?Client $client = null): array
+    {
+        $client ??= auth('api')->client();
+        $connection = $client ? FacilityConnection::query()->where('passport_client_id', $client->getKey())->where('status', 'active')->first() : null;
+
+        abort_unless($connection, 403, 'Facility connection is not active.');
+
+        $after = $cursor ? Carbon::parse($cursor) : null;
+        $data = [
+            'vaccines' => $this->serializeModels(VaccineType::query()->when($after, fn (Builder $query) => $query->where('updated_at', '>', $after))->orderBy('updated_at')->get(), fn (VaccineType $vaccine): array => [
+                'uuid' => (string) $vaccine->getKey(),
+                'code' => $vaccine->code,
+                'name' => $vaccine->name,
+                'active' => $vaccine->active,
+                'created_at' => $vaccine->created_at?->toIso8601String(),
+                'updated_at' => $vaccine->updated_at?->toIso8601String(),
+            ]),
+            'schedule_rules' => $this->serializeModels(VaccineSchedule::query()->with('vaccineType')->when($after, fn (Builder $query) => $query->where('updated_at', '>', $after))->orderBy('updated_at')->get(), fn (VaccineSchedule $schedule): array => [
+                'uuid' => (string) $schedule->getKey(),
+                'vaccine_uuid' => (string) $schedule->vaccine_type_id,
+                'dose_number' => $schedule->dose_number,
+                'age_days' => $schedule->age_days,
+                'age_weeks' => $schedule->age_weeks,
+                'age_months' => $schedule->age_months,
+                'age_years' => $schedule->age_years,
+                'label' => $schedule->label,
+                'indication' => $schedule->indication,
+                'notes' => $schedule->notes,
+                'active' => $schedule->active,
+                'created_at' => $schedule->created_at?->toIso8601String(),
+                'updated_at' => $schedule->updated_at?->toIso8601String(),
+            ]),
+            'announcements' => $this->serializeModels(ClinicAnnouncement::query()->with(['region', 'province', 'municipality', 'barangay'])->when($after, fn (Builder $query) => $query->where('updated_at', '>', $after))->orderBy('updated_at')->get(), fn (ClinicAnnouncement $announcement): array => [
+                'uuid' => (string) ($announcement->sync_uuid ?: $announcement->getKey()),
+                'title' => $announcement->title,
+                'category' => $announcement->category,
+                'audience' => $announcement->audience,
+                'starts_on' => $announcement->starts_on?->toDateString(),
+                'ends_on' => $announcement->ends_on?->toDateString(),
+                'location' => $announcement->location,
+                'message' => $announcement->message,
+                'active' => $announcement->active,
+                'region_code' => $announcement->region?->code,
+                'province_code' => $announcement->province?->code,
+                'municipality_code' => $announcement->municipality?->code,
+                'barangay_name' => $announcement->barangay?->name,
+                'updated_at' => $announcement->updated_at?->toIso8601String(),
+            ]),
+        ];
+
+        $newCursor = now()->toIso8601String();
+        $connection->update(['last_synchronized_at' => now()]);
+
+        return ['cursor' => $newCursor, 'server_time' => now()->toIso8601String(), 'data' => $data];
+    }
+
+    /** @param iterable<mixed> $models @return array<int, array<string, mixed>> */
+    private function serializeModels(iterable $models, callable $serializer): array
+    {
+        return collect($models)->map($serializer)->values()->all();
+    }
+}
