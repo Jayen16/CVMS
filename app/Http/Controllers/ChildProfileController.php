@@ -60,7 +60,7 @@ class ChildProfileController extends Controller
         return view('children.archive', ['children' => $children]);
     }
 
-    public function archive(Request $request, string $childId, OfflineSyncService $offlineSync): RedirectResponse
+    public function archive(Request $request, string $childId): RedirectResponse
     {
         abort_unless(auth()->user()->canArchiveChildren(), 403);
 
@@ -78,7 +78,6 @@ class ChildProfileController extends Controller
             'archived_by' => auth()->id(),
             'archive_reason' => $validated['archive_reason'],
         ]);
-        $offlineSync->queueDelete($child->fresh());
 
         AuditLog::recordAction('child_archived', 'Archived child record '.$child->full_name, $child, [
             'reason' => $validated['archive_reason'],
@@ -87,7 +86,7 @@ class ChildProfileController extends Controller
         return to_route('children.index')->with('status', 'Child record archived. Clinical history was retained.');
     }
 
-    public function restore(string $childId, OfflineSyncService $offlineSync): RedirectResponse
+    public function restore(string $childId): RedirectResponse
     {
         abort_unless(auth()->user()->canArchiveChildren(), 403);
 
@@ -100,7 +99,6 @@ class ChildProfileController extends Controller
             'archived_by' => null,
             'archive_reason' => null,
         ]);
-        $offlineSync->queueUpsert($child->fresh()->load(['barangay', 'creator']));
 
         AuditLog::recordAction('child_restored', 'Restored child record '.$child->full_name, $child);
 
