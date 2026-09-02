@@ -6,6 +6,7 @@ use App\Models\ChildProfile;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineSchedule;
 use App\Models\VaccineType;
+use App\Services\ImmunizationSuggestionService;
 use App\Services\VaccineScheduleVersionResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
@@ -112,7 +113,9 @@ class ChildTimelinePage extends Component
                 'action_at' => $this->actionDateFor($record, $dueAt),
                 'position' => $this->positionForDueDate($birthdate, $dueAt),
                 'record' => $record,
-                'status' => $this->statusFor($record, $dueAt),
+                'status' => $record !== null
+                    ? ($record->verification_status === 'pending' ? 'pending' : 'given')
+                    : app(ImmunizationSuggestionService::class)->statusForDueDate($dueAt),
             ];
         }
 
@@ -137,12 +140,4 @@ class ChildTimelinePage extends Component
         return $dueAt->isPast() ? Carbon::today() : $dueAt;
     }
 
-    private function statusFor(?VaccinationRecord $record, Carbon $dueAt): string
-    {
-        if ($record !== null) {
-            return $record->verification_status === 'pending' ? 'pending' : 'given';
-        }
-
-        return $dueAt->isPast() ? 'overdue' : 'upcoming';
-    }
 }

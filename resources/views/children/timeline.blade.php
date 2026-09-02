@@ -34,6 +34,8 @@
         'given' => 'bg-emerald-100 text-emerald-800 ring-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:ring-emerald-900',
         'pending' => 'bg-amber-100 text-amber-900 ring-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:ring-amber-900',
         'overdue' => 'bg-red-100 text-red-800 ring-red-200 dark:bg-red-950 dark:text-red-200 dark:ring-red-900',
+        'delayed' => 'bg-orange-100 text-orange-800 ring-orange-200 dark:bg-orange-950 dark:text-orange-200 dark:ring-orange-900',
+        'due' => 'bg-yellow-100 text-yellow-800 ring-yellow-200 dark:bg-yellow-950 dark:text-yellow-200 dark:ring-yellow-900',
         'upcoming' => 'bg-sky-100 text-sky-800 ring-sky-200 dark:bg-sky-950 dark:text-sky-200 dark:ring-sky-900',
     ];
     $desktopPosition = static function (float $months) use ($desktopPhaseWidths): float {
@@ -105,6 +107,14 @@
                     <span class="size-3 rounded-sm bg-red-500"></span>
                     <span>Overdue</span>
                 </div>
+                <div class="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-zinc-300">
+                    <span class="size-3 rounded-sm bg-orange-500"></span>
+                    <span>Delayed</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-zinc-300">
+                    <span class="size-3 rounded-sm bg-yellow-400"></span>
+                    <span>Due today</span>
+                </div>
             </div>
         </div>
 
@@ -169,6 +179,8 @@
                                             $statusLabel = match ($point['status']) {
                                                 'given' => 'Given',
                                                 'pending' => 'Pending verification',
+                                                'due' => 'Due today',
+                                                'delayed' => 'Delayed',
                                                 'overdue' => 'Overdue',
                                                 default => 'Upcoming',
                                             };
@@ -309,18 +321,24 @@
                                             $statusClasses = match ($point['status']) {
                                                 'given' => 'bg-emerald-500 text-white ring-emerald-700/20',
                                                 'pending' => 'bg-amber-400 text-slate-950 ring-amber-700/20',
+                                                'due' => 'bg-yellow-400 text-slate-950 ring-yellow-700/20',
+                                                'delayed' => 'bg-orange-500 text-white ring-orange-700/20',
                                                 'overdue' => 'bg-red-500 text-white ring-red-700/20',
                                                 default => 'bg-sky-400 text-slate-950 ring-sky-700/20',
                                             };
                                             $statusLabel = match ($point['status']) {
                                                 'given' => 'Given',
                                                 'pending' => 'Pending verification',
+                                                'due' => 'Due today',
+                                                'delayed' => 'Delayed',
                                                 'overdue' => 'Overdue',
                                                 default => 'Upcoming',
                                             };
                                             $markerText = match ($point['status']) {
                                                 'given' => 'G',
                                                 'pending' => 'P',
+                                                'due' => 'D',
+                                                'delayed' => 'L',
                                                 'overdue' => 'D',
                                                 default => 'U',
                                             };

@@ -3,6 +3,8 @@
 return [
     'source' => 'PIDSP 2026 Childhood Immunization Schedule',
     'source_url' => 'https://www.pidsphil.org/home/wp-content/uploads/2026/06/Revised-July-2026-PIDSP-Immunization-Calendar_ea6.pdf',
+    // A dose is delayed after its due date and becomes overdue at this threshold.
+    'overdue_threshold_days' => (int) env('IMMUNIZATION_OVERDUE_THRESHOLD_DAYS', 7),
     'version' => [
         'name' => 'PIDSP 2026 Revised July',
         'version_code' => '2026.1',

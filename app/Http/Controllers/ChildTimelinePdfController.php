@@ -7,6 +7,7 @@ use App\Models\ChildProfile;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineSchedule;
 use App\Models\VaccineType;
+use App\Services\ImmunizationSuggestionService;
 use App\Services\VaccineScheduleVersionResolver;
 use App\Support\CsvExport;
 use Illuminate\Http\Request;
@@ -140,7 +141,7 @@ class ChildTimelinePdfController extends Controller
                 'record' => $record,
                 'status' => $record !== null
                     ? ($record->verification_status === 'pending' ? 'pending' : 'given')
-                    : ($dueAt->isPast() ? 'overdue' : 'upcoming'),
+                    : app(ImmunizationSuggestionService::class)->statusForDueDate($dueAt),
             ];
         }
 
