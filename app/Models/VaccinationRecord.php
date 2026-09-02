@@ -30,6 +30,13 @@ class VaccinationRecord extends Model
         'proof_paths',
         'client_submission_id',
         'sync_uuid',
+        'facility_uuid',
+        'administered_by_uuid',
+        'recorded_by_uuid',
+        'administered_by_name',
+        'recorded_by_name',
+        'recorded_by_role',
+        'sync_version',
         'next_due_at',
         'suggested_vaccine',
         'suggested_schedule_version_id',
@@ -48,6 +55,7 @@ class VaccinationRecord extends Model
             'verified_at' => 'datetime',
             'proof_paths' => 'array',
             'archived_at' => 'datetime',
+            'sync_version' => 'integer',
         ];
     }
 
@@ -131,6 +139,12 @@ class VaccinationRecord extends Model
         static::creating(function (VaccinationRecord $record): void {
             if (blank($record->sync_uuid)) {
                 $record->sync_uuid = (string) Str::uuid();
+            }
+        });
+
+        static::updating(function (VaccinationRecord $record): void {
+            if ($record->isDirty(array_diff($record->getDirty(), ['sync_version']))) {
+                $record->sync_version = (int) ($record->getRawOriginal('sync_version') ?: 1) + 1;
             }
         });
     }

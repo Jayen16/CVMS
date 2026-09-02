@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Services\FacilityPullSyncService;
+use App\Services\FacilitySyncService;
 use Illuminate\Console\Command;
 
 class SyncCentralData extends Command
@@ -11,7 +11,7 @@ class SyncCentralData extends Command
 
     protected $description = 'Pull central-owned master data into the local facility database.';
 
-    public function handle(FacilityPullSyncService $sync): int
+    public function handle(FacilitySyncService $sync): int
     {
         if (config('system.instance_type') !== 'facility') {
             $this->info('Central pull is disabled on the central instance.');
@@ -21,7 +21,7 @@ class SyncCentralData extends Command
 
         try {
             $result = $sync->synchronize();
-            $this->info("Central sync complete. {$result['processed']} records processed.");
+            $this->info("Central sync complete. {$result['pulled']} pulled, {$result['pushed']} pushed, {$result['failed']} failed.");
 
             return self::SUCCESS;
         } catch (\Throwable $exception) {

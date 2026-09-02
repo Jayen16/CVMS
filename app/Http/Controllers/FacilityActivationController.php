@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Facility;
 use App\Services\FacilityActivationService;
+use App\Services\FacilitySyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ class FacilityActivationController extends Controller
         return view('facility.activate', ['installation' => $activation->localInstallation()]);
     }
 
-    public function activate(Request $request, FacilityActivationService $activation): RedirectResponse
+    public function activate(Request $request, FacilityActivationService $activation, FacilitySyncService $sync): RedirectResponse
     {
         $data = $request->validate(['central_url' => ['required', 'url'], 'activation_code' => ['required', 'string', 'size:32']]);
 
@@ -28,7 +29,15 @@ class FacilityActivationController extends Controller
             return back()->withErrors(['activation_code' => 'Activation failed. Check the central URL and activation code.'])->withInput();
         }
 
-        return to_route('home')->with('status', 'Facility connected to the central system.');
+        try {
+            $sync->synchronize();
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return to_route('home')->with('status', 'Facility connected. Initial synchronization is pending; use Sync now when Central is reachable.');
+        }
+
+        return to_route('home')->with('status', 'Facility connected and initial data synchronized.');
     }
 
     public function facilities(Request $request): View

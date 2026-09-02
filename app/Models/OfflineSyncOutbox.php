@@ -13,13 +13,19 @@ class OfflineSyncOutbox extends Model
 
     protected $fillable = [
         'model_type',
+        'event_uuid',
+        'entity',
         'model_sync_uuid',
         'operation',
+        'version',
+        'status',
         'payload',
         'queued_at',
         'synced_at',
         'last_error',
         'attempts',
+        'last_attempted_at',
+        'synchronized_at',
     ];
 
     protected function casts(): array
@@ -28,6 +34,8 @@ class OfflineSyncOutbox extends Model
             'payload' => 'array',
             'queued_at' => 'datetime',
             'synced_at' => 'datetime',
+            'last_attempted_at' => 'datetime',
+            'synchronized_at' => 'datetime',
         ];
     }
 }
