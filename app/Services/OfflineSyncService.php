@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ChildProfile;
 use App\Models\ChildAppointment;
+use App\Models\ChildTransferHistory;
 use App\Models\FacilityChildGuardian;
 use App\Models\FacilityGuardian;
 use App\Models\OfflineSyncOutbox;
@@ -35,6 +36,7 @@ class OfflineSyncService
             VaccinationRecord::class => 'immunization_records',
             VaccineInventoryTransaction::class => 'inventory_transactions',
             ChildAppointment::class => 'appointments',
+            ChildTransferHistory::class => 'child_transfers',
             AuditLog::class => 'audit_events',
             default => 'unsupported',
         };
@@ -63,6 +65,7 @@ class OfflineSyncService
             VaccinationRecord::class => 'immunization_records',
             VaccineInventoryTransaction::class => 'inventory_transactions',
             ChildAppointment::class => 'appointments',
+            ChildTransferHistory::class => 'child_transfers',
             default => 'unsupported',
         };
 
@@ -211,6 +214,14 @@ class OfflineSyncService
                 'scheduled_for' => $model->scheduled_for?->toIso8601String(), 'status' => $model->status, 'notes' => $model->notes,
                 'created_by_uuid' => $model->created_by, 'created_by_name' => $model->created_by_name, 'created_by_role' => $model->created_by_role,
                 'version' => (int) ($model->sync_version ?: 1),
+            ],
+            ChildTransferHistory::class => [
+                'child_uuid' => $model->child_sync_uuid, 'facility_uuid' => $model->facility_uuid,
+                'from_barangay_name' => $model->from_barangay_name, 'to_barangay_name' => $model->to_barangay_name,
+                'municipality_code' => $model->municipality_code, 'transferred_by_uuid' => $model->transferred_by_uuid,
+                'transferred_by_name' => $model->transferred_by_name, 'transferred_by_role' => $model->transferred_by_role,
+                'transferred_at' => $model->transferred_at?->toIso8601String(), 'reason' => $model->reason,
+                'version' => (int) ($model->sync_version ?: 1), 'updated_at' => $model->updated_at?->toIso8601String(),
             ],
             default => ['sync_uuid' => $model->sync_uuid],
         };

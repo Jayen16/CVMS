@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\ClinicAnnouncement;
+use App\Models\ChildTransferHistory;
+use App\Models\FacilityStaff;
 use App\Models\Facility;
 use App\Models\FacilityConnection;
 use App\Models\SystemInstallation;
@@ -29,6 +31,8 @@ class CentralBootstrapSyncTest extends TestCase
         ]);
         FacilityConnection::create(['facility_id' => $facility->id, 'instance_uuid' => (string) Str::uuid(), 'instance_name' => 'Workstation', 'passport_client_id' => $client->id, 'status' => 'active', 'activated_at' => now()]);
         $vaccine = VaccineType::create(['code' => 'SYNC-BCG', 'name' => 'Sync BCG', 'active' => true]);
+        FacilityStaff::create(['facility_id' => $facility->id, 'staff_uuid' => (string) Str::uuid(), 'name' => 'Origin Nurse', 'role' => 'nurse', 'active' => true]);
+        ChildTransferHistory::create(['child_sync_uuid' => (string) Str::uuid(), 'facility_uuid' => $facility->id, 'from_barangay_name' => 'Old Barangay', 'to_barangay_name' => 'New Barangay', 'transferred_at' => now()]);
         VaccineSchedule::create(['vaccine_type_id' => $vaccine->id, 'dose_number' => 1, 'age_days' => 0, 'age_weeks' => 0, 'age_months' => 0, 'age_years' => 0, 'label' => 'At birth', 'active' => true]);
         ClinicAnnouncement::create(['title' => 'Sync notice', 'starts_on' => now()->toDateString(), 'message' => 'Central message', 'active' => true]);
 
@@ -37,6 +41,8 @@ class CentralBootstrapSyncTest extends TestCase
         $this->assertTrue(collect($result['data']['vaccines'])->contains('uuid', $vaccine->id));
         $this->assertTrue(collect($result['data']['schedule_rules'])->contains('vaccine_uuid', $vaccine->id));
         $this->assertSame('Sync notice', $result['data']['announcements'][0]['title']);
+        $this->assertSame('Origin Nurse', $result['data']['facility_staff'][0]['name']);
+        $this->assertSame('Old Barangay', $result['data']['child_transfers'][0]['from_barangay_name']);
         $this->assertNotEmpty($result['cursor']);
     }
 

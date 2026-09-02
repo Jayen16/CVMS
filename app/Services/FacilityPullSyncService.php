@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Barangay;
+use App\Models\ChildTransferHistory;
 use App\Models\ClinicAnnouncement;
 use App\Models\Municipality;
 use App\Models\Province;
@@ -30,6 +31,8 @@ class FacilityPullSyncService
         $payload = $response->json();
 
         DB::transaction(function () use ($payload, $installation): void {
+            $this->applyStaff($payload['data']['facility_staff'] ?? [], $installation->facility_id);
+            $this->applyChildTransfers($payload['data']['child_transfers'] ?? [], $installation->facility_id);
             $this->applyVaccines($payload['data']['vaccines'] ?? []);
             $this->applySchedules($payload['data']['schedule_rules'] ?? []);
             $this->applyAnnouncements($payload['data']['announcements'] ?? []);
@@ -53,6 +56,29 @@ class FacilityPullSyncService
             DB::table('vaccine_types')->updateOrInsert(['id' => $record['uuid']], [
                 'code' => $record['code'], 'name' => $record['name'], 'active' => $record['active'],
                 'created_at' => $record['created_at'], 'updated_at' => $record['updated_at'],
+            ]);
+        }
+    }
+
+    private function applyStaff(array $records, ?string $facilityId): void
+    {
+        foreach ($records as $record) {
+            DB::table('facility_staff')->updateOrInsert(['facility_id' => $facilityId, 'staff_uuid' => $record['uuid']], [
+                'id' => $record['uuid'], 'name' => $record['name'], 'role' => $record['role'], 'active' => $record['active'] ?? true,
+                'last_seen_at' => $record['last_seen_at'] ?? null, 'created_at' => now(), 'updated_at' => $record['updated_at'] ?? now(),
+            ]);
+        }
+    }
+
+    private function applyChildTransfers(array $records, ?string $facilityId): void
+    {
+        foreach ($records as $record) {
+            ChildTransferHistory::query()->updateOrCreate(['id' => $record['uuid']], [
+                'child_sync_uuid' => $record['child_uuid'], 'facility_uuid' => $facilityId,
+                'from_barangay_name' => $record['from_barangay_name'], 'to_barangay_name' => $record['to_barangay_name'],
+                'municipality_code' => $record['municipality_code'] ?? null, 'transferred_by_uuid' => $record['transferred_by_uuid'] ?? null,
+                'transferred_by_name' => $record['transferred_by_name'] ?? null, 'transferred_by_role' => $record['transferred_by_role'] ?? null,
+                'transferred_at' => $record['transferred_at'], 'reason' => $record['reason'] ?? null, 'sync_version' => $record['version'] ?? 1,
             ]);
         }
     }
