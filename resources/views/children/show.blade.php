@@ -9,6 +9,9 @@
             confirmActionLabel: 'Confirm',
             confirmMessage: '',
             confirmForm: null,
+            archiveOpen: false,
+            archiveAction: '',
+            archiveName: @js($child->full_name),
             showConfirmModal(actionLabel, message, form) {
                 this.confirmActionLabel = actionLabel;
                 this.confirmMessage = message;
@@ -61,22 +64,24 @@
                     <a href="{{ route('children.edit', $child) }}" class="app-button-secondary">Edit child info</a>
                 @endif
                 @if (auth()->user()->canArchiveChildren())
-                    <form method="POST" action="{{ route('children.archive', $child->id) }}" class="flex flex-wrap items-center gap-2" onsubmit="return confirm('Archive this child record? Clinical history will be retained.')">
-                        @csrf
-                        <select name="archive_reason" class="app-input !w-auto !py-2 text-sm" aria-label="Archive reason" required>
-                            <option value="">Archive reason…</option>
-                            <option value="Inactive">Inactive</option>
-                            <option value="Transferred">Transferred</option>
-                            <option value="Duplicate">Duplicate</option>
-                            <option value="Deceased">Deceased</option>
-                            <option value="Other">Other</option>
-                        </select>
-                        <button class="app-button-danger">Archive child</button>
-                    </form>
+                    <button type="button" class="app-button-danger" @click="archiveAction = @js(route('children.archive', $child->id)); archiveOpen = true">Archive child</button>
                 @endif
                 <a href="{{ route('children.card', $child) }}" class="app-button-secondary">Digital vaccine card</a>
                 <a href="{{ route('children.timeline', $child) }}" class="app-button-secondary">View timeline chart</a>
                 <a href="{{ route('children.timeline.pdf', $child) }}" class="app-button-secondary" target="_blank" rel="noopener">Timeline PDF</a>
+            </div>
+        </div>
+
+        <div x-show="archiveOpen" x-cloak x-on:keydown.escape.window="archiveOpen = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="archive-child-title">
+            <div class="app-panel w-full max-w-md" @click.stop>
+                <p class="eyebrow">Child Records</p>
+                <h2 id="archive-child-title" class="app-card-title mt-1">Archive child record</h2>
+                <p class="mt-2 text-sm text-slate-600 dark:text-zinc-300">Archive <span class="font-semibold" x-text="archiveName"></span>? Clinical history will be retained.</p>
+                <form method="POST" x-bind:action="archiveAction" class="mt-5 grid gap-4">
+                    @csrf
+                    <label class="grid gap-1.5 text-sm"><span class="font-medium">Reason</span><select name="archive_reason" class="app-input" required><option value="">Choose a reason</option><option value="Inactive">Inactive</option><option value="Transferred">Transferred</option><option value="Duplicate">Duplicate</option><option value="Deceased">Deceased</option><option value="Other">Other</option></select></label>
+                    <div class="flex justify-end gap-2"><button type="button" class="app-button-secondary" @click="archiveOpen = false">Cancel</button><button class="app-button-danger">Archive record</button></div>
+                </form>
             </div>
         </div>
 

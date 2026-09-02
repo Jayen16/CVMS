@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AdverseEventReportController;
+use App\Http\Controllers\ArchiveController;
 use App\Http\Controllers\Api\OfflineVaccinationSyncController;
 use App\Http\Controllers\Api\ParentChildController;
 use App\Http\Controllers\ChildParentController;
@@ -51,6 +52,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardPage::class)->name('dashboard');
     Route::get('children', ChildrenIndexPage::class)->name('children.index');
     Route::get('children/archive', [ChildProfileController::class, 'archiveIndex'])->name('children.archive.index');
+    Route::get('archives', [ArchiveController::class, 'index'])->name('archives.index');
+    Route::post('archives', [ArchiveController::class, 'store'])->name('archives.store');
+    Route::post('archives/{type}/{recordId}/restore', [ArchiveController::class, 'restore'])->name('archives.restore');
     Route::get('children/create', ChildCreatePage::class)->name('children.create');
     Route::post('children', [ChildProfileController::class, 'store'])->name('children.store');
     Route::get('children/{child}', ChildShowPage::class)->name('children.show');

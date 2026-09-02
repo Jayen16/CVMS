@@ -135,6 +135,13 @@
                         </flux:sidebar.item>
                     </flux:sidebar.group>
                 @endif
+                @if (auth()->user()->canArchiveReports())
+                    <flux:sidebar.group expandable :heading="__('Data Management')" class="grid">
+                        <flux:sidebar.item icon="archive-box" :href="route('archives.index')" :current="request()->routeIs('archives.*')" wire:navigate>
+                            {{ __('Archive Center') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endif
             </flux:sidebar.nav>
 
             <flux:spacer />

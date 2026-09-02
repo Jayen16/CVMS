@@ -2,19 +2,20 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Archivable;
 use App\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ReportExport extends Model
 {
-    use UsesUuidPrimaryKey;
+    use Archivable, UsesUuidPrimaryKey;
 
-    protected $fillable = ['user_id', 'format', 'status', 'total_items', 'processed_items', 'path', 'error', 'filters'];
+    protected $fillable = ['user_id', 'format', 'status', 'total_items', 'processed_items', 'path', 'error', 'filters', 'archived_at', 'archived_by', 'archive_reason'];
 
     protected function casts(): array
     {
-        return ['filters' => 'array'];
+        return ['filters' => 'array', 'archived_at' => 'datetime'];
     }
 
     public function user(): BelongsTo
