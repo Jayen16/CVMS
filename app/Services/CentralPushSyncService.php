@@ -33,7 +33,7 @@ class CentralPushSyncService
                     continue;
                 }
 
-                match ($event['entity']) {
+                $applied = match ($event['entity']) {
                     'facility_staff' => $this->applyStaff($connection->facility_id, $event),
                     'children' => $this->applyChild($connection->facility_id, $event),
                     'immunization_records' => $this->applyImmunization($connection->facility_id, $event),
@@ -41,7 +41,8 @@ class CentralPushSyncService
 
                 DB::table('sync_processed_events')->insert([
                     'id' => (string) Str::uuid(), 'facility_id' => $connection->facility_id,
-                    'event_uuid' => $event['event_uuid'], 'entity' => $event['entity'], 'record_uuid' => $event['record_uuid'],
+                    'event_uuid' => $event['event_uuid'], 'entity' => $event['entity'], 'record_uuid' => $event['record_uuid'], 'operation' => $event['operation'],
+                    'version' => $event['version'], 'outcome' => $applied ? 'applied' : 'stale', 'applied_at' => $applied ? now() : null,
                     'created_at' => now(), 'updated_at' => now(),
                 ]);
                 $accepted[] = $event['event_uuid'];
@@ -52,36 +53,69 @@ class CentralPushSyncService
     }
 
     /** @param array<string, mixed> $event */
-    private function applyStaff(string $facilityId, array $event): void
+    private function applyStaff(string $facilityId, array $event): bool
     {
         $data = $event['data'];
         FacilityStaff::query()->updateOrCreate(['facility_id' => $facilityId, 'staff_uuid' => $event['record_uuid']], [
             'name' => $data['name'], 'role' => $data['role'], 'active' => $data['active'], 'last_seen_at' => now(),
         ]);
+
+        return true;
     }
 
     /** @param array<string, mixed> $event */
-    private function applyChild(string $facilityId, array $event): void
+    private function applyChild(string $facilityId, array $event): bool
     {
         $data = $event['data'];
         $child = ChildProfile::withoutGlobalScopes()->where('sync_uuid', $event['record_uuid'])->first() ?? new ChildProfile;
+        if ($child->exists && (int) $child->sync_version >= (int) $event['version']) {
+            return false;
+        }
+
+        if ($event['operation'] === 'deleted') {
+            if (! $child->exists) {
+                return false;
+            }
+
+            $child->forceFill(['archived_at' => now(), 'sync_version' => $event['version']])->saveQuietly();
+
+            return true;
+        }
+
         $child->forceFill([
             'sync_uuid' => $event['record_uuid'], 'facility_uuid' => $facilityId, 'barangay_id' => $this->barangayId($data), 'created_by' => null,
             'first_name' => $data['first_name'], 'middle_name' => $data['middle_name'], 'last_name' => $data['last_name'], 'birthdate' => $data['birthdate'],
             'sex' => $data['sex'], 'guardian_name' => $data['guardian_name'], 'guardian_contact' => $data['guardian_contact'], 'address' => $data['address'],
             'vaccine_card_token' => $data['vaccine_card_token'], 'registered_by_uuid' => $data['registered_by_uuid'], 'registered_by_name' => $data['registered_by_name'],
-            'registered_by_role' => $data['registered_by_role'], 'sync_version' => $event['version'], 'archived_at' => $event['operation'] === 'deleted' ? now() : null,
-        ])->save();
+            'registered_by_role' => $data['registered_by_role'], 'sync_version' => $event['version'], 'archived_at' => null,
+        ])->saveQuietly();
+
+        return true;
     }
 
     /** @param array<string, mixed> $event */
-    private function applyImmunization(string $facilityId, array $event): void
+    private function applyImmunization(string $facilityId, array $event): bool
     {
         $data = $event['data'];
+        $record = VaccinationRecord::withoutGlobalScopes()->where('sync_uuid', $event['record_uuid'])->first() ?? new VaccinationRecord;
+        if ($record->exists && (int) $record->sync_version >= (int) $event['version']) {
+            return false;
+        }
+
+        if ($event['operation'] === 'deleted') {
+            if (! $record->exists) {
+                return false;
+            }
+
+            $record->forceFill(['archived_at' => now(), 'sync_version' => $event['version']])->saveQuietly();
+
+            return true;
+        }
+
         $childId = ChildProfile::withoutGlobalScopes()->where('sync_uuid', $data['child_sync_uuid'])->value('id');
         $vaccineId = VaccineType::query()->where('code', $data['vaccine_code'])->value('id');
         abort_unless($childId && $vaccineId, 422, 'Immunization dependencies are missing.');
-        $record = VaccinationRecord::withoutGlobalScopes()->where('sync_uuid', $event['record_uuid'])->first() ?? new VaccinationRecord;
+
         $record->forceFill([
             'sync_uuid' => $event['record_uuid'], 'facility_uuid' => $facilityId, 'child_profile_id' => $childId, 'vaccine_type_id' => $vaccineId,
             'recorded_by' => null, 'submitted_by' => null, 'verified_by' => null, 'dose_number' => $data['dose_number'], 'source' => $data['source'],
@@ -91,7 +125,9 @@ class CentralPushSyncService
             'suggested_schedule_version_id' => $data['suggested_schedule_version_id'], 'suggestion_note' => $data['suggestion_note'], 'remarks' => $data['remarks'],
             'administered_by_uuid' => $data['administered_by_uuid'], 'recorded_by_uuid' => $data['recorded_by_uuid'], 'administered_by_name' => $data['administered_by_name'],
             'recorded_by_name' => $data['recorded_by_name'], 'recorded_by_role' => $data['recorded_by_role'], 'sync_version' => $event['version'],
-        ])->save();
+        ])->saveQuietly();
+
+        return true;
     }
 
     /** @param array<string, mixed> $data */

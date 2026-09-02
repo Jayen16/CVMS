@@ -41,11 +41,23 @@ class FacilityPushSyncTest extends TestCase
         $service = app(CentralPushSyncService::class);
         $result = $service->push($events, $client);
         $duplicateResult = $service->push($events, $client);
+        $update = $events[0];
+        $update['event_uuid'] = (string) Str::uuid();
+        $update['version'] = 2;
+        $update['data']['first_name'] = 'Ana Updated';
+        $delete = $events[0];
+        $delete['event_uuid'] = (string) Str::uuid();
+        $delete['operation'] = 'deleted';
+        $delete['version'] = 3;
+        $delete['data'] = ['sync_uuid' => $childUuid, 'version' => 3];
+        $service->push([$update, $delete], $client);
 
         $this->assertCount(2, $result['accepted']);
         $this->assertSame($result['accepted'], $duplicateResult['accepted']);
         $this->assertSame(1, ChildProfile::withoutGlobalScopes()->where('sync_uuid', $childUuid)->count());
+        $this->assertSame('Ana Updated', ChildProfile::withoutGlobalScopes()->where('sync_uuid', $childUuid)->value('first_name'));
+        $this->assertNotNull(ChildProfile::withoutGlobalScopes()->where('sync_uuid', $childUuid)->value('archived_at'));
         $this->assertSame(1, VaccinationRecord::withoutGlobalScopes()->where('sync_uuid', $recordUuid)->count());
-        $this->assertDatabaseCount('sync_processed_events', 2);
+        $this->assertDatabaseCount('sync_processed_events', 4);
     }
 }

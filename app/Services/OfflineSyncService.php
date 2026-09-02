@@ -36,7 +36,7 @@ class OfflineSyncService
             'entity' => $entity,
             'model_type' => $model::class,
             'model_sync_uuid' => $model->sync_uuid,
-            'operation' => 'updated',
+            'operation' => $model->wasRecentlyCreated ? 'created' : 'updated',
             'version' => (int) ($model->sync_version ?: 1),
             'status' => 'pending',
             'payload' => $this->payloadFor($model),
@@ -64,7 +64,7 @@ class OfflineSyncService
             'operation' => 'deleted',
             'version' => (int) ($model->sync_version ?: 1),
             'status' => 'pending',
-            'payload' => ['sync_uuid' => $model->sync_uuid],
+            'payload' => ['sync_uuid' => $model->sync_uuid, 'version' => (int) ($model->sync_version ?: 1)],
             'queued_at' => now(),
         ]);
     }
