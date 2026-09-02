@@ -256,6 +256,11 @@ class User extends Authenticatable implements PasskeyUser
         return $this->isSuperAdmin();
     }
 
+    public function canManagePopulationBackground(): bool
+    {
+        return $this->isSuperAdmin() || $this->isMunicipalAdmin();
+    }
+
     public function canManageChildren(): bool
     {
         return $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('manage_children'));

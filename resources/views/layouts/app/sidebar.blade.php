@@ -130,6 +130,9 @@
                         <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
                             {{ __('Reports') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('population-background.index')" :current="request()->routeIs('population-background.*')" wire:navigate>
+                            {{ __('Population Background') }}
+                        </flux:sidebar.item>
                         <flux:sidebar.item icon="list-bullet" :href="route('audit-logs.index')" :current="request()->routeIs('audit-logs.*')" wire:navigate>
                             {{ __('Audit Logs') }}
                         </flux:sidebar.item>

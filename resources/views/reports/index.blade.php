@@ -108,6 +108,8 @@
             <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" />
             <x-stat-card label="AEFI" :value="$stats['aefi']" />
             <x-stat-card label="Pending review" :value="$stats['pending']" />
+            <x-stat-card label="Target population" :value="$stats['populationTarget']" />
+            <x-stat-card label="Coverage" :value="$stats['coveragePercent'] === null ? '—' : $stats['coveragePercent'].'%'" />
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2">
@@ -125,6 +127,8 @@
                                 <th class="px-4 py-3 font-medium">Nurses</th>
                                 <th class="px-4 py-3 font-medium">Children</th>
                                 <th class="px-4 py-3 font-medium">Vaccinations</th>
+                                <th class="px-4 py-3 font-medium">Target</th>
+                                <th class="px-4 py-3 font-medium">Coverage</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -135,9 +139,11 @@
                                     <td>{{ $barangay->nurses_count }}</td>
                                     <td>{{ $barangay->children_count }}</td>
                                     <td>{{ $barangay->report_vaccinations_count }}</td>
+                                    <td>{{ $barangay->population_target ?: '—' }}</td>
+                                    <td>{{ $barangay->coverage_percent === null ? '—' : $barangay->coverage_percent.'%' }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="5" class="px-4 py-6 text-center text-zinc-500">No barangays yet.</td></tr>
+                                <tr><td colspan="7" class="px-4 py-6 text-center text-zinc-500">No barangays yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
