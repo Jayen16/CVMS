@@ -6,7 +6,10 @@
     <style>
         body { font-family: DejaVu Sans, sans-serif; color: #0f172a; font-size: 12px; }
         .card { border: 1px solid #cbd5e1; border-radius: 12px; padding: 24px; }
-        .header { display: flex; justify-content: space-between; gap: 24px; }
+        .header { display: table; width: 100%; }
+        .header > div { display: table-cell; vertical-align: top; }
+        .header > div:last-child { width: 190px; text-align: right; }
+        h1 { margin: 0 0 16px; font-size: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 16px; }
         th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
         th { background: #f8fafc; }
@@ -19,8 +22,8 @@
             <div>
                 <h1>Digital Child Vaccine Card</h1>
                 <p><strong>{{ $child->full_name }}</strong></p>
-                <p>{{ ucfirst($child->sex) }} | {{ $child->birthdate->format('M d, Y') }} | {{ $child->barangay?->name }}</p>
-                <p>Validation URL: {{ $validationUrl }}</p>
+                <p>{{ ucfirst($child->sex) }} | {{ $child->birthdate->format('M d, Y') }}</p>
+                <p>{{ $child->barangay?->municipalityRelation?->province?->name ?? 'N/A' }} · {{ $child->barangay?->municipalityRelation?->name ?? 'N/A' }} · {{ $child->barangay?->name ?? 'N/A' }}</p>
             </div>
             <div>
                 <img src="{{ $qrCode }}" alt="QR code">

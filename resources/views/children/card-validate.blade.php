@@ -17,7 +17,8 @@
         <div class="card">
             <h1>Vaccine card validation</h1>
             <p><strong>{{ $child->full_name }}</strong></p>
-            <p>{{ ucfirst($child->sex) }} | {{ $child->birthdate->format('M d, Y') }} | {{ $child->barangay?->name }}</p>
+            <p>{{ ucfirst($child->sex) }} | {{ $child->birthdate->format('M d, Y') }}</p>
+            <p>{{ $child->barangay?->municipalityRelation?->province?->name ?? 'N/A' }} · {{ $child->barangay?->municipalityRelation?->name ?? 'N/A' }} · {{ $child->barangay?->name ?? 'N/A' }}</p>
             <p>This page was opened from the QR-enabled digital vaccine card.</p>
             <table>
                 <thead>
