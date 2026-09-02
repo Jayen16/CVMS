@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use App\Services\AccountRecoveryService;
 
 class ChildParentController extends Controller
 {
@@ -113,6 +114,15 @@ class ChildParentController extends Controller
         Password::sendResetLink(['email' => $parent->email]);
 
         return to_route('children.show', $child)->with('status', 'Password setup link sent again.');
+    }
+
+    public function sendPasswordLink(Request $request, ChildProfile $child, User $parent, AccountRecoveryService $recovery): RedirectResponse
+    {
+        $this->authorizeChildAccess($child);
+        abort_unless($parent->isParent() && $child->parents()->whereKey($parent->id)->exists(), 404);
+        $channel = $request->validate(['channel' => ['required', 'in:email,sms']])['channel'];
+        $recovery->send($parent, $channel);
+        return to_route('children.show', $child)->with('status', 'Parent password reset link sent by '.strtoupper($channel).'.');
     }
 
     public function destroy(ChildProfile $child, User $parent): RedirectResponse

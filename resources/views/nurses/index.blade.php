@@ -72,7 +72,7 @@
                         <tbody x-data="{ accessOpen: false }">
                             <tr class="app-table-row">
                                 <td class="font-medium text-slate-950 dark:text-white">{{ $member->name }}</td>
-                                <td>{{ $member->email }}</td>
+                                <td>{{ $member->email }}{{ $member->phone ? ' · '.$member->phone : '' }}</td>
                                 <td>{{ $member->displayRole() }}</td>
                                 <td>{{ $member->barangay?->name ?? 'Unassigned' }}</td>
                                 <td>
@@ -113,6 +113,12 @@
                                                 <button class="app-button-secondary !px-3 !py-1.5 !text-xs">Restore</button>
                                             </form>
                                         @elseif ($member->invitation_accepted_at)
+                                            @if ($member->email)
+                                                <form method="POST" action="{{ route('users.password-link', $member) }}">@csrf<input type="hidden" name="channel" value="email"><button class="app-button-secondary !px-3 !py-1.5 !text-xs">Reset by email</button></form>
+                                            @endif
+                                            @if ($member->phone)
+                                                <form method="POST" action="{{ route('users.password-link', $member) }}">@csrf<input type="hidden" name="channel" value="sms"><button class="app-button-secondary !px-3 !py-1.5 !text-xs">Reset by text</button></form>
+                                            @endif
                                             <form method="POST" action="{{ route('nurses.toggle', $member) }}">
                                                 @csrf
                                                 <button class="app-button-secondary !px-3 !py-1.5 !text-xs">{{ $member->is_active ? 'Deactivate' : 'Activate' }}</button>
@@ -187,6 +193,7 @@
                         <p class="text-sm text-slate-600 dark:text-zinc-300">{{ $managedRole === 'barangay_admin' ? 'The Barangay Admin receives an email link to set their password. They can manage nurses for their assigned barangay.' : 'The nurse receives an email link to set their password. Until then, the account stays pending.' }}</p>
                         <x-form-field label="Name" name="name" />
                         <x-form-field label="Email" name="email" type="email" />
+                        <x-form-field label="Phone number (optional)" name="phone" type="tel" />
                         @if ($managedRole === 'barangay_admin')
                             <x-form-field label="Existing barangay" name="barangay_id" type="select" :options="$barangays->pluck('name', 'id')" />
                             <x-form-field label="Or new barangay" name="barangay_name" />

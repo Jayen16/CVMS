@@ -416,6 +416,12 @@
                                                     <button class="app-button-secondary !px-3 !py-1.5 !text-xs">Resend link</button>
                                                 </form>
                                             @endif
+                                            @if ($parent->email)
+                                                <form method="POST" action="{{ route('children.parents.password-link', [$child, $parent]) }}">@csrf<input type="hidden" name="channel" value="email"><button class="text-sm text-teal-700 hover:underline">Reset by email</button></form>
+                                            @endif
+                                            @if ($parent->phone)
+                                                <form method="POST" action="{{ route('children.parents.password-link', [$child, $parent]) }}">@csrf<input type="hidden" name="channel" value="sms"><button class="text-sm text-teal-700 hover:underline">Reset by text</button></form>
+                                            @endif
 
                                             <form
                                                 method="POST"

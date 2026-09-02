@@ -7,11 +7,11 @@ return [
 
     'sms' => [
         'driver' => env('SMS_DRIVER', 'log'),
-        'sim800c' => [
-            'command' => env('SIM800C_COMMAND'),
-            'port' => env('SIM800C_PORT', 'COM3'),
-            'baud_rate' => (int) env('SIM800C_BAUD_RATE', 9600),
-            'timeout' => (int) env('SIM800C_TIMEOUT', 30),
+        'api' => [
+            'url' => env('SMS_API_URL'),
+            'token' => env('SMS_API_TOKEN'),
+            'from' => env('SMS_API_FROM'),
+            'timeout' => (int) env('SMS_API_TIMEOUT', 15),
         ],
     ],
 ];
