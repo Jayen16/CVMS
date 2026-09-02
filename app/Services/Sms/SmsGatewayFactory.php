@@ -8,6 +8,7 @@ class SmsGatewayFactory
     {
         return match (config('reminders.sms.driver')) {
             'api' => new ApiSmsGateway,
+            'unisms' => new UniSmsGateway,
             default => new LogSmsGateway,
         };
     }
