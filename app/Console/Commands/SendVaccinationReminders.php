@@ -2,26 +2,21 @@
 
 namespace App\Console\Commands;
 
-use App\Mail\VaccinationDueReminderMail;
+use App\Jobs\SendVaccinationReminder;
 use App\Models\ChildProfile;
 use App\Models\User;
 use App\Models\VaccinationReminder;
 use App\Services\ImmunizationSuggestionService;
-use App\Services\InAppNotificationService;
-use App\Services\Sms\SmsGatewayFactory;
-use Carbon\CarbonInterface;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Mail;
-use Throwable;
 
 class SendVaccinationReminders extends Command
 {
-    protected $signature = 'vaccinations:send-reminders {--dry-run : Count reminders without sending messages}';
+    protected $signature = 'vaccinations:send-reminders {--dry-run : Count reminders without dispatching jobs}';
 
-    protected $description = 'Send due vaccination reminders to linked parents by email and/or SMS.';
+    protected $description = 'Queue due vaccination reminders to linked parents by email and/or SMS.';
 
-    public function handle(ImmunizationSuggestionService $suggestions, SmsGatewayFactory $smsFactory, InAppNotificationService $notifications): int
+    public function handle(ImmunizationSuggestionService $suggestions): int
     {
         if (! config('reminders.enabled')) {
             $this->info('Vaccination reminders are disabled.');
@@ -32,14 +27,14 @@ class SendVaccinationReminders extends Command
         $channels = $this->channels();
         $today = Carbon::now()->startOfDay();
         $latestDueDate = $today->copy()->addDays((int) config('reminders.lookahead_days'));
-        $sentCount = 0;
+        $queuedCount = 0;
         $skippedCount = 0;
 
         ChildProfile::query()
             ->with('parents')
             ->whereHas('parents')
             ->orderBy('id')
-            ->chunkById(100, function ($children) use ($suggestions, $smsFactory, $notifications, $channels, $today, $latestDueDate, &$sentCount, &$skippedCount): void {
+            ->chunkById(100, function ($children) use ($suggestions, $channels, $latestDueDate, &$queuedCount, &$skippedCount): void {
                 foreach ($children as $child) {
                     $suggestion = $suggestions->suggestNextDose($child);
 
@@ -59,20 +54,24 @@ class SendVaccinationReminders extends Command
                                 continue;
                             }
 
-                            if ($this->option('dry-run')) {
-                                $sentCount++;
+                            $queuedCount++;
 
-                                continue;
+                            if (! $this->option('dry-run')) {
+                                SendVaccinationReminder::dispatch(
+                                    (string) $child->id,
+                                    (string) $parent->id,
+                                    $suggestion['vaccine_name'],
+                                    $suggestion['dose_number'],
+                                    $suggestion['due_at']->toDateString(),
+                                    $channel,
+                                );
                             }
-
-                            $this->sendReminder($child, $parent, $suggestion, $channel, $smsFactory, $today, $notifications);
-                            $sentCount++;
                         }
                     }
                 }
             });
 
-        $this->info("Reminder run complete. {$sentCount} queued/sent, {$skippedCount} skipped.");
+        $this->info("Reminder run complete. {$queuedCount} queued, {$skippedCount} skipped.");
 
         return self::SUCCESS;
     }
@@ -97,13 +96,15 @@ class SendVaccinationReminders extends Command
      */
     private function availableChannels(ChildProfile $child, User $parent, array $channels): array
     {
-        return array_values(array_filter($channels, function (string $channel) use ($child, $parent): bool {
-            if ($channel === 'email') {
-                return filled($parent->email);
-            }
+        if (in_array('sms', $channels, true) && (filled($parent->phone) || filled($child->guardian_contact))) {
+            return ['sms'];
+        }
 
-            return filled($parent->phone) || filled($child->guardian_contact);
-        }));
+        if (in_array('email', $channels, true) && filled($parent->email)) {
+            return ['email'];
+        }
+
+        return [];
     }
 
     /**
@@ -122,83 +123,4 @@ class SendVaccinationReminders extends Command
             ->exists();
     }
 
-    /**
-     * @param  array{vaccine_code: string|null, vaccine_name: string|null, dose_number: int|null, due_at: Carbon|null, note: string}  $suggestion
-     */
-    private function sendReminder(ChildProfile $child, User $parent, array $suggestion, string $channel, SmsGatewayFactory $smsFactory, CarbonInterface $today, InAppNotificationService $notifications): void
-    {
-        $reminder = VaccinationReminder::updateOrCreate([
-            'child_profile_id' => $child->id,
-            'parent_id' => $parent->id,
-            'vaccine_name' => $suggestion['vaccine_name'],
-            'dose_number' => $suggestion['dose_number'],
-            'due_at' => $suggestion['due_at'],
-            'channel' => $channel,
-        ], [
-            'recipient' => 'pending',
-            'status' => 'pending',
-            'error_message' => null,
-        ]);
-
-        try {
-            $recipient = $channel === 'sms'
-                ? $this->smsRecipient($child, $parent)
-                : $parent->email;
-
-            $reminder->update(['recipient' => $recipient]);
-
-            if ($channel === 'sms') {
-                $smsFactory->make()->send($recipient, $this->smsMessage($child, $suggestion));
-            } else {
-                Mail::to($parent->email)->send(new VaccinationDueReminderMail(
-                    $child,
-                    $suggestion['vaccine_name'],
-                    $suggestion['dose_number'],
-                    $suggestion['due_at'],
-                ));
-            }
-
-            $reminder->update([
-                'status' => 'sent',
-                'sent_at' => $today,
-            ]);
-
-            $notifications->vaccinationDue(
-                $parent,
-                "vaccination-due:{$child->id}:{$suggestion['vaccine_name']}:{$suggestion['dose_number']}:{$suggestion['due_at']->toDateString()}",
-                $this->smsMessage($child, $suggestion),
-                route('children.show', $child),
-            );
-        } catch (Throwable $exception) {
-            $reminder->update([
-                'status' => 'failed',
-                'error_message' => $exception->getMessage(),
-            ]);
-
-            report($exception);
-        }
-    }
-
-    private function smsRecipient(ChildProfile $child, User $parent): string
-    {
-        if (filled($parent->phone)) {
-            return $parent->phone;
-        }
-
-        if (filled($child->guardian_contact)) {
-            return $child->guardian_contact;
-        }
-
-        throw new \RuntimeException("No SMS recipient phone number found for parent {$parent->id}.");
-    }
-
-    /**
-     * @param  array{vaccine_code: string|null, vaccine_name: string|null, dose_number: int|null, due_at: Carbon|null, note: string}  $suggestion
-     */
-    private function smsMessage(ChildProfile $child, array $suggestion): string
-    {
-        $dose = $suggestion['dose_number'] ? " dose {$suggestion['dose_number']}" : '';
-
-        return "Reminder: {$child->full_name} is due for {$suggestion['vaccine_name']}{$dose} on {$suggestion['due_at']?->format('M d, Y')}. Please visit the clinic.";
-    }
 }
