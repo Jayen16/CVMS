@@ -13,9 +13,17 @@
             <p class="eyebrow">SYNC</p>
             <h1 class="page-title">Sync data</h1>
             <p class="page-subtitle">Review pending sync items, last completed sync, and run a manual sync when needed.</p>
+            @if ($installation)
+                <p class="mt-2 text-sm text-zinc-500">Connection:
+                    <span class="font-medium {{ $installation->status === 'active' ? 'text-emerald-600' : 'text-rose-600' }}">{{ ucfirst($installation->status) }}</span>
+                    @if ($installation->last_synchronized_at)
+                        · Last exchange {{ $installation->last_synchronized_at->diffForHumans() }}
+                    @endif
+                </p>
+            @endif
         </div>
 
-        @if (auth()->user()->isBarangayAdmin())
+        @if (auth()->user()->isBarangayAdmin() && (!$installation || $installation->status === 'active'))
             <form method="POST" action="{{ route('sync.manual') }}">
                 @csrf
             <button class="app-button-primary inline-flex items-center gap-2" aria-label="Sync data now">

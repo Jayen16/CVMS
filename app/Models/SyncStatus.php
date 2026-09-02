@@ -12,16 +12,20 @@ class SyncStatus extends Model
 
     protected $fillable = [
         'scope',
+        'state',
         'last_synced_by',
         'last_synced_at',
         'last_processed',
         'last_failed',
+        'last_error',
+        'last_attempted_at',
     ];
 
     protected function casts(): array
     {
         return [
             'last_synced_at' => 'datetime',
+            'last_attempted_at' => 'datetime',
         ];
     }
 

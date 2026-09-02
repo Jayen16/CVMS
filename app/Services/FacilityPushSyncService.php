@@ -20,6 +20,13 @@ class FacilityPushSyncService
         $rows = OfflineSyncOutbox::query()
             ->whereIn('status', ['pending', 'failed'])
             ->whereIn('entity', ['facility_staff', 'children', 'immunization_records', 'guardians', 'child_guardian_relationships', 'inventory_transactions', 'appointments', 'audit_events', 'notification_requests'])
+            ->where(function ($query): void {
+                $query->where('status', 'pending')->orWhere(function ($failed): void {
+                    $failed->where('status', 'failed')->where(function ($retry): void {
+                        $retry->whereNull('last_attempted_at')->orWhere('last_attempted_at', '<=', now()->subSeconds($this->retryDelay()));
+                    });
+                });
+            })
             ->orderBy('queued_at')
             ->limit(50)
             ->get();
@@ -63,5 +70,14 @@ class FacilityPushSyncService
             $rows->each(fn (OfflineSyncOutbox $row) => $row->update(['status' => 'failed', 'last_error' => $exception->getMessage()]));
             throw $exception;
         }
+    }
+
+    private function retryDelay(): int
+    {
+        $attempts = (int) OfflineSyncOutbox::query()->where('status', 'failed')->max('attempts');
+        $base = max(1, (int) config('system.sync_retry_base_seconds', 60));
+        $max = max($base, (int) config('system.sync_retry_max_seconds', 3600));
+
+        return min($max, $base * (2 ** min($attempts, 10)));
     }
 }
