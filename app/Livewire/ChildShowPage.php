@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\ChildProfile;
 use App\Models\VaccinationRecord;
+use App\Models\VaccineInventoryItem;
 use App\Models\VaccineType;
 use App\Services\ImmunizationSuggestionService;
 use Illuminate\Contracts\View\View;
@@ -50,6 +51,14 @@ class ChildShowPage extends Component
             'child' => $this->child,
             'suggestion' => $suggestions->suggestNextDose($this->child),
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
+            'inventoryItems' => VaccineInventoryItem::query()
+                ->where('barangay_id', $this->child->barangay_id)
+                ->with('vaccineType')
+                ->withSum(['transactions as stock_in' => fn ($query) => $query->where('movement', 'in')], 'quantity')
+                ->withSum(['transactions as stock_out' => fn ($query) => $query->where('movement', 'out')], 'quantity')
+                ->orderBy('item_code')
+                ->get()
+                ->filter(fn (VaccineInventoryItem $item): bool => $item->availableStock() > 0),
             'editableRecord' => $editableRecord,
         ])->layout('layouts.app', [
             'title' => $this->child->full_name,

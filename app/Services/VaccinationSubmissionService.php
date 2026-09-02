@@ -56,6 +56,12 @@ class VaccinationSubmissionService
             $rules['clinic_location'] = ['nullable', 'string', 'max:255'];
             $rules['proof_files'] = ['nullable', 'array', 'max:5'];
             $rules['proof_files.*'] = ['image', 'max:5120'];
+        } else {
+            $rules['vaccine_inventory_item_id'] = [
+                'nullable',
+                'uuid',
+                'exists:vaccine_inventory_items,id',
+            ];
         }
 
         return Validator::make($input, $rules, [

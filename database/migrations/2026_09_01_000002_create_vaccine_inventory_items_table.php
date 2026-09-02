@@ -29,6 +29,12 @@ return new class extends Migration
                 ->after('vaccine_type_id')
                 ->constrained('vaccine_inventory_items')
                 ->restrictOnDelete();
+            $table->foreignUuid('vaccination_record_id')
+                ->nullable()
+                ->after('vaccine_inventory_item_id')
+                ->constrained('vaccination_records')
+                ->restrictOnDelete();
+            $table->unique('vaccination_record_id');
         });
     }
 
@@ -36,6 +42,9 @@ return new class extends Migration
     {
         Schema::table('vaccine_inventory_transactions', function (Blueprint $table): void {
             $table->dropForeign(['vaccine_inventory_item_id']);
+            $table->dropForeign(['vaccination_record_id']);
+            $table->dropUnique(['vaccination_record_id']);
+            $table->dropColumn('vaccination_record_id');
             $table->dropColumn('vaccine_inventory_item_id');
         });
 

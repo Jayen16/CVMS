@@ -123,6 +123,12 @@ class VaccinationRecord extends Model
         return $this->hasMany(AdverseEventReport::class);
     }
 
+    /** @return HasMany<VaccineInventoryTransaction, $this> */
+    public function inventoryUsageTransactions(): HasMany
+    {
+        return $this->hasMany(VaccineInventoryTransaction::class, 'vaccination_record_id');
+    }
+
     public function isPendingVerification(): bool
     {
         return $this->verification_status === 'pending';

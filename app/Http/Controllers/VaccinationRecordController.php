@@ -4,13 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\ChildProfile;
 use App\Models\VaccinationRecord;
+use App\Models\VaccineInventoryItem;
+use App\Models\VaccineInventoryTransaction;
 use App\Services\ImmunizationSuggestionService;
 use App\Services\InAppNotificationService;
 use App\Services\OfflineSyncService;
 use App\Services\VaccinationSubmissionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class VaccinationRecordController extends Controller
@@ -24,7 +28,10 @@ class VaccinationRecordController extends Controller
         $this->authorizeCreate($child);
 
         $validated = $submissions->validate(auth()->user(), $child, $request->all() + $request->allFiles());
+        $inventoryItem = $this->validateInventorySelection($child, $validated['vaccine_type_id'], $validated['vaccine_inventory_item_id'] ?? null);
         $record = $submissions->create($child, auth()->user(), $validated);
+
+        $this->recordInventoryUsage($record, $inventoryItem);
 
         $record->update($suggestions->suggestionForRecord($child));
 
@@ -33,6 +40,59 @@ class VaccinationRecordController extends Controller
         }
 
         return to_route('children.show', $child)->with('status', 'Vaccination record saved with next-dose suggestion.');
+    }
+
+    private function validateInventorySelection(ChildProfile $child, string $vaccineTypeId, mixed $inventoryItemId): ?VaccineInventoryItem
+    {
+        if ($inventoryItemId === null || ! auth()->user()->canManageInventory()) {
+            return null;
+        }
+
+        $item = VaccineInventoryItem::query()
+            ->whereKey($inventoryItemId)
+            ->where('barangay_id', $child->barangay_id)
+            ->where('vaccine_type_id', $vaccineTypeId)
+            ->first();
+
+        abort_if($item === null, 422, 'The selected inventory item does not match this child or vaccine.');
+
+        $available = (int) VaccineInventoryTransaction::query()
+            ->where('vaccine_inventory_item_id', $item->id)
+            ->selectRaw("coalesce(sum(case when movement = 'in' then quantity else -quantity end), 0) as balance")
+            ->value('balance');
+
+        if ($available < 1) {
+            throw ValidationException::withMessages([
+                'vaccine_inventory_item_id' => 'The selected inventory item has no doses available.',
+            ]);
+        }
+
+        return $item;
+    }
+
+    private function recordInventoryUsage(VaccinationRecord $record, ?VaccineInventoryItem $item): void
+    {
+        if ($item === null) {
+            return;
+        }
+
+        DB::transaction(function () use ($record, $item): void {
+            VaccineInventoryTransaction::create([
+                'barangay_id' => $record->child->barangay_id,
+                'vaccine_type_id' => $record->vaccine_type_id,
+                'vaccine_inventory_item_id' => $item->id,
+                'vaccination_record_id' => $record->id,
+                'recorded_by' => auth()->id(),
+                'transaction_type' => 'usage',
+                'movement' => 'out',
+                'quantity' => 1,
+                'batch_number' => $item->batch_number,
+                'expiry_date' => $item->expiry_date,
+                'transaction_date' => $record->administered_at,
+                'reference_number' => $record->id,
+                'notes' => 'Linked to administered vaccination record.',
+            ]);
+        });
     }
 
     public function update(
