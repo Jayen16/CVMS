@@ -165,7 +165,7 @@
                     $activeTab = 'aefi';
                 } elseif (auth()->user()->canManageChildren() && $errors->hasAny(['name', 'email', 'phone', 'relationship'])) {
                     $activeTab = 'parents';
-                } elseif (auth()->user()->canManageChildren() && $errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'remarks'])) {
+                } elseif (auth()->user()->canManageChildren() && $errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'vaccine_inventory_item_id', 'remarks'])) {
                     $activeTab = 'vaccination';
                 } elseif ((auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin()) && $errors->has('barangay_id')) {
                     $activeTab = 'transfer';
@@ -416,6 +416,12 @@
                                     <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" />
                                     <x-form-field label="Dose number" name="dose_number" type="number" />
                                     <x-form-field label="Date given" name="administered_at" type="date" />
+                                    <x-form-field
+                                        label="Inventory stock (optional)"
+                                        name="vaccine_inventory_item_id"
+                                        type="select"
+                                        :options="$inventoryItems->mapWithKeys(fn ($item) => [$item->id => $item->vaccineType->name.' · '.($item->batch_number ?: $item->item_code).' · '.$item->availableStock().' doses'])->all()"
+                                    />
                                     <div class="sm:col-span-2 lg:col-span-4">
                                         <x-form-field label="Remarks" name="remarks" type="textarea" />
                                     </div>
