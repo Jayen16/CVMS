@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ChildProfile;
 use App\Models\VaccinationRecord;
 use App\Services\ImmunizationSuggestionService;
+use App\Services\InAppNotificationService;
 use App\Services\OfflineSyncService;
 use App\Services\VaccinationSubmissionService;
 use Illuminate\Http\RedirectResponse;
@@ -19,8 +20,7 @@ class VaccinationRecordController extends Controller
         ChildProfile $child,
         ImmunizationSuggestionService $suggestions,
         VaccinationSubmissionService $submissions
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         $this->authorizeCreate($child);
 
         $validated = $submissions->validate(auth()->user(), $child, $request->all() + $request->allFiles());
@@ -40,8 +40,7 @@ class VaccinationRecordController extends Controller
         VaccinationRecord $record,
         ImmunizationSuggestionService $suggestions,
         VaccinationSubmissionService $submissions
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         $this->authorizeParentUpdate($record);
 
         $validated = $submissions->validate(auth()->user(), $record->child, $request->all() + $request->allFiles(), $record);
@@ -53,7 +52,7 @@ class VaccinationRecordController extends Controller
             ->with('status', 'Pending vaccination history updated.');
     }
 
-    public function verify(VaccinationRecord $record, OfflineSyncService $offlineSync): RedirectResponse
+    public function verify(VaccinationRecord $record, OfflineSyncService $offlineSync, InAppNotificationService $notifications): RedirectResponse
     {
         $this->authorizeVerification($record);
 
@@ -63,11 +62,12 @@ class VaccinationRecordController extends Controller
             'verified_at' => now(),
         ]);
         $offlineSync->queueUpsert($record->fresh(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier']));
+        $notifications->vaccinationVerified($record);
 
         return to_route('children.show', $record->child_profile_id)->with('status', 'Vaccination record verified.');
     }
 
-    public function reject(VaccinationRecord $record, OfflineSyncService $offlineSync): RedirectResponse
+    public function reject(VaccinationRecord $record, OfflineSyncService $offlineSync, InAppNotificationService $notifications): RedirectResponse
     {
         $this->authorizeVerification($record);
 
@@ -77,6 +77,7 @@ class VaccinationRecordController extends Controller
             'verified_at' => now(),
         ]);
         $offlineSync->queueUpsert($record->fresh(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier']));
+        $notifications->vaccinationRejected($record);
 
         return to_route('children.show', $record->child_profile_id)->with('status', 'Vaccination record rejected.');
     }
@@ -152,5 +153,4 @@ class VaccinationRecordController extends Controller
 
         abort(403);
     }
-
 }

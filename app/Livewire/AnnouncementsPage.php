@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Barangay;
 use App\Models\ClinicAnnouncement;
+use App\Services\InAppNotificationService;
 use App\Services\OfflineSyncService;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
@@ -17,12 +18,19 @@ class AnnouncementsPage extends Component
     use WithPagination;
 
     public string $title = '';
+
     public string $category = 'schedule';
+
     public string $audience = 'all';
+
     public ?string $barangay_id = null;
+
     public string $starts_on = '';
+
     public string $ends_on = '';
+
     public string $location = '';
+
     public string $message = '';
 
     public function mount(): void
@@ -30,7 +38,7 @@ class AnnouncementsPage extends Component
         $this->starts_on = now()->toDateString();
     }
 
-    public function save(OfflineSyncService $offlineSync): void
+    public function save(OfflineSyncService $offlineSync, InAppNotificationService $notifications): void
     {
         abort_unless(auth()->user()->canManageAnnouncements(), 403);
 
@@ -56,6 +64,7 @@ class AnnouncementsPage extends Component
         ]);
 
         $offlineSync->queueUpsert($announcement->load(['barangay', 'creator']));
+        $notifications->announcementPublished($announcement);
 
         $this->reset('title', 'location', 'message', 'ends_on');
         $this->category = 'schedule';
