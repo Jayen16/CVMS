@@ -16,7 +16,8 @@ services:
     build: { context: ., target: nginx }
     image: cvms-nginx:production
     restart: unless-stopped
-    ports: ["80:80"]
+    ports:
+      - "0.0.0.0:80:80"
     volumes: [laravel_storage:/var/www/html/storage:ro]
     depends_on:
       app: { condition: service_healthy }
