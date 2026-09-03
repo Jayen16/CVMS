@@ -17,7 +17,13 @@ services:
     image: cvms-nginx:production
     restart: unless-stopped
     ports:
-      - "0.0.0.0:80:80"
+      - name: http
+        target: 80
+        published: "80"
+        host_ip: "0.0.0.0"
+        protocol: tcp
+        app_protocol: http
+        mode: host
     volumes: [laravel_storage:/var/www/html/storage:ro]
     depends_on:
       app: { condition: service_healthy }
