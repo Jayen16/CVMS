@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 FROM composer:2.8 AS composer-bin
-FROM php:8.3-fpm-bookworm AS php-base
+FROM php:8.4-fpm-bookworm AS php-base
 ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN apt-get update && apt-get install -y --no-install-recommends curl libfreetype6-dev libicu-dev libjpeg62-turbo-dev libonig-dev libpng-dev libzip-dev unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
