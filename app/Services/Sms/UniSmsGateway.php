@@ -28,7 +28,11 @@ class UniSmsGateway implements SmsGateway
             ]);
 
         if ($response->failed()) {
-            throw new RuntimeException('UniSMS request failed: '.$response->status());
+            $details = trim($response->body());
+
+            throw new RuntimeException(
+                'UniSMS request failed: '.$response->status().($details !== '' ? ' '.$details : '')
+            );
         }
     }
 }
