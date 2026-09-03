@@ -13,5 +13,11 @@ return [
             'from' => env('SMS_API_FROM'),
             'timeout' => (int) env('SMS_API_TIMEOUT', 15),
         ],
+        'unisms' => [
+            'base_url' => env('UNISMS_BASE_URL', 'https://unismsapi.com/api'),
+            'secret_key' => env('UNISMS_API_SECRET_KEY'),
+            'sender_id' => env('UNISMS_SENDER_ID'),
+            'timeout' => (int) env('UNISMS_TIMEOUT', 15),
+        ],
     ],
 ];
