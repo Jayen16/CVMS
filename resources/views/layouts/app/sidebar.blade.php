@@ -61,17 +61,6 @@
                                 {{ __('Verification Queue') }}
                             </flux:sidebar.item>
                         @endif
-                        @if (auth()->user()->canViewDefaulters())
-                            <flux:sidebar.item icon="calendar-days" :href="route('schedule-monitoring.index')" :current="request()->routeIs('schedule-monitoring.*')" wire:navigate>
-                                {{ __('Schedule monitoring') }}
-                            </flux:sidebar.item>
-                            <flux:sidebar.item icon="bell-alert" :href="route('defaulters.index')" :current="request()->routeIs('defaulters.*')" wire:navigate>
-                                {{ __('Defaulters') }}
-                            </flux:sidebar.item>
-                            <flux:sidebar.item icon="chart-bar" :href="route('predictive-analytics.index')" :current="request()->routeIs('predictive-analytics.*')" wire:navigate>
-                                {{ __('Vaccine demand forecast') }}
-                            </flux:sidebar.item>
-                        @endif
                         @if (auth()->user()->canViewDuplicates() && ! auth()->user()->isSuperAdmin())
                             <flux:sidebar.item icon="squares-2x2" :href="route('duplicates.index')" :current="request()->routeIs('duplicates.*')" wire:navigate>
                                 {{ __('Duplicates') }}
@@ -131,17 +120,30 @@
                     </flux:sidebar.group>
                 @endif
 
-                @if (auth()->user()->canViewOversight())
+                @if (auth()->user()->canViewOversight() || auth()->user()->canViewDefaulters())
                     <flux:sidebar.group expandable :heading="__('Insights & Oversight')" class="grid">
-                        <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
-                            {{ __('Reports') }}
-                        </flux:sidebar.item>
-                        <flux:sidebar.item icon="clipboard-document-list" :href="route('population-background.index')" :current="request()->routeIs('population-background.*')" wire:navigate>
-                            {{ __('Population Background') }}
-                        </flux:sidebar.item>
-                        <flux:sidebar.item icon="list-bullet" :href="route('audit-logs.index')" :current="request()->routeIs('audit-logs.*')" wire:navigate>
-                            {{ __('Audit Logs') }}
-                        </flux:sidebar.item>
+                        @if (auth()->user()->canViewDefaulters())
+                            <flux:sidebar.item icon="calendar-days" :href="route('schedule-monitoring.index')" :current="request()->routeIs('schedule-monitoring.*')" wire:navigate>
+                                {{ __('Schedule monitoring') }}
+                            </flux:sidebar.item>
+                            <flux:sidebar.item icon="bell-alert" :href="route('defaulters.index')" :current="request()->routeIs('defaulters.*')" wire:navigate>
+                                {{ __('Defaulters') }}
+                            </flux:sidebar.item>
+                            <flux:sidebar.item icon="chart-bar" :href="route('predictive-analytics.index')" :current="request()->routeIs('predictive-analytics.*')" wire:navigate>
+                                {{ __('Vaccine demand forecast') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if (auth()->user()->canViewOversight())
+                            <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
+                                {{ __('Reports') }}
+                            </flux:sidebar.item>
+                            <flux:sidebar.item icon="clipboard-document-list" :href="route('population-background.index')" :current="request()->routeIs('population-background.*')" wire:navigate>
+                                {{ __('Population Background') }}
+                            </flux:sidebar.item>
+                            <flux:sidebar.item icon="list-bullet" :href="route('audit-logs.index')" :current="request()->routeIs('audit-logs.*')" wire:navigate>
+                                {{ __('Audit Logs') }}
+                            </flux:sidebar.item>
+                        @endif
                     </flux:sidebar.group>
                 @endif
                 @if (auth()->user()->canArchiveReports())
