@@ -45,7 +45,7 @@
         <div class="stat"><div class="stat-label">Nurses</div><div class="stat-value">{{ $stats['nurses'] }}</div></div>
         <div class="stat"><div class="stat-label">Children</div><div class="stat-value">{{ $stats['children'] }}</div></div>
         <div class="stat"><div class="stat-label">Vaccinations</div><div class="stat-value">{{ $stats['vaccinations'] }}</div></div>
-        <div class="stat"><div class="stat-label">AEFI</div><div class="stat-value">{{ $stats['aefi'] }}</div></div>
+        {{-- <div class="stat"><div class="stat-label">AEFI</div><div class="stat-value">{{ $stats['aefi'] }}</div></div> --}}
         <div class="stat"><div class="stat-label">Pending review</div><div class="stat-value">{{ $stats['pending'] }}</div></div>
     </div>
 
@@ -84,7 +84,7 @@
                         <th>Vaccine</th>
                         <th>Code</th>
                         <th>Administered</th>
-                        <th>AEFI found</th>
+                        {{-- <th>AEFI found</th> --}}
                     </tr>
                 </thead>
                 <tbody>
@@ -93,7 +93,7 @@
                             <td>{{ $vaccine->name }}</td>
                             <td>{{ strtoupper($vaccine->code) }}</td>
                             <td>{{ $vaccine->report_records_count }}</td>
-                            <td>{{ $vaccine->report_aefi_count }}</td>
+                            {{-- <td>{{ $vaccine->report_aefi_count }}</td> --}}
                         </tr>
                     @empty
                         <tr><td colspan="4">No vaccines yet.</td></tr>
@@ -189,6 +189,7 @@
         </tbody>
     </table>
 
+    {{-- AEFI report section disabled temporarily.
     @if ($includeAefi)
         <h2>Recent AEFI reports</h2>
         <table>
@@ -218,5 +219,6 @@
             </tbody>
         </table>
     @endif
+    --}}
 </body>
 </html>
