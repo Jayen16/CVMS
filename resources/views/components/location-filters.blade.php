@@ -72,9 +72,9 @@
 
             <label class="space-y-1.5">
                 <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Municipality</span>
-                <select @if ($isLivewire) wire:model.live.debounce.400ms="{{ $municipalityModel }}" @else name="{{ $municipalityName }}" @endif @disabled($isSuperAdmin && (string) $provinceValue === 'all') class="{{ $selectClass }}">
-                    @if ($isSuperAdmin && (string) $provinceValue === 'all')
-                        <option value="all">Select a province first</option>
+                <select @if ($isLivewire) wire:model.live.debounce.400ms="{{ $municipalityModel }}" @else name="{{ $municipalityName }}" @endif @disabled($isSuperAdmin && (string) $regionValue === 'all') class="{{ $selectClass }}">
+                    @if ($isSuperAdmin && (string) $regionValue === 'all')
+                        <option value="all">Select a region first</option>
                     @else
                         <option value="all" @selected((string) $municipalityValue === 'all')>All municipalities</option>
                     @endif

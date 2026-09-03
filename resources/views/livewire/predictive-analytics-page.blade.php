@@ -15,6 +15,24 @@
             <p class="text-sm text-zinc-600 dark:text-zinc-300"><span class="font-semibold text-teal-700 dark:text-teal-300">Planning note:</span> Estimated demand combines scheduled doses, catch-up backlog, and historical vaccination activity. Compare it with available stock; a negative projected balance indicates a possible shortage for staff review.</p>
         </section>
 
+        @if (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin())
+            <x-location-filters
+                mode="wire"
+                :regions="$regions"
+                :provinces="$provinces"
+                :municipalities="$municipalities"
+                :barangays="$barangays"
+                :region-value="$regionId"
+                :province-value="$provinceId"
+                :municipality-value="$municipalityId"
+                :barangay-value="$barangayId"
+                region-model="regionId"
+                province-model="provinceId"
+                municipality-model="municipalityId"
+                barangay-model="barangayId"
+            />
+        @endif
+
         <section class="app-card relative w-full overflow-hidden">
             <div class="app-card-header flex flex-wrap items-start justify-between gap-3">
                 <div>

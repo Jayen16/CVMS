@@ -98,15 +98,18 @@ class SyncDataPage extends Component
         $rowsQuery = $this->locationScopedQuery(OfflineSyncOutbox::query(), $locationData['barangayIds'], $locationData['syncUuids'])
             ->when($this->viewAll && filled($this->dateFilter), fn ($query) => $query->whereDate('queued_at', $this->dateFilter));
 
+        $recentRows = $this->viewAll
+            ? $rowsQuery->latest('queued_at')->paginate($this->perPage)
+            : $rowsQuery->latest('queued_at')->take(10)->get();
+        $recentRows = $this->attachLocations($recentRows);
+
         return view('livewire.sync-data-page', [
             'latestStatus' => $latestStatus,
             'installation' => $installation,
             'pendingCount' => config('offline.enabled')
                 ? (clone $rowsQuery)->whereNull('synced_at')->count()
                 : 0,
-            'recentRows' => $this->viewAll
-                ? $rowsQuery->latest('queued_at')->paginate($this->perPage)
-                : $rowsQuery->latest('queued_at')->take(10)->get(),
+            'recentRows' => $recentRows,
             ...$locationData,
         ])->layout('layouts.app', [
             'title' => 'Sync Data',
@@ -118,7 +121,7 @@ class SyncDataPage extends Component
     {
         $regionSelected = $user->isSuperAdmin() && $this->regionId !== 'all';
         $provinceSelected = $regionSelected && $this->provinceId !== 'all';
-        $municipalitySelected = $provinceSelected && $this->municipalityId !== 'all';
+        $municipalitySelected = $regionSelected && $this->municipalityId !== 'all';
         $accessibleIds = $user->accessibleBarangayIds();
 
         $barangayIds = $accessibleIds;
@@ -145,7 +148,11 @@ class SyncDataPage extends Component
         return [
             'regions' => $user->isSuperAdmin() ? Region::orderBy('name')->get() : collect(),
             'provinces' => $user->isSuperAdmin() && $regionSelected ? Province::where('region_id', $this->regionId)->orderBy('name')->get() : collect(),
-            'municipalities' => $user->isSuperAdmin() && $provinceSelected ? Municipality::where('province_id', $this->provinceId)->orderBy('name')->get() : collect(),
+            'municipalities' => $user->isSuperAdmin() && $regionSelected
+                ? Municipality::whereHas('province', fn ($query) => $query->where('region_id', $this->regionId))
+                    ->when($provinceSelected, fn ($query) => $query->where('province_id', $this->provinceId))
+                    ->orderBy('name')->get()
+                : collect(),
             'barangays' => $user->isMunicipalAdmin()
                 ? Barangay::whereIn('id', $accessibleIds)->orderBy('name')->get()
                 : ($user->isSuperAdmin() && $municipalitySelected ? Barangay::whereIn('id', $barangayIds)->orderBy('name')->get() : collect()),
@@ -186,5 +193,27 @@ class SyncDataPage extends Component
                 $query->where('model_type', AdverseEventReport::class)->whereIn('model_sync_uuid', $syncUuids['aefiUuids']);
             });
         });
+    }
+
+    private function attachLocations($rows)
+    {
+        foreach ($rows as $row) {
+            $location = match ($row->model_type) {
+                ChildProfile::class => ChildProfile::query()->with('barangay.municipalityRelation.province.region')->where('sync_uuid', $row->model_sync_uuid)->first()?->barangay,
+                VaccinationRecord::class => VaccinationRecord::query()->with('child.barangay.municipalityRelation.province.region')->where('sync_uuid', $row->model_sync_uuid)->first()?->child?->barangay,
+                ClinicAnnouncement::class => ClinicAnnouncement::query()->with('barangay.municipalityRelation.province.region')->where('sync_uuid', $row->model_sync_uuid)->first()?->barangay,
+                AdverseEventReport::class => AdverseEventReport::query()->with('child.barangay.municipalityRelation.province.region')->where('sync_uuid', $row->model_sync_uuid)->first()?->child?->barangay,
+                default => null,
+            };
+
+            $row->sync_location = $location === null ? null : [
+                'region' => $location->municipalityRelation?->province?->region?->name,
+                'province' => $location->municipalityRelation?->province?->name,
+                'municipality' => $location->municipalityRelation?->name,
+                'barangay' => $location->name,
+            ];
+        }
+
+        return $rows;
     }
 }

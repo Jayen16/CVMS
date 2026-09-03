@@ -70,7 +70,7 @@
                 <a href="{{ url('/') }}" class="flex items-center gap-3">
                     <x-app-logo-icon class="h-12 w-12 shadow-md" />
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">Indang RHU</p>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">RHU</p>
                         <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ config('rhu.system_name') }}</p>
                     </div>
                 </a>

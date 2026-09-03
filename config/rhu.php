@@ -3,7 +3,7 @@
 return [
     'name' => env('RHU_NAME', 'Indang Rural Health Unit'),
     'system_name' => env('RHU_SYSTEM_NAME', 'Child Vaccination Management System'),
-    'short_name' => env('RHU_SHORT_NAME', 'Indang RHU'),
+    'short_name' => env('RHU_SHORT_NAME', 'RHU'),
     'logo_path' => env('RHU_LOGO_PATH', 'storage/indang-rhu.jpg'),
     'facebook_label' => env('RHU_FACEBOOK_LABEL', 'Official Facebook page'),
     'facebook_url' => env('RHU_FACEBOOK_URL', '#'),

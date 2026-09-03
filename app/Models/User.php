@@ -357,7 +357,7 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canViewDefaulters(): bool
     {
-        return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('view_defaulters'));
+        return $this->isSuperAdmin() || $this->isMunicipalAdmin() || $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('view_defaulters'));
     }
 
     public function canManageAnnouncements(): bool

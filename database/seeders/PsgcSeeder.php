@@ -20,12 +20,17 @@ class PsgcSeeder extends Seeder
             ->filter(fn (array $row) => $row['code'] === '0400000000' || $row['name'] === 'Region IV-A (CALABARZON)')
             ->values()->all();
         $provinces = collect($this->get('provinces'))
-            ->filter(fn (array $row) => $this->parentName($row, 'region') === 'Region IV-A (CALABARZON)')
+            ->filter(fn (array $row) => $row['name'] === 'Cavite'
+                && $this->parentName($row, 'region') === 'Region IV-A (CALABARZON)')
             ->values()->all();
         $places = collect($this->get('cities-municipalities'))
-            ->filter(fn (array $row) => $row['name'] === 'Indang' && $this->parentName($row, 'province') === 'Cavite' && $this->parentName($row, 'region') === 'Region IV-A (CALABARZON)')
+            ->filter(fn (array $row) => $this->parentName($row, 'province') === 'Cavite'
+                && $this->parentName($row, 'region') === 'Region IV-A (CALABARZON)')
             ->values()->all();
-        $barangays = $this->getBarangays($places);
+        $barangays = $this->getBarangays(array_values(array_filter(
+            $places,
+            fn (array $row) => $row['name'] === 'Indang'
+        )));
 
         $regionIds = [];
         $regionNames = [];

@@ -78,9 +78,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardPage::class)->name('dashboard');
     Route::get('children', ChildrenIndexPage::class)->name('children.index');
     Route::get('children/archive', [ChildProfileController::class, 'archiveIndex'])->name('children.archive.index');
-    Route::get('archives', [ArchiveController::class, 'index'])->name('archives.index');
-    Route::post('archives', [ArchiveController::class, 'store'])->name('archives.store');
-    Route::post('archives/{type}/{recordId}/restore', [ArchiveController::class, 'restore'])->name('archives.restore');
+    Route::prefix('archives')->name('archives.')->group(function (): void {
+        Route::get('/', [ArchiveController::class, 'index'])->name('index');
+        Route::post('/', [ArchiveController::class, 'store'])->name('store');
+        Route::post('{type}/{recordId}/restore', [ArchiveController::class, 'restore'])->name('restore');
+    });
     Route::get('children/create', ChildCreatePage::class)->name('children.create');
     Route::post('children', [ChildProfileController::class, 'store'])->name('children.store');
     Route::get('children/{child}', ChildShowPage::class)->name('children.show');
@@ -114,17 +116,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('groups', [GroupController::class, 'index'])->name('groups.index');
     Route::post('municipal-admins', [MunicipalAdminController::class, 'store'])->name('municipal-admins.store');
     Route::post('users/{user}/municipality', [MunicipalAdminController::class, 'assign'])->name('users.municipality.assign');
-    Route::post('locations/regions', [LocationController::class, 'region'])->name('locations.regions.store');
-    Route::post('locations/provinces', [LocationController::class, 'province'])->name('locations.provinces.store');
-    Route::post('locations/municipalities', [LocationController::class, 'municipality'])->name('locations.municipalities.store');
-    Route::post('locations/barangays', [LocationController::class, 'barangay'])->name('locations.barangays.store');
-    Route::post('locations/municipalities/{municipality}/assign-user', [LocationController::class, 'assignMunicipality'])->name('locations.municipalities.assign-user');
-    Route::post('locations/barangays/{barangay}/assign-user', [LocationController::class, 'assignBarangay'])->name('locations.barangays.assign-user');
-    Route::post('locations/municipalities/{municipality}/users', [LocationController::class, 'addToMunicipality'])->name('locations.municipalities.users.store');
-    Route::post('locations/barangays/{barangay}/users', [LocationController::class, 'addToBarangay'])->name('locations.barangays.users.store');
-    Route::post('locations/users/{user}/remove', [LocationController::class, 'removeUser'])->name('locations.users.remove');
-    Route::post('locations/users/{user}/reassign', [LocationController::class, 'reassignUser'])->name('locations.users.reassign');
-    Route::get('reports', ReportsPage::class)->name('reports.index');
+    Route::prefix('locations')->name('locations.')->group(function (): void {
+        Route::post('regions', [LocationController::class, 'region'])->name('regions.store');
+        Route::post('provinces', [LocationController::class, 'province'])->name('provinces.store');
+        Route::post('municipalities', [LocationController::class, 'municipality'])->name('municipalities.store');
+        Route::post('barangays', [LocationController::class, 'barangay'])->name('barangays.store');
+        Route::post('municipalities/{municipality}/assign-user', [LocationController::class, 'assignMunicipality'])->name('municipalities.assign-user');
+        Route::post('barangays/{barangay}/assign-user', [LocationController::class, 'assignBarangay'])->name('barangays.assign-user');
+        Route::post('municipalities/{municipality}/users', [LocationController::class, 'addToMunicipality'])->name('municipalities.users.store');
+        Route::post('barangays/{barangay}/users', [LocationController::class, 'addToBarangay'])->name('barangays.users.store');
+        Route::post('users/{user}/remove', [LocationController::class, 'removeUser'])->name('users.remove');
+        Route::post('users/{user}/reassign', [LocationController::class, 'reassignUser'])->name('users.reassign');
+    });
+    Route::prefix('reports')->name('reports.')->group(function (): void {
+        Route::get('/', ReportsPage::class)->name('index');
+        Route::get('pdf', [AdminReportController::class, 'pdf'])->name('pdf');
+        Route::get('csv', [AdminReportController::class, 'csv'])->name('csv');
+        Route::post('export/{format}', [AdminReportController::class, 'queueExport'])->name('export.queue');
+        Route::get('export/{export}/status', [AdminReportController::class, 'exportStatus'])->name('export.status');
+        Route::get('export/{export}/download', [AdminReportController::class, 'downloadExport'])->name('export.download');
+    });
     Route::get('population-background', [PopulationBackgroundController::class, 'index'])->name('population-background.index');
     Route::get('population-background/manage', [PopulationBackgroundController::class, 'index'])->name('population-background.manage');
     Route::post('population-background', [PopulationBackgroundController::class, 'store'])->name('population-background.store');
@@ -133,14 +144,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('population-background/{populationBackground}', [PopulationBackgroundController::class, 'update'])->name('population-background.update');
     Route::delete('population-background/{populationBackground}', [PopulationBackgroundController::class, 'destroy'])->name('population-background.destroy');
     Route::get('audit-logs', AuditLogsPage::class)->name('audit-logs.index');
-    Route::get('reports/pdf', [AdminReportController::class, 'pdf'])->name('reports.pdf');
-    Route::get('reports/csv', [AdminReportController::class, 'csv'])->name('reports.csv');
-    Route::post('reports/export/{format}', [AdminReportController::class, 'queueExport'])->name('reports.export.queue');
-    Route::get('reports/export/{export}/status', [AdminReportController::class, 'exportStatus'])->name('reports.export.status');
-    Route::get('reports/export/{export}/download', [AdminReportController::class, 'downloadExport'])->name('reports.export.download');
-    Route::get('sync', SyncDataPage::class)->name('sync.index');
-    Route::get('sync/all', SyncDataPage::class)->name('sync.all');
-    Route::post('sync/manual', [ManualSyncController::class, 'store'])->name('sync.manual');
+    Route::prefix('sync')->name('sync.')->group(function (): void {
+        Route::get('/', SyncDataPage::class)->name('index');
+        Route::get('all', SyncDataPage::class)->name('all');
+        Route::post('manual', [ManualSyncController::class, 'store'])->name('manual');
+    });
     // Announcement feature disabled temporarily:
     // Route::get('announcements', AnnouncementsPage::class)->name('announcements.index');
     // Route::get('announcements/all', AnnouncementsPage::class)->name('announcements.all');

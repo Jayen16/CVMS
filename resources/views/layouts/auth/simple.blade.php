@@ -30,7 +30,7 @@
                     <a href="{{ route('home') }}" class="mx-auto mb-5 flex w-full max-w-md items-center gap-3 lg:hidden" wire:navigate>
                         <x-app-logo-icon class="h-14 w-14 shadow-md" />
                         <div>
-                            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-700">Indang RHU</p>
+                            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-700">RHU</p>
                             <p class="text-base font-semibold text-slate-900">{{ config('rhu.system_name') }}</p>
                         </div>
                         <span class="sr-only">{{ config('app.name') }}</span>
