@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Archivable;
 use App\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use Illuminate\Support\Str;
 
 class VaccinationRecord extends Model
 {
-    use UsesUuidPrimaryKey;
+    use Archivable, UsesUuidPrimaryKey;
 
     protected $fillable = [
         'child_profile_id',
@@ -34,6 +35,9 @@ class VaccinationRecord extends Model
         'suggested_schedule_version_id',
         'suggestion_note',
         'remarks',
+        'archived_at',
+        'archived_by',
+        'archive_reason',
     ];
 
     protected function casts(): array
@@ -43,6 +47,7 @@ class VaccinationRecord extends Model
             'next_due_at' => 'date',
             'verified_at' => 'datetime',
             'proof_paths' => 'array',
+            'archived_at' => 'datetime',
         ];
     }
 

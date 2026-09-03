@@ -180,8 +180,12 @@ class NurseController extends Controller
 
         $nurse->update([
             'archived_at' => null,
+            'archived_by' => null,
+            'archive_reason' => null,
             'is_active' => false,
         ]);
+
+        AuditLog::recordAction('staff_restored', 'Restored staff account '.$nurse->name, $nurse);
 
         return to_route('nurses.index')->with('status', 'Account restored and set to inactive.');
     }
@@ -191,10 +195,18 @@ class NurseController extends Controller
         $this->authorizeStaffManager();
         $this->authorizeManagedUser($nurse);
 
+        $reason = request()->validate([
+            'archive_reason' => ['required', 'string', 'max:100'],
+        ])['archive_reason'];
+
         $nurse->update([
             'is_active' => false,
             'archived_at' => now(),
+            'archived_by' => auth()->id(),
+            'archive_reason' => $reason,
         ]);
+
+        AuditLog::recordAction('staff_archived', 'Archived staff account '.$nurse->name, $nurse, ['reason' => $reason]);
 
         return to_route('nurses.index')->with('status', 'Account archived.');
     }

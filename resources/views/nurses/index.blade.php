@@ -1,4 +1,4 @@
-<div class="app-page grid gap-6 lg:grid-cols-[1fr_380px]" x-data="{ inviteOpen: false }">
+<div class="app-page" x-data="{ inviteOpen: false, archiveOpen: false, archiveAction: '', archiveName: '' }">
         @if (auth()->user()->isSuperAdmin() && request()->routeIs('municipal-admins.*'))
             <section class="app-card lg:col-span-2">
                 <p class="eyebrow">Platform administration</p>
@@ -24,7 +24,7 @@
             @endif
         @endif
         @if (! auth()->user()->isSuperAdmin() || ! request()->routeIs('municipal-admins.*'))
-        <section class="flex flex-col gap-4 {{ $managedRole === 'nurse' ? 'lg:col-span-2' : '' }}">
+        <section class="flex flex-col gap-4">
             @if (session('status'))
                 <div class="app-alert-success">
                     {{ session('status') }}
@@ -51,9 +51,7 @@
                             : 'Invite nurses by email and assign them to the barangay where they record child vaccination data.' }}
                     </p>
                 </div>
-                @if ($managedRole === 'nurse')
-                    <button type="button" class="app-button-primary" @click="inviteOpen = true">Invite nurse</button>
-                @endif
+                <button type="button" class="app-button-primary" @click="inviteOpen = true">{{ $managedRole === 'barangay_admin' ? 'Invite Barangay Admin' : 'Invite nurse' }}</button>
             </div>
 
             <div class="app-card overflow-x-auto">
@@ -127,11 +125,7 @@
                                         @endif
 
                                         @unless ($member->isArchived())
-                                            <form method="POST" action="{{ route('nurses.destroy', $member) }}" onsubmit="return confirm('Archive this account?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button class="app-button-danger !px-3 !py-1.5 !text-xs">Archive</button>
-                                            </form>
+                                            <button type="button" class="app-button-danger !px-3 !py-1.5 !text-xs" @click="archiveAction = @js(route('nurses.destroy', $member)); archiveName = @js($member->name); archiveOpen = true">Archive</button>
                                         @endunless
                                     </div>
                                 </td>
@@ -179,24 +173,28 @@
             {{ $staff->links() }}
         </section>
 
-        @if ($managedRole === 'nurse')
-            <div x-show="inviteOpen" x-cloak x-on:keydown.escape.window="inviteOpen = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="invite-nurse-title">
+        <div x-show="inviteOpen" x-cloak x-on:keydown.escape.window="inviteOpen = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="invite-staff-title">
                 <div class="app-panel w-full max-w-lg" @click.stop>
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <p class="eyebrow">Administration</p>
-                            <h2 id="invite-nurse-title" class="app-card-title">Invite nurse</h2>
+                            <h2 id="invite-staff-title" class="app-card-title">{{ $managedRole === 'barangay_admin' ? 'Invite Barangay Admin' : 'Invite nurse' }}</h2>
                         </div>
-                        <button type="button" class="text-2xl leading-none text-slate-500 hover:text-slate-950 dark:hover:text-white" aria-label="Close invite nurse dialog" @click="inviteOpen = false">&times;</button>
+                        <button type="button" class="text-2xl leading-none text-slate-500 hover:text-slate-950 dark:hover:text-white" aria-label="Close invite dialog" @click="inviteOpen = false">&times;</button>
                     </div>
                     <form method="POST" action="{{ route('nurses.store') }}" class="mt-5 grid gap-4">
                         @csrf
-                        <p class="text-sm text-slate-600 dark:text-zinc-300">The nurse receives an email link to set their password. Until then, the account stays pending.</p>
+                        <p class="text-sm text-slate-600 dark:text-zinc-300">{{ $managedRole === 'barangay_admin' ? 'The Barangay Admin receives an email link to set their password. They can manage nurses for their assigned barangay.' : 'The nurse receives an email link to set their password. Until then, the account stays pending.' }}</p>
                         <x-form-field label="Name" name="name" />
                         <x-form-field label="Email" name="email" type="email" />
-                        <div class="rounded-lg border border-teal-100 bg-teal-50 p-3 text-sm text-teal-950 dark:border-teal-900 dark:bg-teal-950 dark:text-teal-100">
-                            Assigned barangay: <span class="font-semibold">{{ auth()->user()->barangay?->name }}</span>
-                        </div>
+                        @if ($managedRole === 'barangay_admin')
+                            <x-form-field label="Existing barangay" name="barangay_id" type="select" :options="$barangays->pluck('name', 'id')" />
+                            <x-form-field label="Or new barangay" name="barangay_name" />
+                        @else
+                            <div class="rounded-lg border border-teal-100 bg-teal-50 p-3 text-sm text-teal-950 dark:border-teal-900 dark:bg-teal-950 dark:text-teal-100">
+                                Assigned barangay: <span class="font-semibold">{{ auth()->user()->barangay?->name }}</span>
+                            </div>
+                        @endif
                         <div class="flex flex-wrap justify-end gap-3">
                             <button type="button" class="app-button-secondary" @click="inviteOpen = false">Cancel</button>
                             <button class="app-button-primary">Send password setup link</button>
@@ -204,27 +202,19 @@
                     </form>
                 </div>
             </div>
-        @else
-            <form method="POST" action="{{ route('nurses.store') }}" class="app-panel grid content-start gap-4">
-            @csrf
-            <h2 class="app-card-title">{{ $managedRole === 'barangay_admin' ? 'Invite barangay admin' : 'Invite nurse' }}</h2>
-            <p class="text-sm text-slate-600 dark:text-zinc-300">
-                {{ $managedRole === 'barangay_admin'
-                    ? 'The barangay admin receives an email link to set their password. You can also grant nurse access for the same account.'
-                    : 'The nurse receives an email link to set their password. Until then, the account stays pending.' }}
-            </p>
-            <x-form-field label="Name" name="name" />
-            <x-form-field label="Email" name="email" type="email" />
-            @if ($managedRole === 'barangay_admin')
-                <x-form-field label="Existing barangay" name="barangay_id" type="select" :options="$barangays->pluck('name', 'id')" />
-                <x-form-field label="Or new barangay" name="barangay_name" />
-            @else
-                <div class="rounded-lg border border-teal-100 bg-teal-50 p-3 text-sm text-teal-950 dark:border-teal-900 dark:bg-teal-950 dark:text-teal-100">
-                    Assigned barangay: <span class="font-semibold">{{ auth()->user()->barangay?->name }}</span>
-                </div>
-            @endif
-            <button class="app-button-primary">Send password setup link</button>
-            </form>
         @endif
-        @endif
+
+        <div x-show="archiveOpen" x-cloak x-on:keydown.escape.window="archiveOpen = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="archive-staff-title">
+            <div class="app-panel w-full max-w-md" @click.stop>
+                <p class="eyebrow">Administration</p>
+                <h2 id="archive-staff-title" class="app-card-title mt-1">Archive staff account</h2>
+                <p class="mt-2 text-sm text-slate-600 dark:text-zinc-300">Archive <span class="font-semibold" x-text="archiveName"></span>? The account will no longer be active.</p>
+                <form method="POST" x-bind:action="archiveAction" class="mt-5 grid gap-4">
+                    @csrf
+                    @method('DELETE')
+                    <label class="grid gap-1.5 text-sm"><span class="font-medium">Reason</span><select name="archive_reason" class="app-input" required><option value="">Choose a reason</option><option value="Retired">Retired</option><option value="Left RHU">Left RHU</option><option value="Transferred">Transferred</option><option value="Other">Other</option></select></label>
+                    <div class="flex justify-end gap-2"><button type="button" class="app-button-secondary" @click="archiveOpen = false">Cancel</button><button class="app-button-danger">Archive account</button></div>
+                </form>
+            </div>
+        </div>
     </div>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Archivable;
 use App\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Support\Str;
 
 class AdverseEventReport extends Model
 {
-    use UsesUuidPrimaryKey;
+    use Archivable, UsesUuidPrimaryKey;
 
     protected $fillable = [
         'child_profile_id',
@@ -22,12 +23,16 @@ class AdverseEventReport extends Model
         'symptoms',
         'notes',
         'sync_uuid',
+        'archived_at',
+        'archived_by',
+        'archive_reason',
     ];
 
     protected function casts(): array
     {
         return [
             'event_date' => 'date',
+            'archived_at' => 'datetime',
         ];
     }
 

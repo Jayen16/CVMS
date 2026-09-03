@@ -40,6 +40,7 @@
                 </flux:sidebar.item>
 
                 @if (auth()->user()->canViewChildrenRegistry()
+                    || auth()->user()->canArchiveChildren()
                     || auth()->user()->canViewVerificationQueue()
                     || auth()->user()->canViewDefaulters()
                     || (auth()->user()->canViewDuplicates() && ! auth()->user()->isSuperAdmin())
@@ -48,6 +49,11 @@
                         @if (auth()->user()->canViewChildrenRegistry())
                             <flux:sidebar.item icon="users" :href="route('children.index')" :current="request()->routeIs('children.*')" wire:navigate>
                                 {{ __('Children') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if (auth()->user()->canArchiveChildren())
+                            <flux:sidebar.item icon="archive-box" :href="route('children.archive.index')" :current="request()->routeIs('children.archive.*')" wire:navigate>
+                                {{ __('Archived Children') }}
                             </flux:sidebar.item>
                         @endif
                         @if (auth()->user()->canViewVerificationQueue())
@@ -126,6 +132,13 @@
                         </flux:sidebar.item>
                         <flux:sidebar.item icon="list-bullet" :href="route('audit-logs.index')" :current="request()->routeIs('audit-logs.*')" wire:navigate>
                             {{ __('Audit Logs') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endif
+                @if (auth()->user()->canArchiveReports())
+                    <flux:sidebar.group expandable :heading="__('Data Management')" class="grid">
+                        <flux:sidebar.item icon="archive-box" :href="route('archives.index')" :current="request()->routeIs('archives.*')" wire:navigate>
+                            {{ __('Archive Center') }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>
                 @endif

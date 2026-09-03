@@ -1,4 +1,4 @@
-    <div class="app-page">
+    <div class="app-page" x-data="{ archiveOpen: false, archiveAction: '', archiveName: '' }">
         <div class="page-heading">
             <div>
                 <p class="eyebrow">Registry</p>
@@ -37,6 +37,9 @@
                         <th class="px-4 py-3 font-medium">Barangay</th>
                         <th class="px-4 py-3 font-medium">Records</th>
                         <th class="px-4 py-3 font-medium">Completed doses</th>
+                        @if (auth()->user()->canArchiveChildren())
+                            <th class="px-4 py-3 font-medium">Actions</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -46,6 +49,11 @@
                                 <a href="{{ route('children.show', $child) }}" class="font-semibold text-teal-700 hover:underline dark:text-teal-300">{{ $child->full_name }}</a>
                                 <div class="text-xs text-zinc-500">{{ ucfirst($child->sex) }} | Born {{ $child->birthdate->format('M d, Y') }}</div>
                             </td>
+                            @if (auth()->user()->canArchiveChildren())
+                                <td>
+                                    <button type="button" class="app-button-danger !px-3 !py-1.5 !text-xs" @click="archiveAction = @js(route('children.archive', $child->id)); archiveName = @js($child->full_name); archiveOpen = true">Archive</button>
+                                </td>
+                            @endif
                             <td>{{ $child->ageLabel() }}</td>
                             <td>{{ $child->barangay->name }}</td>
                             <td>
@@ -58,11 +66,24 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500">No child profiles found.</td></tr>
+                        <tr><td colspan="{{ auth()->user()->canArchiveChildren() ? 6 : 5 }}" class="px-4 py-8 text-center text-zinc-500">No child profiles found.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
         {{ $children->links() }}
+
+        <div x-show="archiveOpen" x-cloak x-on:keydown.escape.window="archiveOpen = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="archive-child-title">
+            <div class="app-panel w-full max-w-md" @click.stop>
+                <p class="eyebrow">Child Records</p>
+                <h2 id="archive-child-title" class="app-card-title mt-1">Archive child record</h2>
+                <p class="mt-2 text-sm text-slate-600 dark:text-zinc-300">Archive <span class="font-semibold" x-text="archiveName"></span>? Clinical history will be retained.</p>
+                <form method="POST" x-bind:action="archiveAction" class="mt-5 grid gap-4">
+                    @csrf
+                    <label class="grid gap-1.5 text-sm"><span class="font-medium">Reason</span><select name="archive_reason" class="app-input" required><option value="">Choose a reason</option><option value="Inactive">Inactive</option><option value="Transferred">Transferred</option><option value="Duplicate">Duplicate</option><option value="Deceased">Deceased</option><option value="Other">Other</option></select></label>
+                    <div class="flex justify-end gap-2"><button type="button" class="app-button-secondary" @click="archiveOpen = false">Cancel</button><button class="app-button-danger">Archive record</button></div>
+                </form>
+            </div>
+        </div>
     </div>

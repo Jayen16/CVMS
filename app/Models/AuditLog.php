@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Archivable;
 use App\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -9,17 +10,18 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Model as EloquentModel;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['user_id', 'event', 'auditable_type', 'auditable_id', 'description', 'old_values', 'new_values', 'url', 'ip_address', 'user_agent'])]
+#[Fillable(['user_id', 'event', 'auditable_type', 'auditable_id', 'description', 'old_values', 'new_values', 'url', 'ip_address', 'user_agent', 'archived_at', 'archived_by', 'archive_reason'])]
 #[Hidden(['user_agent'])]
 class AuditLog extends Model
 {
-    use UsesUuidPrimaryKey;
+    use Archivable, UsesUuidPrimaryKey;
 
     protected function casts(): array
     {
         return [
             'old_values' => 'array',
             'new_values' => 'array',
+            'archived_at' => 'datetime',
         ];
     }
 
