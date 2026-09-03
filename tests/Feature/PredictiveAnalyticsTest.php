@@ -40,8 +40,14 @@ test('authorized staff can view demand estimates and missed-dose risk outputs', 
         ->get(route('predictive-analytics.index'))
         ->assertOk()
         ->assertSee('Estimated vaccine demand')
-        ->assertSee('Missed-dose risk')
-        ->assertSee('Analytics Child');
+        ->assertSee('Available stock');
+
+    $this->actingAs($admin)
+        ->get(route('schedule-monitoring.index'))
+        ->assertOk()
+        ->assertSee('Schedule monitoring')
+        ->assertSee('Analytics Child')
+        ->assertSee('Missed-dose risk');
 });
 
 test('parents cannot access predictive analytics', function () {

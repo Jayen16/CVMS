@@ -166,10 +166,15 @@ class DemoDataSeeder extends Seeder
 
     private function seedBarangays(): void
     {
-        $barangay = Barangay::updateOrCreate(
-            ['name' => 'Barangay 4 (Poblacion)'],
-            ['municipality' => 'Poblacion'],
-        );
+        $indang = Municipality::query()->where('name', 'Indang')->first();
+        $barangay = Barangay::query()
+            ->when($indang, fn ($query) => $query->where('municipality_id', $indang->id))
+            ->orderBy('name')
+            ->first();
+
+        if ($barangay === null) {
+            throw new \RuntimeException('No Indang barangay found. Run PsgcSeeder first.');
+        }
 
         foreach (['barangay_1', 'san_isidro', 'santa_maria', 'riverside'] as $key) {
             $this->barangays[$key] = $barangay;

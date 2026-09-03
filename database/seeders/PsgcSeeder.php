@@ -16,12 +16,11 @@ class PsgcSeeder extends Seeder
 
     public function run(): void
     {
-        $regions = $this->get('regions');
-        if (! collect($regions)->contains('code', '1800000000')) {
-            $regions[] = ['code' => '1800000000', 'name' => 'Negros Island Region (NIR)'];
-        }
+        $regions = collect($this->get('regions'))
+            ->filter(fn (array $row) => $row['code'] === '0400000000' || $row['name'] === 'Region IV-A (CALABARZON)')
+            ->values()->all();
         $provinces = collect($this->get('provinces'))
-            ->filter(fn (array $row) => $row['name'] === 'Cavite' && $this->parentName($row, 'region') === 'Region IV-A (CALABARZON)')
+            ->filter(fn (array $row) => $this->parentName($row, 'region') === 'Region IV-A (CALABARZON)')
             ->values()->all();
         $places = collect($this->get('cities-municipalities'))
             ->filter(fn (array $row) => $row['name'] === 'Indang' && $this->parentName($row, 'province') === 'Cavite' && $this->parentName($row, 'region') === 'Region IV-A (CALABARZON)')
@@ -51,12 +50,6 @@ class PsgcSeeder extends Seeder
             $provinceNames[$this->parentName($row, 'region').'|'.$row['name']] = $row['code'];
         }
 
-        // NCR has no province in PSGC, but the normalized schema keeps province required.
-        $ncrId = $regionIds['1300000000'] ?? null;
-        if ($ncrId && ! isset($provinceIds['NCR'])) {
-            $provinceIds['NCR'] = Province::firstOrCreate(['region_id' => $ncrId, 'name' => 'National Capital Region (NCR)'])->id;
-        }
-
         $municipalityIds = [];
         $municipalityNames = [];
         foreach ($places as $row) {
@@ -64,7 +57,7 @@ class PsgcSeeder extends Seeder
             $regionCode = $this->parentCode($row, 'region');
             $provinceCode = $provinceNames[$regionCode.'|'.$provinceCode] ?? $provinceCode;
             $regionCode = $regionNames[$regionCode] ?? $regionCode;
-            $provinceId = $provinceIds[$provinceCode] ?? ($regionCode === '1300000000' ? $provinceIds['NCR'] ?? null : null);
+            $provinceId = $provinceIds[$provinceCode] ?? null;
             if (! $provinceId) {
                 continue;
             }

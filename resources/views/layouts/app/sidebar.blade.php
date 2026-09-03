@@ -62,11 +62,14 @@
                             </flux:sidebar.item>
                         @endif
                         @if (auth()->user()->canViewDefaulters())
+                            <flux:sidebar.item icon="calendar-days" :href="route('schedule-monitoring.index')" :current="request()->routeIs('schedule-monitoring.*')" wire:navigate>
+                                {{ __('Schedule monitoring') }}
+                            </flux:sidebar.item>
                             <flux:sidebar.item icon="bell-alert" :href="route('defaulters.index')" :current="request()->routeIs('defaulters.*')" wire:navigate>
                                 {{ __('Defaulters') }}
                             </flux:sidebar.item>
                             <flux:sidebar.item icon="chart-bar" :href="route('predictive-analytics.index')" :current="request()->routeIs('predictive-analytics.*')" wire:navigate>
-                                {{ __('Predictive analytics') }}
+                                {{ __('Vaccine demand forecast') }}
                             </flux:sidebar.item>
                         @endif
                         @if (auth()->user()->canViewDuplicates() && ! auth()->user()->isSuperAdmin())
