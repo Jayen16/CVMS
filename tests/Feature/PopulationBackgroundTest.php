@@ -41,3 +41,19 @@ test('barangay admins can view but cannot manage population targets', function (
         'source' => 'Official source',
     ])->assertForbidden();
 });
+
+test('nurses cannot access population background routes', function () {
+    $nurse = User::factory()->create(['role' => 'nurse']);
+
+    $this->actingAs($nurse)
+        ->get(route('population-background.index'))
+        ->assertForbidden();
+
+    $this->actingAs($nurse)
+        ->get(route('population-background.manage'))
+        ->assertForbidden();
+
+    $this->actingAs($nurse)
+        ->get(route('population-background.template'))
+        ->assertForbidden();
+});
