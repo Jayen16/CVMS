@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ChildProfile;
+use App\Models\Barangay;
 use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineInventoryItem;
@@ -23,12 +24,23 @@ class PredictiveAnalyticsService
      *
      * @return Collection<int, array<string, mixed>>
      */
-    public function vaccineDemand(User $user, int $months = 3, ?VaccineScheduleVersion $scheduleVersion = null): Collection
+    public function vaccineDemand(
+        User $user,
+        int $months = 3,
+        ?VaccineScheduleVersion $scheduleVersion = null,
+        string $regionId = 'all',
+        string $provinceId = 'all',
+        string $municipalityId = 'all',
+        string $barangayId = 'all',
+    ): Collection
     {
         $months = max(1, min(12, $months));
         $today = Carbon::today();
         $horizonEnd = $today->copy()->addMonthsNoOverflow($months);
-        $children = ChildProfile::query()->visibleTo($user)->with(['vaccinations.vaccineType'])->get();
+        $barangayIds = $this->filteredBarangayIds($user, $regionId, $provinceId, $municipalityId, $barangayId);
+        $children = ChildProfile::query()->visibleTo($user)
+            ->whereIn('barangay_id', $barangayIds)
+            ->with(['vaccinations.vaccineType'])->get();
         $scheduled = collect();
         $backlog = collect();
 
@@ -60,7 +72,7 @@ class PredictiveAnalyticsService
         $priorStart = $today->copy()->subMonthsNoOverflow(6);
         $scope = fn () => VaccinationRecord::query()
             ->where('verification_status', '!=', 'rejected')
-            ->whereHas('child', fn ($query) => $query->whereIn('barangay_id', $user->accessibleBarangayIds()));
+            ->whereHas('child', fn ($query) => $query->whereIn('barangay_id', $barangayIds));
         $history = $scope()->whereBetween('administered_at', [$historyStart->toDateString(), $today->toDateString()])
             ->selectRaw('vaccine_type_id, count(*) as total')->groupBy('vaccine_type_id')->pluck('total', 'vaccine_type_id');
         $recent = $scope()->whereBetween('administered_at', [$recentStart->toDateString(), $today->toDateString()])
@@ -68,7 +80,7 @@ class PredictiveAnalyticsService
         $prior = $scope()->whereBetween('administered_at', [$priorStart->toDateString(), $recentStart->copy()->subDay()->toDateString()])
             ->selectRaw('vaccine_type_id, count(*) as total')->groupBy('vaccine_type_id')->pluck('total', 'vaccine_type_id');
         $inventory = VaccineInventoryItem::query()
-            ->whereIn('barangay_id', $user->accessibleBarangayIds())
+            ->whereIn('barangay_id', $barangayIds)
             ->withSum(['transactions as stock_in' => fn ($query) => $query->where('movement', 'in')], 'quantity')
             ->withSum(['transactions as stock_out' => fn ($query) => $query->where('movement', 'out')], 'quantity')
             ->get()->groupBy('vaccine_type_id')->map(fn ($items) => (int) $items->sum(fn ($item) => ($item->stock_in ?? 0) - ($item->stock_out ?? 0)));
@@ -107,15 +119,45 @@ class PredictiveAnalyticsService
             });
     }
 
+    /** @return Collection<int, string> */
+    private function filteredBarangayIds(User $user, string $regionId, string $provinceId, string $municipalityId, string $barangayId): Collection
+    {
+        $query = Barangay::query()->whereIn('id', $user->accessibleBarangayIds());
+
+        if ($regionId !== 'all') {
+            $query->whereHas('municipalityRelation.province', fn ($location) => $location->where('region_id', $regionId));
+        }
+        if ($provinceId !== 'all') {
+            $query->whereHas('municipalityRelation', fn ($location) => $location->where('province_id', $provinceId));
+        }
+        if ($municipalityId !== 'all') {
+            $query->where('municipality_id', $municipalityId);
+        }
+        if ($barangayId !== 'all') {
+            $query->whereKey($barangayId);
+        }
+
+        return $query->pluck('id');
+    }
+
     /**
      * Estimate missed-dose risk from historical child behavior and current access signals.
      *
      * @return Collection<int, array<string, mixed>>
      */
-    public function missedDoseRisk(User $user): Collection
+    public function missedDoseRisk(
+        User $user,
+        string $regionId = 'all',
+        string $provinceId = 'all',
+        string $municipalityId = 'all',
+        string $barangayId = 'all',
+    ): Collection
     {
         $today = Carbon::today();
-        $children = ChildProfile::query()->visibleTo($user)->with(['barangay', 'parents', 'vaccinations'])->get();
+        $barangayIds = $this->filteredBarangayIds($user, $regionId, $provinceId, $municipalityId, $barangayId);
+        $children = ChildProfile::query()->visibleTo($user)
+            ->whereIn('barangay_id', $barangayIds)
+            ->with(['barangay', 'parents', 'vaccinations'])->get();
         $allOpportunities = 0;
         $allMissedOrDelayed = 0;
 

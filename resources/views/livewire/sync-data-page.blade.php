@@ -42,7 +42,7 @@
         </div>
     @endunless
 
-    @if ((auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin()) && ! $viewAll)
+    @if (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin())
         <x-location-filters mode="wire" :regions="$regions" :provinces="$provinces" :municipalities="$municipalities" :barangays="$barangays" :region-value="$regionFilter" :province-value="$provinceFilter" :municipality-value="$municipalityFilter" :barangay-value="$barangayFilter" />
     @endif
 
@@ -101,6 +101,7 @@
                         @foreach (['Model', 'Operation', 'Queued', 'Synced', 'Attempts'] as $label)
                             <th class="px-4 py-3 font-medium">{{ $label }}</th>
                         @endforeach
+                        <th class="px-4 py-3 font-medium">Location</th>
                         <th class="px-4 py-3 font-medium">Status</th>
                     </tr>
                 </thead>
@@ -113,6 +114,16 @@
                             <td>{{ $row->queued_at?->format('M d, Y h:i A') }}</td>
                             <td>{{ $row->synced_at?->format('M d, Y h:i A') ?? 'Pending' }}</td>
                             <td>{{ $row->attempts }}</td>
+                            <td class="min-w-56">
+                                @if ($row->sync_location)
+                                    <div class="font-medium text-slate-950 dark:text-white">{{ $row->sync_location['barangay'] ?? 'All barangays' }}</div>
+                                    <div class="text-xs leading-5 text-zinc-500">
+                                        {{ collect([$row->sync_location['municipality'] ?? null, $row->sync_location['province'] ?? null, $row->sync_location['region'] ?? null])->filter()->implode(' · ') }}
+                                    </div>
+                                @else
+                                    <span class="text-zinc-500">Not assigned</span>
+                                @endif
+                            </td>
                             <td>
                                 @if ($row->synced_at)
                                     <span class="status-pill status-verified">Synced</span>
@@ -124,7 +135,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="{{ $viewAll ? 7 : 6 }}" class="px-4 py-8 text-center text-zinc-500">No sync queue activity yet.</td></tr>
+                        <tr><td colspan="{{ $viewAll ? 8 : 7 }}" class="px-4 py-8 text-center text-zinc-500">No sync queue activity yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>
