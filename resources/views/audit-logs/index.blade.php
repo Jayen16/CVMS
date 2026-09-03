@@ -10,11 +10,21 @@
         </div>
     </div>
 
-    <section class="app-card p-4">
+    <section class="app-card overflow-hidden" x-data="{ filtersOpen: true }">
+        <button
+            type="button"
+            @click="filtersOpen = !filtersOpen"
+            class="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-semibold transition hover:bg-slate-50 dark:hover:bg-zinc-900"
+            :class="filtersOpen ? 'bg-teal-50/60 text-teal-800 dark:bg-teal-950/30 dark:text-teal-300' : 'text-slate-700 dark:text-zinc-200'"
+            :aria-expanded="filtersOpen"
+            aria-controls="audit-activity-filters"
+        >
+            <span>Activity filters</span>
+            <span class="text-lg" x-text="filtersOpen ? '−' : '+'"></span>
+        </button>
+
+        <div id="audit-activity-filters" x-show="filtersOpen" role="region" aria-label="Activity filters" class="border-t border-slate-200 p-5 dark:border-zinc-800">
         <div class="space-y-4">
-            <div class="basis-full">
-                <p class="text-xs font-semibold uppercase tracking-wide text-teal-600 dark:text-teal-400">Activity filters</p>
-            </div>
             <div class="flex flex-wrap items-end gap-3">
                 <label class="min-w-52 flex-1 space-y-1.5"><span class="text-sm font-medium">Search</span><input wire:model.live.debounce.300ms="search" type="search" placeholder="User, action, or record" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"></label>
                 <label class="space-y-1.5"><span class="text-sm font-medium">Action</span><select wire:model.live.debounce.400ms="event" class="min-w-40 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"><option value="all">All actions</option><option value="created">Created</option><option value="updated">Updated</option><option value="deleted">Deleted</option><option value="printed">Printed</option></select></label>
@@ -35,10 +45,11 @@
                 />
             </div>
         </div>
+        </div>
     </section>
 
     <section class="app-card overflow-hidden">
-        <div class="overflow-x-auto"><table class="app-table"><thead><tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">User</th><th class="px-4 py-3">Action</th><th class="px-4 py-3">Record</th><th class="px-4 py-3">Details</th></tr></thead>
+        <div class="overflow-x-auto" x-data="{ openDetails: null }"><table class="app-table min-w-[1200px]"><thead><tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">User</th><th class="px-4 py-3">Action</th><th class="px-4 py-3">Record</th><th class="w-[42%] px-4 py-3">Details</th></tr></thead>
         <tbody>
         @forelse($logs as $log)
             <tr class="app-table-row">
@@ -46,15 +57,20 @@
                 <td class="font-medium text-slate-950 dark:text-white">{{ $log->actorName() }}</td>
                 <td><span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $log->event === 'deleted' ? 'bg-red-100 text-red-700' : ($log->event === 'created' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700') }}">{{ ucfirst($log->event) }}</span></td>
                 <td>{{ $log->targetName() }}<div class="text-xs text-zinc-500">{{ $log->auditable_id }}</div></td>
-                <td class="max-w-md text-sm">
-                    <details>
-                        <summary class="cursor-pointer">{{ $log->description }}</summary>
-                        <div class="mt-3 space-y-3 text-xs text-zinc-500">
-                            <div><span class="font-semibold">Previous values</span><pre class="mt-1 max-h-32 overflow-auto rounded bg-slate-50 p-2 dark:bg-zinc-900">{{ json_encode($log->old_values ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre></div>
-                            <div><span class="font-semibold">New values</span><pre class="mt-1 max-h-32 overflow-auto rounded bg-slate-50 p-2 dark:bg-zinc-900">{{ json_encode($log->new_values ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre></div>
-                            <dl class="space-y-1"><div><dt class="inline font-semibold">URL:</dt> <dd class="inline break-all">{{ $log->url ?: '—' }}</dd></div><div><dt class="inline font-semibold">IP address:</dt> <dd class="inline">{{ $log->ip_address ?: '—' }}</dd></div><div><dt class="inline font-semibold">User agent:</dt> <dd class="inline break-all">{{ $log->user_agent ?: '—' }}</dd></div></dl>
-                        </div>
-                    </details>
+                <td class="w-[42%] text-sm">
+                    <button type="button" @click="openDetails = openDetails === '{{ $log->id }}' ? null : '{{ $log->id }}'" class="flex w-full items-center gap-1 text-left" :aria-expanded="openDetails === '{{ $log->id }}'">
+                        <span class="text-xs" x-text="openDetails === '{{ $log->id }}' ? '▼' : '▶'"></span>
+                        <span>{{ $log->description }}</span>
+                    </button>
+                </td>
+            </tr>
+            <tr x-show="openDetails === '{{ $log->id }}'" x-cloak>
+                <td colspan="5" class="bg-slate-50 p-5 text-sm dark:bg-zinc-950">
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div><span class="text-xs font-semibold text-zinc-500">Previous values</span><pre class="mt-1 max-h-48 overflow-auto rounded bg-white p-3 text-xs dark:bg-zinc-900">{{ json_encode($log->old_values ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre></div>
+                        <div><span class="text-xs font-semibold text-zinc-500">New values</span><pre class="mt-1 max-h-48 overflow-auto rounded bg-white p-3 text-xs dark:bg-zinc-900">{{ json_encode($log->new_values ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre></div>
+                    </div>
+                    <dl class="mt-4 grid gap-1 text-xs text-zinc-500 md:grid-cols-3"><div><dt class="inline font-semibold">URL:</dt> <dd class="inline break-all">{{ $log->url ?: '—' }}</dd></div><div><dt class="inline font-semibold">IP address:</dt> <dd class="inline">{{ $log->ip_address ?: '—' }}</dd></div><div><dt class="inline font-semibold">User agent:</dt> <dd class="inline break-all">{{ $log->user_agent ?: '—' }}</dd></div></dl>
                 </td>
             </tr>
         @empty

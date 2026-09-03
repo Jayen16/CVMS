@@ -6,6 +6,7 @@ use App\Models\AdverseEventReport;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\ClinicAnnouncement;
+use App\Models\PopulationBackground;
 use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineInventoryItem;
@@ -48,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
             VaccineSchedule::class,
             VaccineScheduleVersion::class,
             VaccineType::class,
+            PopulationBackground::class,
         ] as $model) {
             $model::observe(AuditObserver::class);
         }

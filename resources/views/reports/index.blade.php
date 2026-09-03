@@ -37,12 +37,22 @@
             </div>
         @endif
 
-        <section class="app-card p-4">
+        <section class="app-card overflow-hidden" x-data="{ optionsOpen: true }">
+            <button
+                type="button"
+                @click="optionsOpen = !optionsOpen"
+                class="flex w-full items-center justify-between px-5 py-4 text-left text-sm font-semibold transition hover:bg-slate-50 dark:hover:bg-zinc-900"
+                :class="optionsOpen ? 'bg-teal-50/60 text-teal-800 dark:bg-teal-950/30 dark:text-teal-300' : 'text-slate-700 dark:text-zinc-200'"
+                :aria-expanded="optionsOpen"
+                aria-controls="report-period-options"
+            >
+                <span>Report Filter</span>
+                <span class="text-lg" x-text="optionsOpen ? '−' : '+'"></span>
+            </button>
+
+            <div id="report-period-options" x-show="optionsOpen" role="region" aria-label="Report Filter" class="border-t border-slate-200 p-5 dark:border-zinc-800">
             <form method="GET" action="{{ route('reports.index') }}" class="flex flex-wrap items-end gap-3" x-data="{loading:false}" @submit="loading=true">
-                <div class="basis-full">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-teal-600 dark:text-teal-400">Report period and options</p>
-                </div>
-                <div class="flex my-2">
+                <div class="flex basis-full flex-wrap items-end gap-3">
                     <label class="space-y-1.5">
                         <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Start date</span>
                         <input
@@ -98,6 +108,7 @@
                     <span x-text="loading ? 'Generating…' : 'Generate'"></span>
                 </button>
             </form>
+            </div>
         </section>
 
         <div class="grid gap-4 md:grid-cols-7">
@@ -108,6 +119,8 @@
             <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" />
             <x-stat-card label="AEFI" :value="$stats['aefi']" />
             <x-stat-card label="Pending review" :value="$stats['pending']" />
+            <x-stat-card label="Target population" :value="$stats['populationTarget']" />
+            <x-stat-card label="Coverage" :value="$stats['coveragePercent'] === null ? '—' : $stats['coveragePercent'].'%'" />
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2">
@@ -125,6 +138,8 @@
                                 <th class="px-4 py-3 font-medium">Nurses</th>
                                 <th class="px-4 py-3 font-medium">Children</th>
                                 <th class="px-4 py-3 font-medium">Vaccinations</th>
+                                <th class="px-4 py-3 font-medium">Target</th>
+                                <th class="px-4 py-3 font-medium">Coverage</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -135,9 +150,11 @@
                                     <td>{{ $barangay->nurses_count }}</td>
                                     <td>{{ $barangay->children_count }}</td>
                                     <td>{{ $barangay->report_vaccinations_count }}</td>
+                                    <td>{{ $barangay->population_target ?: '—' }}</td>
+                                    <td>{{ $barangay->coverage_percent === null ? '—' : $barangay->coverage_percent.'%' }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="5" class="px-4 py-6 text-center text-zinc-500">No barangays yet.</td></tr>
+                                <tr><td colspan="7" class="px-4 py-6 text-center text-zinc-500">No barangays yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

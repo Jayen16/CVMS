@@ -6,6 +6,7 @@ use App\Models\AdverseEventReport;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\Municipality;
+use App\Models\PopulationBackground;
 use App\Models\Province;
 use App\Models\Region;
 use App\Models\User;
@@ -113,6 +114,22 @@ class ReportsPage extends Component
             ->groupBy('child_profiles.barangay_id')
             ->pluck('total', 'barangay_id');
 
+        $populationYear = PopulationBackground::query()->visibleTo($user)->max('reference_year');
+        $population = PopulationBackground::query()->visibleTo($user)->when($populationYear, fn ($query) => $query->where('reference_year', $populationYear))->get();
+        $populationTargets = $reportBarangayIds->mapWithKeys(function ($barangayId) use ($population) {
+            $barangay = Barangay::find($barangayId);
+            $specific = $population->where('barangay_id', $barangayId);
+            $rows = $specific->isNotEmpty()
+                ? $specific
+                : $population->where('barangay_id', null)->where('municipality_id', $barangay?->municipality_id);
+
+            return [$barangayId => (int) $rows->sum('target_population')];
+        });
+        $coverageRecords = (clone $recordScope)->where('verification_status', '!=', 'rejected')
+            ->select('child_profiles.barangay_id', DB::raw('count(*) as total'))
+            ->join('child_profiles', 'vaccination_records.child_profile_id', '=', 'child_profiles.id')
+            ->groupBy('child_profiles.barangay_id')->pluck('total', 'barangay_id');
+
         $barangays = Barangay::query()
             ->withCount('children')
             ->withCount(['users as nurses_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'nurse')])
@@ -120,8 +137,11 @@ class ReportsPage extends Component
             ->whereIn('id', $reportBarangayIds)
             ->orderBy('name')
             ->paginate(50)
-            ->through(function (Barangay $barangay) use ($barangayRecords) {
+            ->through(function (Barangay $barangay) use ($barangayRecords, $coverageRecords, $populationTargets) {
                 $barangay->report_vaccinations_count = (int) ($barangayRecords[$barangay->id] ?? 0);
+                $target = (int) ($populationTargets[$barangay->id] ?? 0);
+                $barangay->population_target = $target;
+                $barangay->coverage_percent = $target > 0 ? round(((int) ($coverageRecords[$barangay->id] ?? 0) / $target) * 100, 1) : null;
 
                 return $barangay;
             });
@@ -197,6 +217,7 @@ class ReportsPage extends Component
             'startDate' => $startDate,
             'endDate' => $endDate,
             'generatedAt' => now(),
+            'populationYear' => $populationYear,
             'barangayFilter' => $barangayFilter,
             'regionFilter' => $regionFilter,
             'provinceFilter' => $provinceFilter,
@@ -230,6 +251,8 @@ class ReportsPage extends Component
                     )
                     ->whereHas('child', fn ($child) => $child->whereIn('barangay_id', $reportBarangayIds))
                     ->count(),
+                'populationTarget' => (int) $populationTargets->sum(),
+                'coveragePercent' => $populationTargets->sum() > 0 ? round(($coverageRecords->sum() / $populationTargets->sum()) * 100, 1) : null,
             ],
             'barangays' => $barangays,
             'vaccines' => $vaccines,

@@ -2,9 +2,9 @@
 
 use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AdverseEventReportController;
-use App\Http\Controllers\ArchiveController;
 use App\Http\Controllers\Api\OfflineVaccinationSyncController;
 use App\Http\Controllers\Api\ParentChildController;
+use App\Http\Controllers\ArchiveController;
 use App\Http\Controllers\ChildParentController;
 use App\Http\Controllers\ChildProfileController;
 use App\Http\Controllers\ChildTimelinePdfController;
@@ -15,6 +15,7 @@ use App\Http\Controllers\ManualSyncController;
 use App\Http\Controllers\MunicipalAdminController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NurseController;
+use App\Http\Controllers\PopulationBackgroundController;
 use App\Http\Controllers\VaccinationRecordController;
 use App\Http\Controllers\VaccineCardController;
 use App\Http\Controllers\VaccineInventoryController;
@@ -98,6 +99,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('locations/users/{user}/remove', [LocationController::class, 'removeUser'])->name('locations.users.remove');
     Route::post('locations/users/{user}/reassign', [LocationController::class, 'reassignUser'])->name('locations.users.reassign');
     Route::get('reports', ReportsPage::class)->name('reports.index');
+    Route::get('population-background', [PopulationBackgroundController::class, 'index'])->name('population-background.index');
+    Route::get('population-background/manage', [PopulationBackgroundController::class, 'index'])->name('population-background.manage');
+    Route::post('population-background', [PopulationBackgroundController::class, 'store'])->name('population-background.store');
+    Route::post('population-background/upload', [PopulationBackgroundController::class, 'upload'])->name('population-background.upload');
+    Route::get('population-background/template', [PopulationBackgroundController::class, 'template'])->name('population-background.template');
+    Route::put('population-background/{populationBackground}', [PopulationBackgroundController::class, 'update'])->name('population-background.update');
+    Route::delete('population-background/{populationBackground}', [PopulationBackgroundController::class, 'destroy'])->name('population-background.destroy');
     Route::get('audit-logs', AuditLogsPage::class)->name('audit-logs.index');
     Route::get('reports/pdf', [AdminReportController::class, 'pdf'])->name('reports.pdf');
     Route::get('reports/csv', [AdminReportController::class, 'csv'])->name('reports.csv');
