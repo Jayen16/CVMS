@@ -14,6 +14,20 @@ class PsgcSeeder extends Seeder
 {
     private const API = 'https://psgc.cloud/api/v2';
 
+    /**
+     * Barangays currently included for Indang.
+     * All other Indang barangays are intentionally excluded from seeding.
+     */
+    private const INDANG_BARANGAYS = [
+        'Bancod',
+        'Barangay 4 (Pob.)',
+        'Kaytapos',
+        'Kaytambog',
+        'Buna Cerca',
+
+        // Other Indang barangays are intentionally commented out and excluded.
+    ];
+
     public function run(): void
     {
         $regions = collect($this->get('regions'))
@@ -27,10 +41,13 @@ class PsgcSeeder extends Seeder
             ->filter(fn (array $row) => $this->parentName($row, 'province') === 'Cavite'
                 && $this->parentName($row, 'region') === 'Region IV-A (CALABARZON)')
             ->values()->all();
-        $barangays = $this->getBarangays(array_values(array_filter(
+        $barangays = collect($this->getBarangays(array_values(array_filter(
             $places,
             fn (array $row) => $row['name'] === 'Indang'
-        )));
+        ))))
+            ->filter(fn (array $row) => in_array($row['name'], self::INDANG_BARANGAYS, true))
+            ->values()
+            ->all();
 
         $regionIds = [];
         $regionNames = [];
