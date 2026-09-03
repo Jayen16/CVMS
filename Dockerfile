@@ -30,9 +30,16 @@ COPY --from=vendor /var/www/html/vendor ./vendor
 COPY --from=assets /var/www/html/public/build ./public/build
 COPY . .
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint
-RUN chmod +x /usr/local/bin/entrypoint && mkdir -p storage/app/public storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && chown -R app:app storage bootstrap/cache
+RUN chmod +x /usr/local/bin/entrypoint \
+    && mkdir -p storage/app/public storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && rm -rf public/storage \
+    && ln -s ../storage/app/public public/storage \
+    && chown -R app:app storage bootstrap/cache
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
 CMD ["php-fpm", "-F"]
 FROM nginx:1.27-alpine AS nginx
 COPY --from=production /var/www/html/public /var/www/html/public
+RUN mkdir -p /var/www/html/storage/app/public \
+    && rm -rf /var/www/html/public/storage \
+    && ln -s ../storage/app/public /var/www/html/public/storage
 COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf
