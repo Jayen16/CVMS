@@ -14,8 +14,28 @@ class NotificationsPage extends Component
 
     public bool $unreadOnly = false;
 
+    public ?string $from = null;
+
+    public ?string $to = null;
+
     public function updatedUnreadOnly(): void
     {
+        $this->resetPage();
+    }
+
+    public function updatedFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedTo(): void
+    {
+        $this->resetPage();
+    }
+
+    public function clearDateFilter(): void
+    {
+        $this->reset(['from', 'to']);
         $this->resetPage();
     }
 
@@ -33,6 +53,8 @@ class NotificationsPage extends Component
     {
         $notifications = auth()->user()->notifications()
             ->when($this->unreadOnly, fn ($query) => $query->whereNull('read_at'))
+            ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
+            ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
             ->latest()
             ->paginate(15);
 
