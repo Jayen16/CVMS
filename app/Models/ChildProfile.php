@@ -28,6 +28,11 @@ class ChildProfile extends Model
         'address',
         'vaccine_card_token',
         'sync_uuid',
+        'facility_uuid',
+        'registered_by_uuid',
+        'registered_by_name',
+        'registered_by_role',
+        'sync_version',
         'archived_at',
         'archived_by',
         'archive_reason',
@@ -38,6 +43,7 @@ class ChildProfile extends Model
         return [
             'birthdate' => 'date',
             'archived_at' => 'datetime',
+            'sync_version' => 'integer',
         ];
     }
 
@@ -163,6 +169,12 @@ class ChildProfile extends Model
 
             if (blank($child->sync_uuid)) {
                 $child->sync_uuid = (string) Str::uuid();
+            }
+        });
+
+        static::updating(function (ChildProfile $child): void {
+            if ($child->isDirty(array_diff($child->getDirty(), ['sync_version']))) {
+                $child->sync_version = (int) ($child->getRawOriginal('sync_version') ?: 1) + 1;
             }
         });
     }

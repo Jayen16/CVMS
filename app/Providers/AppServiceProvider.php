@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -37,6 +38,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Passport::tokensCan([
+            'sync:pull' => 'Pull central master data',
+            'sync:push' => 'Push facility data',
+            'sync:status' => 'Read synchronization status',
+        ]);
+
         foreach ([
             User::class,
             Barangay::class,
