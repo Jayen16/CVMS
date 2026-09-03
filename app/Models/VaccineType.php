@@ -54,4 +54,17 @@ class VaccineType extends Model
     {
         return $this->hasMany(ChildVaccineSeriesVersion::class);
     }
+
+    /**
+     * @return HasMany<VaccineInventoryTransaction, $this>
+     */
+    public function inventoryTransactions(): HasMany
+    {
+        return $this->hasMany(VaccineInventoryTransaction::class);
+    }
+
+    public function inventoryItems(): HasMany
+    {
+        return $this->hasMany(VaccineInventoryItem::class);
+    }
 }

@@ -60,6 +60,11 @@
                             {{ __('Schedules') }}
                         </flux:sidebar.item>
                     @endif
+                    @if (auth()->user()->canManageInventory())
+                        <flux:sidebar.item icon="archive-box" :href="route('vaccine-inventory.index')" :current="request()->routeIs('vaccine-inventory.*')" wire:navigate>
+                            {{ __('Vaccine Inventory') }}
+                        </flux:sidebar.item>
+                    @endif
                     @if (auth()->user()->canViewOversight())
                         <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
                             {{ __('Reports') }}
