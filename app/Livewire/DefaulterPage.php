@@ -30,7 +30,7 @@ class DefaulterPage extends Component
         $threshold = in_array($this->days, [7, 14, 30], true) ? $this->days : 7;
         $children = ChildProfile::query()
             ->with(['barangay', 'parents'])
-            ->when(! auth()->user()->isSuperAdmin(), fn ($query) => $query->where('barangay_id', auth()->user()->barangay_id))
+            ->when(! auth()->user()->isSuperAdmin(), fn ($query) => $query->whereIn('barangay_id', auth()->user()->accessibleBarangayIds()))
             ->get();
 
         $today = Carbon::today();

@@ -3,9 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\Barangay;
-use App\Models\VaccineScheduleVersion;
+use App\Models\Municipality;
 use App\Models\User;
 use App\Models\VaccineSchedule;
+use App\Models\VaccineScheduleVersion;
 use App\Models\VaccineType;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -22,6 +23,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $now = Carbon::now();
+
+        $this->call(PsgcSeeder::class);
 
         collect(['Barangay 1', 'Barangay 2', 'Barangay 3'])->each(fn (string $name) => Barangay::firstOrCreate([
             'name' => $name,
@@ -93,6 +96,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $barangayOneId = Barangay::where('name', 'Barangay 1')->value('id');
+        $municipalityId = Municipality::query()->orderBy('name')->value('id');
 
         User::updateOrCreate([
             'email' => 'admin@example.com',
@@ -114,6 +118,19 @@ class DatabaseSeeder extends Seeder
             'role' => 'barangay_admin',
             'roles' => ['barangay_admin'],
             'barangay_id' => $barangayOneId,
+            'is_active' => true,
+            'email_verified_at' => $now,
+            'invitation_accepted_at' => $now,
+        ]);
+
+        User::updateOrCreate([
+            'email' => 'municipal-admin@example.com',
+        ], [
+            'name' => 'Municipal Admin',
+            'password' => Hash::make('password123'),
+            'role' => 'municipal_admin',
+            'roles' => ['municipal_admin'],
+            'municipality_id' => $municipalityId,
             'is_active' => true,
             'email_verified_at' => $now,
             'invitation_accepted_at' => $now,

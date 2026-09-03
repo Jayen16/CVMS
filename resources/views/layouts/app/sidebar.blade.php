@@ -50,6 +50,11 @@
                             {{ auth()->user()->canManageBarangayAdmins() ? __('Barangay Admins') : __('Nurses') }}
                         </flux:sidebar.item>
                     @endif
+                    @if (auth()->user()->isSuperAdmin())
+                        <flux:sidebar.item icon="user-group" :href="route('groups.index')" :current="request()->routeIs('groups.*')" wire:navigate>
+                            {{ __('Locations') }}
+                        </flux:sidebar.item>
+                    @endif
                     @if (auth()->user()->isSuperAdmin() || auth()->user()->isBarangayAdmin() || auth()->user()->isNurse())
                         <flux:sidebar.item icon="arrow-path" :href="route('sync.index')" :current="request()->routeIs('sync.*')" wire:navigate>
                             {{ __('Sync Data') }}

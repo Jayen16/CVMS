@@ -1,4 +1,27 @@
 <div class="app-page grid gap-6 lg:grid-cols-[1fr_380px]">
+        @if (auth()->user()->isSuperAdmin() && request()->routeIs('municipal-admins.*'))
+            <section class="app-card lg:col-span-2">
+                <p class="eyebrow">Platform administration</p>
+                <h1 class="page-title">Municipal admin accounts</h1>
+                <p class="page-subtitle">Assign each municipal admin to one municipality. Their reports and records are limited to that municipality’s barangays.</p>
+                <div class="mt-5 overflow-x-auto">
+                    <table class="app-table">
+                        <thead><tr><th class="px-4 py-3">Name</th><th class="px-4 py-3">Email</th><th class="px-4 py-3">Municipality</th><th class="px-4 py-3">Status</th></tr></thead>
+                        <tbody>
+                            @forelse ($municipalAdmins as $member)
+                                <tr class="app-table-row"><td class="font-medium">{{ $member->name }}</td><td>{{ $member->email }}</td><td>{{ $member->municipality?->name ?? 'Unassigned' }}</td><td>{{ $member->is_active ? 'Active' : 'Inactive' }}</td></tr>
+                            @empty <tr><td colspan="4" class="px-4 py-6 text-center text-zinc-500">No municipal admin accounts yet.</td></tr> @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            <form method="POST" action="{{ route('municipal-admins.store') }}" class="app-panel lg:col-start-2 lg:row-start-2">
+                @csrf
+                <h2 class="app-card-title">Create municipal admin</h2>
+                <div class="mt-4 grid gap-4"><x-form-field label="Name" name="name" /><x-form-field label="Email" name="email" type="email" /><x-form-field label="Municipality" name="municipality_id" type="select" :options="$municipalities->pluck('name', 'id')" /><button class="app-button-primary">Send password setup link</button></div>
+            </form>
+        @endif
+        @if (! request()->routeIs('municipal-admins.*'))
         <section class="flex flex-col gap-4">
             @if (session('status'))
                 <div class="app-alert-success">
@@ -129,4 +152,5 @@
             @endif
             <button class="app-button-primary">Send password setup link</button>
         </form>
+        @endif
     </div>

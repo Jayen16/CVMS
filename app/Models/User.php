@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
@@ -35,7 +36,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'phone', 'password', 'role', 'roles', 'barangay_id', 'is_active', 'invitation_accepted_at', 'archived_at'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'role', 'roles', 'barangay_id', 'municipality_id', 'is_active', 'invitation_accepted_at', 'archived_at'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -124,6 +125,16 @@ class User extends Authenticatable implements PasskeyUser
         return $this->belongsTo(Barangay::class);
     }
 
+    public function municipality(): BelongsTo
+    {
+        return $this->belongsTo(Municipality::class);
+    }
+
+    public function groups(): BelongsToMany
+    {
+        return $this->belongsToMany(Group::class)->withTimestamps();
+    }
+
     /**
      * @return HasMany<ChildProfile, $this>
      */
@@ -152,7 +163,7 @@ class User extends Authenticatable implements PasskeyUser
 
     public function isAdmin(): bool
     {
-        return $this->isSuperAdmin() || $this->isBarangayAdmin();
+        return $this->isSuperAdmin() || $this->isMunicipalAdmin() || $this->isBarangayAdmin();
     }
 
     public function isSuperAdmin(): bool
@@ -163,6 +174,11 @@ class User extends Authenticatable implements PasskeyUser
     public function isBarangayAdmin(): bool
     {
         return $this->hasRole('barangay_admin');
+    }
+
+    public function isMunicipalAdmin(): bool
+    {
+        return $this->hasRole('municipal_admin');
     }
 
     public function isNurse(): bool
@@ -221,15 +237,20 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canManageBarangayStaff(): bool
     {
-        return $this->isSuperAdmin() || $this->isBarangayAdmin();
+        return $this->isSuperAdmin() || $this->isMunicipalAdmin() || $this->isBarangayAdmin();
     }
 
     public function canManageNurses(): bool
     {
-        return $this->isBarangayAdmin();
+        return $this->isMunicipalAdmin() || $this->isBarangayAdmin();
     }
 
     public function canManageBarangayAdmins(): bool
+    {
+        return $this->isSuperAdmin();
+    }
+
+    public function canManageGroups(): bool
     {
         return $this->isSuperAdmin();
     }
@@ -241,7 +262,7 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canViewChildrenRegistry(): bool
     {
-        return $this->isBarangayAdmin() || $this->isNurse() || $this->isParent();
+        return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || $this->isNurse() || $this->isParent();
     }
 
     public function canVerifyVaccinations(): bool
@@ -256,27 +277,40 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canViewOversight(): bool
     {
-        return $this->isSuperAdmin() || $this->isBarangayAdmin();
+        return $this->isSuperAdmin() || $this->isMunicipalAdmin() || $this->isBarangayAdmin();
     }
 
     public function canViewVerificationQueue(): bool
     {
-        return $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || $this->isNurse();
     }
 
     public function canViewAefiReports(): bool
     {
-        return $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || $this->isNurse();
+    }
+
+    /** @return Collection<int, string> */
+    public function accessibleBarangayIds(): Collection
+    {
+        if ($this->isSuperAdmin()) {
+            return Barangay::query()->pluck('id');
+        }
+        if ($this->isMunicipalAdmin() && $this->municipality_id) {
+            return Barangay::where('municipality_id', $this->municipality_id)->pluck('id');
+        }
+
+        return $this->barangay_id ? collect([$this->barangay_id]) : collect();
     }
 
     public function canManageInventory(): bool
     {
-        return $this->isSuperAdmin() || $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isSuperAdmin() || $this->isMunicipalAdmin() || $this->isBarangayAdmin() || $this->isNurse();
     }
 
     public function canViewDuplicates(): bool
     {
-        return $this->isSuperAdmin() || $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isSuperAdmin() || $this->isMunicipalAdmin() || $this->isBarangayAdmin() || $this->isNurse();
     }
 
     public function canMergeDuplicates(): bool
@@ -286,7 +320,7 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canViewDefaulters(): bool
     {
-        return $this->isBarangayAdmin() || $this->isNurse();
+        return $this->isMunicipalAdmin() || $this->isBarangayAdmin() || $this->isNurse();
     }
 
     public function canManageAnnouncements(): bool

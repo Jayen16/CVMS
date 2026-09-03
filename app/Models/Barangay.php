@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Barangay extends Model
@@ -13,7 +14,13 @@ class Barangay extends Model
     protected $fillable = [
         'name',
         'municipality',
+        'municipality_id',
     ];
+
+    public function municipalityRelation(): BelongsTo
+    {
+        return $this->belongsTo(Municipality::class, 'municipality_id');
+    }
 
     /**
      * @return HasMany<User, $this>

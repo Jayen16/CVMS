@@ -97,6 +97,24 @@ class DashboardPage extends Component
             ])->layout('layouts.app', ['title' => 'Dashboard']);
         }
 
+        if ($user->isMunicipalAdmin()) {
+            $children = ChildProfile::query()->visibleTo($user)->withCount('vaccinations')->latest()->take(8)->get();
+
+            return view('livewire.dashboard-page', [
+                'role' => 'municipal_admin',
+                'stats' => [
+                    'municipality' => $user->municipality()->value('name') ?? 'Unassigned',
+                    'nurses' => User::notArchived()->where('municipality_id', $user->municipality_id)->whereJsonContains('roles', 'nurse')->count(),
+                    'children' => ChildProfile::query()->visibleTo($user)->count(),
+                    'vaccinations' => VaccinationRecord::whereHas('child', fn ($query) => $query->whereIn('barangay_id', $user->accessibleBarangayIds()))->count(),
+                    'pending' => VaccinationRecord::where('verification_status', 'pending')->whereHas('child', fn ($query) => $query->whereIn('barangay_id', $user->accessibleBarangayIds()))->count(),
+                    'pendingSync' => $pendingSync,
+                ],
+                'children' => $children,
+                'announcements' => $announcements,
+            ])->layout('layouts.app', ['title' => 'Dashboard']);
+        }
+
         if ($user->isBarangayAdmin() && ! $user->isNurse()) {
             return view('livewire.dashboard-page', [
                 'role' => 'barangay_admin',
