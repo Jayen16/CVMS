@@ -51,11 +51,10 @@ if (config('system.instance_type') === 'facility') {
     });
 } else {
     Route::middleware(['auth', 'verified'])->group(function (): void {
-        // Central Facility Management disabled temporarily:
-        // Route::get('central/facilities', [FacilityActivationController::class, 'facilities'])->name('central.facilities.index');
-        // Route::post('central/facilities', [FacilityActivationController::class, 'storeFacility'])->name('central.facilities.store');
-        // Route::post('central/facilities/{facility}/activation-code', [FacilityActivationController::class, 'issueCode'])->name('central.facilities.issue-code');
-        // Route::post('central/facilities/{facility}/revoke-connections', [FacilityActivationController::class, 'revokeConnections'])->name('central.facilities.revoke-connections');
+        Route::get('central/facilities', [FacilityActivationController::class, 'facilities'])->name('central.facilities.index');
+        Route::post('central/facilities', [FacilityActivationController::class, 'storeFacility'])->name('central.facilities.store');
+        Route::post('central/facilities/{facility}/activation-code', [FacilityActivationController::class, 'issueCode'])->name('central.facilities.issue-code');
+        Route::post('central/facilities/{facility}/revoke-connections', [FacilityActivationController::class, 'revokeConnections'])->name('central.facilities.revoke-connections');
     });
 }
 
