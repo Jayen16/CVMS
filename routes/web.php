@@ -55,6 +55,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('children/{child}/transfer', [ChildProfileController::class, 'transfer'])->name('children.transfer');
     Route::get('children/{child}/timeline', ChildTimelinePage::class)->name('children.timeline');
     Route::get('children/{child}/timeline/pdf', ChildTimelinePdfController::class)->name('children.timeline.pdf');
+    Route::get('children/{child}/timeline/csv', [ChildTimelinePdfController::class, 'csv'])->name('children.timeline.csv');
     Route::get('children/{child}/card', [VaccineCardController::class, 'show'])->name('children.card');
     Route::get('children/{child}/card/pdf', [VaccineCardController::class, 'pdf'])->name('children.card.pdf');
     Route::post('children/{child}/parents', [ChildParentController::class, 'store'])->name('children.parents.store');
@@ -74,6 +75,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('reports', ReportsPage::class)->name('reports.index');
     Route::get('audit-logs', AuditLogsPage::class)->name('audit-logs.index');
     Route::get('reports/pdf', [AdminReportController::class, 'pdf'])->name('reports.pdf');
+    Route::get('reports/csv', [AdminReportController::class, 'csv'])->name('reports.csv');
     Route::get('sync', SyncDataPage::class)->name('sync.index');
     Route::post('sync/manual', [ManualSyncController::class, 'store'])->name('sync.manual');
     Route::get('announcements', AnnouncementsPage::class)->name('announcements.index');
@@ -86,10 +88,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('defaulters', DefaulterPage::class)->name('defaulters.index');
     Route::get('duplicates', DuplicateChildrenPage::class)->name('duplicates.index');
     Route::get('aefi-reports', AefiReportsPage::class)->name('aefi-reports.index');
+    Route::get('aefi-reports/csv', [AdverseEventReportController::class, 'csv'])->name('aefi-reports.csv');
     Route::post('children/{child}/aefi-reports', [AdverseEventReportController::class, 'store'])->name('children.aefi-reports.store');
     Route::get('vaccine-schedules', VaccineSchedulesPage::class)->name('vaccine-schedules.index');
     Route::get('vaccine-inventory', [VaccineInventoryController::class, 'index'])->name('vaccine-inventory.index');
     Route::get('vaccine-inventory/report', [VaccineInventoryController::class, 'report'])->name('vaccine-inventory.report');
+    Route::get('vaccine-inventory/csv', [VaccineInventoryController::class, 'csv'])->name('vaccine-inventory.csv');
     Route::get('vaccine-inventory/create', [VaccineInventoryController::class, 'create'])->name('vaccine-inventory.create');
     Route::post('vaccine-inventory', [VaccineInventoryController::class, 'store'])->name('vaccine-inventory.store');
     Route::delete('vaccine-inventory/{inventoryItem}', [VaccineInventoryController::class, 'destroy'])->name('vaccine-inventory.destroy');

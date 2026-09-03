@@ -97,3 +97,39 @@ test('nurses cannot access admin reports', function () {
         ->get(route('reports.index'))
         ->assertForbidden();
 });
+
+test('admins can export filtered vaccination report data as csv', function () {
+    $barangay = Barangay::create(['name' => 'CSV Barangay', 'municipality' => 'Sample City']);
+    $admin = User::factory()->create(['role' => 'admin']);
+    $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
+    $child = ChildProfile::create([
+        'barangay_id' => $barangay->id,
+        'created_by' => $nurse->id,
+        'first_name' => 'CSV',
+        'last_name' => 'Child',
+        'birthdate' => now()->subYear()->toDateString(),
+        'sex' => 'female',
+        'guardian_name' => 'Guardian',
+    ]);
+    $vaccine = VaccineType::create(['code' => 'csv-vaccine', 'name' => 'CSV Vaccine']);
+
+    VaccinationRecord::create([
+        'child_profile_id' => $child->id,
+        'vaccine_type_id' => $vaccine->id,
+        'recorded_by' => $nurse->id,
+        'dose_number' => 1,
+        'source' => 'barangay_clinic',
+        'verification_status' => 'verified',
+        'administered_at' => today(),
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->get(route('reports.csv', ['start_date' => today()->subDay()->toDateString(), 'end_date' => today()->addDay()->toDateString()]))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+
+    expect($response->streamedContent())
+        ->toContain('record_id,administered_at,child_name,birthdate,sex,barangay,vaccine,vaccine_code')
+        ->toContain('CSV Child')
+        ->toContain('CSV Vaccine');
+});

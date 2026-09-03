@@ -6,6 +6,7 @@ use App\Models\AdverseEventReport;
 use App\Models\ChildProfile;
 use App\Models\VaccinationRecord;
 use App\Services\OfflineSyncService;
+use App\Support\CsvExport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -26,6 +27,35 @@ class AdverseEventReportController extends Controller
             ->paginate(15);
 
         return view('aefi.index', ['reports' => $reports]);
+    }
+
+    public function csv()
+    {
+        abort_unless(auth()->user()->canViewAefiReports(), 403);
+
+        $reports = AdverseEventReport::query()
+            ->with(['child.barangay', 'vaccineType', 'reporter'])
+            ->when(! auth()->user()->isSuperAdmin(), fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', auth()->user()->barangay_id)))
+            ->orderBy('event_date')
+            ->get();
+
+        return CsvExport::download('aefi-reports-'.now()->format('Ymd').'.csv', [
+            'report_id', 'event_date', 'child_name', 'birthdate', 'barangay', 'vaccine', 'vaccine_code',
+            'severity', 'outcome', 'symptoms', 'notes', 'reported_by',
+        ], $reports->map(fn (AdverseEventReport $report): array => [
+            $report->id,
+            $report->event_date?->toDateString(),
+            $report->child?->full_name,
+            $report->child?->birthdate?->toDateString(),
+            $report->child?->barangay?->name ?? 'Unassigned',
+            $report->vaccineType?->name,
+            $report->vaccineType?->code,
+            $report->severity,
+            $report->outcome,
+            $report->symptoms,
+            $report->notes,
+            $report->reporter?->name,
+        ]));
     }
 
     public function store(Request $request, ChildProfile $child, OfflineSyncService $offlineSync): RedirectResponse

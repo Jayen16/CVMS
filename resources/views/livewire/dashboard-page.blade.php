@@ -17,7 +17,10 @@
                 <a href="{{ route('children.index') }}" class="app-button-secondary" wire:navigate>Children</a>
             @endif
             @if (auth()->user()->isSuperAdmin() || auth()->user()->isBarangayAdmin() || auth()->user()->isNurse())
-                <a href="{{ route('sync.index') }}" class="app-button-secondary" wire:navigate>Sync data</a>
+                    <a href="{{ route('sync.index') }}" class="app-button-secondary inline-flex items-center gap-2" wire:navigate>
+                        <flux:icon.arrow-path class="size-4" />
+                        <span>Sync data</span>
+                    </a>
             @endif
             @if (auth()->user()->canManageChildren())
                 <a href="{{ route('children.create') }}" class="app-button-primary" wire:navigate>New child</a>

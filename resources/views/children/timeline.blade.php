@@ -74,7 +74,14 @@
                 </select>
             </label>
             <button class="app-button-primary">View</button>
-            <a href="{{ route('children.timeline.pdf', ['child' => $child, 'vaccine' => $selectedVaccine]) }}" class="app-button-secondary" target="_blank" rel="noopener">Export PDF</a>
+            <a href="{{ route('children.timeline.csv', ['child' => $child, 'vaccine' => $selectedVaccine]) }}" class="app-button-secondary inline-flex items-center gap-2" aria-label="Export timeline data for Excel as CSV">
+                <flux:icon.arrow-down-tray class="size-4" />
+                <span>Export Excel</span>
+            </a>
+            <a href="{{ route('children.timeline.pdf', ['child' => $child, 'vaccine' => $selectedVaccine]) }}" class="app-button-secondary inline-flex items-center gap-2" target="_blank" rel="noopener" aria-label="Print timeline as PDF">
+                <flux:icon.printer class="size-4" />
+                <span>Print PDF</span>
+            </a>
         </form>
     </div>
 

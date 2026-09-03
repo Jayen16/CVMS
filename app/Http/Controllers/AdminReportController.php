@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineScheduleVersion;
 use App\Models\VaccineType;
+use App\Support\CsvExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,53 @@ class AdminReportController extends Controller
             ->landscape()
             ->margins(8, 8, 8, 8)
             ->name($name);
+    }
+
+    public function csv(Request $request)
+    {
+        $this->authorizeAdmin();
+
+        $data = $this->reportData($request);
+        $records = VaccinationRecord::query()
+            ->with(['child.barangay', 'vaccineType', 'recorder', 'suggestedScheduleVersion'])
+            ->whereBetween('administered_at', [$data['startDate']->toDateString(), $data['endDate']->toDateString()])
+            ->when($data['scheduleVersionFilter'] === 'unassigned', fn ($query) => $query->whereNull('suggested_schedule_version_id'))
+            ->when($data['scheduleVersionFilter'] !== 'all' && $data['scheduleVersionFilter'] !== 'unassigned', fn ($query) => $query->where('suggested_schedule_version_id', (int) $data['scheduleVersionFilter']))
+            ->when(! auth()->user()->isSuperAdmin(), fn ($query) => $query->whereHas('child', fn ($child) => $child->where('barangay_id', auth()->user()->barangay_id)))
+            ->orderBy('administered_at')
+            ->get();
+
+        AuditLog::recordAction('exported', 'Exported vaccination report data', null, [
+            'format' => 'csv',
+            'start_date' => $data['startDate']->toDateString(),
+            'end_date' => $data['endDate']->toDateString(),
+        ]);
+
+        return CsvExport::download('vaccination-records-'.$data['startDate']->format('Ymd').'-'.$data['endDate']->format('Ymd').'.csv', [
+            'record_id', 'administered_at', 'child_name', 'birthdate', 'sex', 'barangay', 'vaccine', 'vaccine_code',
+            'dose_number', 'verification_status', 'source', 'schedule_version', 'schedule_version_code',
+            'clinic_name', 'clinic_location', 'recorded_by', 'verified_at', 'next_due_at', 'remarks',
+        ], $records->map(fn (VaccinationRecord $record): array => [
+            $record->id,
+            $record->administered_at?->toDateString(),
+            $record->child?->full_name,
+            $record->child?->birthdate?->toDateString(),
+            $record->child?->sex,
+            $record->child?->barangay?->name ?? 'Unassigned',
+            $record->vaccineType?->name,
+            $record->vaccineType?->code,
+            $record->dose_number,
+            $record->verification_status,
+            $record->source,
+            $record->suggestedScheduleVersion?->name ?? 'Legacy / unspecified',
+            $record->suggestedScheduleVersion?->version_code ?? 'legacy',
+            $record->clinic_name,
+            $record->clinic_location,
+            $record->recorder?->name,
+            $record->verified_at?->toDateTimeString(),
+            $record->next_due_at?->toDateString(),
+            $record->remarks,
+        ]));
     }
 
     /**

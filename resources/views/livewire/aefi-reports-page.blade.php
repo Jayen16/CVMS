@@ -4,6 +4,10 @@
             <h1 class="page-title">AEFI reports</h1>
             <p class="page-subtitle">Monitor adverse events after immunization across encoded child records.</p>
         </div>
+        <a href="{{ route('aefi-reports.csv') }}" class="app-button-secondary inline-flex items-center gap-2" aria-label="Export AEFI data for Excel as CSV">
+            <flux:icon.arrow-down-tray class="size-4" />
+            <span>Export Excel</span>
+        </a>
     </div>
 
     <section class="app-card">

@@ -8,6 +8,7 @@ use App\Models\VaccinationRecord;
 use App\Models\VaccineSchedule;
 use App\Models\VaccineType;
 use App\Services\VaccineScheduleVersionResolver;
+use App\Support\CsvExport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -36,6 +37,39 @@ class ChildTimelinePdfController extends Controller
             ->landscape()
             ->margins(8, 8, 8, 8)
             ->name('vaccination-timeline-'.$child->id.'.pdf');
+    }
+
+    public function csv(Request $request, ChildProfile $child)
+    {
+        abort_unless(auth()->user()->canViewChildrenRegistry(), 403);
+        $this->authorizeChild($child);
+
+        $child->load(['barangay', 'vaccinations.vaccineType', 'vaccinations.suggestedScheduleVersion']);
+        $selectedVaccine = $request->string('vaccine')->toString();
+        $records = $child->vaccinations
+            ->when($selectedVaccine !== '', fn (Collection $records) => $records->filter(fn (VaccinationRecord $record) => $record->vaccineType?->code === $selectedVaccine))
+            ->sortBy('administered_at');
+
+        AuditLog::recordAction('exported', 'Exported child vaccination timeline data', $child, ['format' => 'csv']);
+
+        return CsvExport::download('vaccination-timeline-'.$child->id.'.csv', [
+            'record_id', 'child_name', 'birthdate', 'barangay', 'vaccine', 'vaccine_code', 'dose_number',
+            'administered_at', 'verification_status', 'source', 'schedule_version', 'next_due_at', 'remarks',
+        ], $records->map(fn (VaccinationRecord $record): array => [
+            $record->id,
+            $child->full_name,
+            $child->birthdate?->toDateString(),
+            $child->barangay?->name ?? 'Unassigned',
+            $record->vaccineType?->name,
+            $record->vaccineType?->code,
+            $record->dose_number,
+            $record->administered_at?->toDateString(),
+            $record->verification_status,
+            $record->source,
+            $record->suggestedScheduleVersion?->name ?? 'Legacy / unspecified',
+            $record->next_due_at?->toDateString(),
+            $record->remarks,
+        ]));
     }
 
     private function authorizeChild(ChildProfile $child): void
