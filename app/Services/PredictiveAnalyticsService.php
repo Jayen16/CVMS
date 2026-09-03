@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\ChildProfile;
 use App\Models\User;
 use App\Models\VaccinationRecord;
+use App\Models\VaccineInventoryItem;
+use App\Models\VaccineScheduleVersion;
 use App\Models\VaccineType;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -21,7 +23,7 @@ class PredictiveAnalyticsService
      *
      * @return Collection<int, array<string, mixed>>
      */
-    public function vaccineDemand(User $user, int $months = 3): Collection
+    public function vaccineDemand(User $user, int $months = 3, ?VaccineScheduleVersion $scheduleVersion = null): Collection
     {
         $months = max(1, min(12, $months));
         $today = Carbon::today();
@@ -35,7 +37,7 @@ class PredictiveAnalyticsService
                 ->filter(fn (VaccinationRecord $record) => $record->verification_status !== 'rejected')
                 ->groupBy('vaccine_type_id');
 
-            foreach ($this->scheduleVersions->scheduleRowsForChild($child) as $doses) {
+            foreach ($this->scheduleVersions->scheduleRowsForChild($child, $scheduleVersion) as $doses) {
                 foreach ($doses as $dose) {
                     $recorded = $records->get($dose->vaccine_type_id, collect())
                         ->contains(fn (VaccinationRecord $record) => (int) $record->dose_number === (int) $dose->dose_number);
@@ -65,11 +67,16 @@ class PredictiveAnalyticsService
             ->selectRaw('vaccine_type_id, count(*) as total')->groupBy('vaccine_type_id')->pluck('total', 'vaccine_type_id');
         $prior = $scope()->whereBetween('administered_at', [$priorStart->toDateString(), $recentStart->copy()->subDay()->toDateString()])
             ->selectRaw('vaccine_type_id, count(*) as total')->groupBy('vaccine_type_id')->pluck('total', 'vaccine_type_id');
+        $inventory = VaccineInventoryItem::query()
+            ->whereIn('barangay_id', $user->accessibleBarangayIds())
+            ->withSum(['transactions as stock_in' => fn ($query) => $query->where('movement', 'in')], 'quantity')
+            ->withSum(['transactions as stock_out' => fn ($query) => $query->where('movement', 'out')], 'quantity')
+            ->get()->groupBy('vaccine_type_id')->map(fn ($items) => (int) $items->sum(fn ($item) => ($item->stock_in ?? 0) - ($item->stock_out ?? 0)));
 
         return $children->flatMap(fn (ChildProfile $child) => $child->vaccinations->map(fn (VaccinationRecord $record) => $record->vaccineType))
             ->merge($scheduled->keys()->merge($backlog->keys())->unique()->map(fn ($id) => VaccineType::find($id)))
             ->filter()->unique('id')->sortBy('name')->values()
-            ->map(function (VaccineType $vaccine) use ($scheduled, $backlog, $history, $recent, $prior, $months, $horizonEnd): array {
+            ->map(function (VaccineType $vaccine) use ($scheduled, $backlog, $history, $recent, $prior, $inventory, $months, $horizonEnd): array {
                 $last12 = (int) ($history[$vaccine->id] ?? 0);
                 $last3 = (int) ($recent[$vaccine->id] ?? 0);
                 $prior3 = (int) ($prior[$vaccine->id] ?? 0);
@@ -79,6 +86,8 @@ class PredictiveAnalyticsService
                 $scheduledDue = (int) ($scheduled[$vaccine->id] ?? 0);
                 $catchUpBacklog = (int) ($backlog[$vaccine->id] ?? 0);
                 $historicalBaseline = (int) ceil(max($recentAverage, $historicalAverage) * $months);
+                $estimatedDemand = max($scheduledDue + $catchUpBacklog, $historicalBaseline) + $trendAdjustment;
+                $availableStock = (int) ($inventory[$vaccine->id] ?? 0);
 
                 return [
                     'vaccine' => $vaccine,
@@ -90,7 +99,10 @@ class PredictiveAnalyticsService
                     'prior_three_months' => $prior3,
                     'historical_monthly_average' => $historicalAverage,
                     'trend_adjustment' => $trendAdjustment,
-                    'estimated_demand' => max($scheduledDue + $catchUpBacklog, $historicalBaseline) + $trendAdjustment,
+                    'estimated_demand' => $estimatedDemand,
+                    'available_stock' => $availableStock,
+                    'projected_balance' => $availableStock - $estimatedDemand,
+                    'stock_status' => $availableStock >= $estimatedDemand ? 'sufficient' : 'shortage',
                 ];
             });
     }

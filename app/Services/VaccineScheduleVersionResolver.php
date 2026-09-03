@@ -25,6 +25,7 @@ class VaccineScheduleVersionResolver
         ChildProfile $child,
         VaccineType $vaccineType,
         Collection $seriesRecords,
+        ?VaccineScheduleVersion $fallbackVersion = null,
     ): ?VaccineScheduleVersion {
         $child->loadMissing('seriesVersions.scheduleVersion');
 
@@ -62,13 +63,13 @@ class VaccineScheduleVersionResolver
             return $version;
         }
 
-        return $this->activeVersion();
+        return $fallbackVersion ?? $this->activeVersion();
     }
 
     /**
      * @return Collection<string, Collection<int, VaccineSchedule>>
      */
-    public function scheduleRowsForChild(ChildProfile $child): Collection
+    public function scheduleRowsForChild(ChildProfile $child, ?VaccineScheduleVersion $fallbackVersion = null): Collection
     {
         $child->loadMissing(['vaccinations.vaccineType', 'seriesVersions.scheduleVersion']);
 
@@ -94,6 +95,7 @@ class VaccineScheduleVersionResolver
                 $child,
                 $vaccineType,
                 $recordsByVaccineType->get($vaccineType->id, collect()),
+                $fallbackVersion,
             );
 
             if ($version !== null) {

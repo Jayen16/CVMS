@@ -339,7 +339,7 @@
                                                 'pending' => 'P',
                                                 'due' => 'D',
                                                 'delayed' => 'L',
-                                                'overdue' => 'D',
+                                                'overdue' => 'O',
                                                 default => 'U',
                                             };
                                             $desktopPointPosition = $desktopPosition(($point['position'] / 100) * $timelineMonths);

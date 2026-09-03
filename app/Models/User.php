@@ -330,6 +330,11 @@ class User extends Authenticatable implements PasskeyUser
         return $this->barangay_id ? collect([$this->barangay_id]) : collect();
     }
 
+    public function canAccessBarangay(?string $barangayId): bool
+    {
+        return filled($barangayId) && $this->accessibleBarangayIds()->contains($barangayId);
+    }
+
     public function canManageInventory(): bool
     {
         return $this->isSuperAdmin() || $this->isBarangayAdmin() || ($this->isNurse() && $this->hasNursePermission('manage_inventory'));

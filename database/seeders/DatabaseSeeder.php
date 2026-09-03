@@ -26,10 +26,6 @@ class DatabaseSeeder extends Seeder
 
         $this->call(PsgcSeeder::class);
 
-        collect(['Barangay 1', 'Barangay 2', 'Barangay 3'])->each(fn (string $name) => Barangay::firstOrCreate([
-            'name' => $name,
-        ]));
-
         $vaccines = config('immunization.vaccines');
 
         if (is_array($vaccines)) {
