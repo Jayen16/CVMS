@@ -1,4 +1,4 @@
-<div class="app-page grid gap-6 lg:grid-cols-[1fr_380px]">
+<div class="app-page grid gap-6 lg:grid-cols-[1fr_380px]" x-data="{ inviteOpen: false }">
         @if (auth()->user()->isSuperAdmin() && request()->routeIs('municipal-admins.*'))
             <section class="app-card lg:col-span-2">
                 <p class="eyebrow">Platform administration</p>
@@ -24,7 +24,7 @@
             @endif
         @endif
         @if (! auth()->user()->isSuperAdmin() || ! request()->routeIs('municipal-admins.*'))
-        <section class="flex flex-col gap-4">
+        <section class="flex flex-col gap-4 {{ $managedRole === 'nurse' ? 'lg:col-span-2' : '' }}">
             @if (session('status'))
                 <div class="app-alert-success">
                     {{ session('status') }}
@@ -41,14 +41,19 @@
                 </div>
             @endif
 
-            <div>
-                <p class="eyebrow">Administration</p>
-                <h1 class="page-title">{{ $managedRole === 'barangay_admin' ? 'Barangay admin accounts' : 'Nurse accounts' }}</h1>
-                <p class="page-subtitle">
-                    {{ $managedRole === 'barangay_admin'
-                        ? 'Create barangay admins for barangays in your municipality. They are responsible for adding Nurses.'
-                        : 'Invite nurses by email and assign them to the barangay where they record child vaccination data.' }}
-                </p>
+            <div class="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                    <p class="eyebrow">Administration</p>
+                    <h1 class="page-title">{{ $managedRole === 'barangay_admin' ? 'Barangay admin accounts' : 'Nurse accounts' }}</h1>
+                    <p class="page-subtitle">
+                        {{ $managedRole === 'barangay_admin'
+                            ? 'Create barangay admins for barangays in your municipality. They are responsible for adding Nurses.'
+                            : 'Invite nurses by email and assign them to the barangay where they record child vaccination data.' }}
+                    </p>
+                </div>
+                @if ($managedRole === 'nurse')
+                    <button type="button" class="app-button-primary" @click="inviteOpen = true">Invite nurse</button>
+                @endif
             </div>
 
             <div class="app-card overflow-x-auto">
@@ -61,11 +66,12 @@
                             <th class="px-4 py-3 font-medium">Barangay</th>
                             <th class="px-4 py-3 font-medium">Setup</th>
                             <th class="px-4 py-3 font-medium">Status</th>
+                            <th class="px-4 py-3 font-medium">Access</th>
                             <th class="px-4 py-3 font-medium">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        @forelse ($staff as $member)
+                    @forelse ($staff as $member)
+                        <tbody x-data="{ accessOpen: false }">
                             <tr class="app-table-row">
                                 <td class="font-medium text-slate-950 dark:text-white">{{ $member->name }}</td>
                                 <td>{{ $member->email }}</td>
@@ -89,6 +95,16 @@
                                         </span>
                                     @else
                                         <span class="text-xs font-medium text-slate-500">Waiting for setup</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($managedRole === 'nurse')
+                                        <button type="button" class="inline-flex items-center gap-1 text-sm font-medium text-teal-700 dark:text-teal-300" @click="accessOpen = !accessOpen" :aria-expanded="accessOpen.toString()">
+                                            <span class="transition-transform" :class="accessOpen ? 'rotate-90' : ''">▶</span>
+                                            <span x-text="accessOpen ? 'Hide access' : 'Customize access'">Customize access</span>
+                                        </button>
+                                    @else
+                                        <span class="text-xs text-slate-500">Not applicable</span>
                                     @endif
                                 </td>
                                 <td>
@@ -120,17 +136,76 @@
                                     </div>
                                 </td>
                             </tr>
-                        @empty
-                            <tr><td colspan="7" class="px-4 py-8 text-center text-zinc-500">No accounts yet.</td></tr>
-                        @endforelse
-                    </tbody>
+                            @if ($managedRole === 'nurse')
+                                <tr x-show="accessOpen" x-cloak>
+                                    <td colspan="8" class="border-t border-slate-200 bg-slate-50 p-0 dark:border-zinc-700 dark:bg-zinc-950/60">
+                                        <div class="w-full p-4 sm:p-5">
+                                            <div class="mb-4 flex items-center justify-between gap-3">
+                                                <div>
+                                                    <p class="text-sm font-semibold text-slate-950 dark:text-white">Nurse access</p>
+                                                    <p class="text-xs text-slate-500 dark:text-zinc-400">Choose the capabilities available to {{ $member->name }}.</p>
+                                                </div>
+                                                <span class="text-xs text-slate-500 dark:text-zinc-400">{{ count($member->nursePermissions()) }} of {{ count(\App\Models\User::nursePermissionDefinitions()) }} enabled</span>
+                                            </div>
+                                            <form method="POST" action="{{ route('nurses.permissions.update', $member) }}" class="grid gap-5 lg:grid-cols-3">
+                                                @csrf
+                                                @method('PUT')
+                                                @foreach (\App\Models\User::nursePermissionGroups() as $module => $permissions)
+                                                    <fieldset class="rounded-xl border border-slate-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
+                                                        <legend class="px-1 text-sm font-semibold text-slate-950 dark:text-white">{{ $module }}</legend>
+                                                        <div class="mt-2 grid gap-2">
+                                                            @foreach ($permissions as $permission => $label)
+                                                                <label class="flex items-start gap-2 rounded-lg border border-slate-200 p-3 text-sm dark:border-zinc-700">
+                                                                    <input type="checkbox" name="permissions[]" value="{{ $permission }}" @checked($member->hasNursePermission($permission))>
+                                                                    <span>{{ $label }}</span>
+                                                                </label>
+                                                            @endforeach
+                                                        </div>
+                                                    </fieldset>
+                                                @endforeach
+                                                <button class="app-button-primary lg:col-span-3">Save access</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endif
+                        </tbody>
+                    @empty
+                        <tbody><tr><td colspan="8" class="px-4 py-8 text-center text-zinc-500">No accounts yet.</td></tr></tbody>
+                    @endforelse
                 </table>
             </div>
 
             {{ $staff->links() }}
         </section>
 
-        <form method="POST" action="{{ route('nurses.store') }}" class="app-panel grid content-start gap-4">
+        @if ($managedRole === 'nurse')
+            <div x-show="inviteOpen" x-cloak x-on:keydown.escape.window="inviteOpen = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="invite-nurse-title">
+                <div class="app-panel w-full max-w-lg" @click.stop>
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="eyebrow">Administration</p>
+                            <h2 id="invite-nurse-title" class="app-card-title">Invite nurse</h2>
+                        </div>
+                        <button type="button" class="text-2xl leading-none text-slate-500 hover:text-slate-950 dark:hover:text-white" aria-label="Close invite nurse dialog" @click="inviteOpen = false">&times;</button>
+                    </div>
+                    <form method="POST" action="{{ route('nurses.store') }}" class="mt-5 grid gap-4">
+                        @csrf
+                        <p class="text-sm text-slate-600 dark:text-zinc-300">The nurse receives an email link to set their password. Until then, the account stays pending.</p>
+                        <x-form-field label="Name" name="name" />
+                        <x-form-field label="Email" name="email" type="email" />
+                        <div class="rounded-lg border border-teal-100 bg-teal-50 p-3 text-sm text-teal-950 dark:border-teal-900 dark:bg-teal-950 dark:text-teal-100">
+                            Assigned barangay: <span class="font-semibold">{{ auth()->user()->barangay?->name }}</span>
+                        </div>
+                        <div class="flex flex-wrap justify-end gap-3">
+                            <button type="button" class="app-button-secondary" @click="inviteOpen = false">Cancel</button>
+                            <button class="app-button-primary">Send password setup link</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @else
+            <form method="POST" action="{{ route('nurses.store') }}" class="app-panel grid content-start gap-4">
             @csrf
             <h2 class="app-card-title">{{ $managedRole === 'barangay_admin' ? 'Invite barangay admin' : 'Invite nurse' }}</h2>
             <p class="text-sm text-slate-600 dark:text-zinc-300">
@@ -149,6 +224,7 @@
                 </div>
             @endif
             <button class="app-button-primary">Send password setup link</button>
-        </form>
+            </form>
+        @endif
         @endif
     </div>

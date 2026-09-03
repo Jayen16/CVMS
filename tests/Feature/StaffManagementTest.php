@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AuditLog;
 use App\Models\Barangay;
 use App\Models\Municipality;
 use App\Models\Province;
@@ -86,4 +87,52 @@ test('barangay admins have operational authority within their barangay', functio
         ->and($admin->canSubmitAefiReports())->toBeTrue()
         ->and($admin->canManageInventory())->toBeTrue()
         ->and($admin->canMergeDuplicates())->toBeTrue();
+});
+
+test('barangay admins can customize a same-barangay nurse permissions and changes are audited', function () {
+    $barangay = Barangay::create(['name' => 'Permissions Barangay']);
+    $admin = User::factory()->create([
+        'role' => 'barangay_admin',
+        'roles' => ['barangay_admin'],
+        'barangay_id' => $barangay->id,
+    ]);
+    $nurse = User::factory()->create([
+        'role' => 'nurse',
+        'roles' => ['nurse'],
+        'barangay_id' => $barangay->id,
+        'permissions' => User::defaultNursePermissions(),
+    ]);
+
+    $this->actingAs($admin)
+        ->put(route('nurses.permissions.update', $nurse), [
+            'permissions' => ['view_children', 'view_inventory'],
+        ])
+        ->assertRedirect(route('nurses.index'));
+
+    $nurse->refresh();
+    expect($nurse->nursePermissions())->toBe(['view_children', 'view_inventory'])
+        ->and($nurse->canViewChildrenRegistry())->toBeTrue()
+        ->and($nurse->canManageChildren())->toBeFalse()
+        ->and($nurse->canViewInventory())->toBeTrue()
+        ->and($nurse->canManageInventory())->toBeFalse()
+        ->and(AuditLog::where('event', 'permissions_updated')->where('auditable_id', $nurse->id)->exists())->toBeTrue();
+});
+
+test('barangay admins cannot customize a nurse from another barangay', function () {
+    $adminBarangay = Barangay::create(['name' => 'Admin Permissions Barangay']);
+    $nurseBarangay = Barangay::create(['name' => 'Other Permissions Barangay']);
+    $admin = User::factory()->create([
+        'role' => 'barangay_admin',
+        'roles' => ['barangay_admin'],
+        'barangay_id' => $adminBarangay->id,
+    ]);
+    $nurse = User::factory()->create([
+        'role' => 'nurse',
+        'roles' => ['nurse'],
+        'barangay_id' => $nurseBarangay->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->put(route('nurses.permissions.update', $nurse), ['permissions' => []])
+        ->assertForbidden();
 });

@@ -73,6 +73,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('municipal-admins', NursesPage::class)->name('municipal-admins.index');
     Route::post('nurses', [NurseController::class, 'store'])->name('nurses.store');
     Route::post('nurses/{nurse}/setup-link', [NurseController::class, 'resendSetupLink'])->name('nurses.setup-link');
+    Route::put('nurses/{nurse}/permissions', [NurseController::class, 'updatePermissions'])->name('nurses.permissions.update');
     Route::post('nurses/{nurse}/toggle', [NurseController::class, 'toggle'])->name('nurses.toggle');
     Route::post('nurses/{nurse}/restore', [NurseController::class, 'restore'])->name('nurses.restore');
     Route::delete('nurses/{nurse}', [NurseController::class, 'destroy'])->name('nurses.destroy');

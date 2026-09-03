@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Barangay;
 use App\Models\Municipality;
 use App\Models\User;
@@ -84,6 +85,7 @@ class NurseController extends Controller
             'password' => Str::password(32),
             'role' => $roles[0],
             'roles' => $roles,
+            'permissions' => $roles === ['nurse'] ? User::defaultNursePermissions() : null,
             'barangay_id' => $barangayId,
             'municipality_id' => $municipalityId,
             'is_active' => false,
@@ -134,6 +136,41 @@ class NurseController extends Controller
         $nurse->update(['is_active' => ! $nurse->is_active]);
 
         return to_route('nurses.index')->with('status', 'Nurse status updated.');
+    }
+
+    public function updatePermissions(Request $request, User $nurse): RedirectResponse
+    {
+        $this->authorizeStaffManager();
+        abort_unless(auth()->user()->isBarangayAdmin(), 403);
+        abort_unless($nurse->isNurse(), 404);
+        abort_unless($nurse->barangay_id === auth()->user()->barangay_id, 403);
+        abort_if($nurse->isArchived(), 422, 'Archived accounts cannot have permissions changed.');
+
+        $definitions = User::nursePermissionDefinitions();
+        $validated = $request->validate([
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['string', Rule::in(array_keys($definitions))],
+        ]);
+
+        $oldPermissions = $nurse->nursePermissions();
+        $newPermissions = array_values($validated['permissions'] ?? []);
+        sort($oldPermissions);
+        sort($newPermissions);
+
+        $nurse->syncNursePermissions($newPermissions);
+        $nurse->save();
+
+        if ($oldPermissions !== $newPermissions) {
+            AuditLog::recordAction(
+                'permissions_updated',
+                'Updated nurse permissions for '.$nurse->name,
+                $nurse,
+                ['permissions' => $newPermissions],
+                ['permissions' => $oldPermissions],
+            );
+        }
+
+        return to_route('nurses.index')->with('status', 'Nurse permissions updated.');
     }
 
     public function restore(User $nurse): RedirectResponse
