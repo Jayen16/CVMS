@@ -17,6 +17,7 @@ FROM node:22-bookworm-slim AS assets
 WORKDIR /var/www/html
 COPY package.json package-lock.json ./
 RUN npm ci --include=optional
+COPY --from=vendor /var/www/html/vendor ./vendor
 COPY resources ./resources
 COPY public ./public
 COPY vite.config.js ./
