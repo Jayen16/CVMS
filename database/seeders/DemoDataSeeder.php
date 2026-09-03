@@ -178,28 +178,11 @@ class DemoDataSeeder extends Seeder
 
     private function seedUsers(): void
     {
-        $this->users['superadmin'] = $this->upsertUser(
-            'Alicia Ramos',
-            'admin@example.com',
-            '09170000001',
-            'superadmin',
-        );
-
-        $this->users['starter_barangay_admin'] = $this->upsertUser(
-            'Barangay Admin',
-            'barangay-admin@example.com',
-            '09170009991',
-            'barangay_admin',
-            $this->barangays['barangay_1'],
-        );
-
-        $this->users['starter_nurse'] = $this->upsertUser(
-            'Demo Nurse',
-            'nurse@example.com',
-            '09170009992',
-            'nurse',
-            $this->barangays['barangay_1'],
-        );
+        $this->users['superadmin'] = User::where('email', 'superadmin@example.com')->firstOrFail();
+        $this->users['starter_barangay_admin'] = User::where('email', 'barangay-bancod@example.com')->firstOrFail();
+        $this->users['starter_nurse'] = User::where('email', 'nurse-bancod@example.com')->firstOrFail();
+        $this->users['second_bancod_nurse'] = User::where('email', 'nurse-bancod2@example.com')->firstOrFail();
+        $this->users['kaytapos_nurse'] = User::where('email', 'nurse-kaytapos@example.com')->firstOrFail();
 
         $this->users['starter_parent'] = $this->upsertUser(
             'Demo Parent',

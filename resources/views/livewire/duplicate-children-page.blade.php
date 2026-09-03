@@ -20,7 +20,9 @@
                                 <th class="px-4 py-3 font-medium">Birthdate</th>
                                 <th class="px-4 py-3 font-medium">Barangay</th>
                                 <th class="px-4 py-3 font-medium">Guardian</th>
-                                <th class="px-4 py-3 font-medium text-right">Merge</th>
+                                @if (auth()->user()->canMergeDuplicates())
+                                    <th class="px-4 py-3 font-medium text-right">Merge</th>
+                                @endif
                             </tr>
                         </thead>
                         <tbody>
@@ -30,6 +32,7 @@
                                     <td>{{ $child->birthdate->format('M d, Y') }}</td>
                                     <td>{{ $child->barangay?->name }}</td>
                                     <td>{{ $child->guardian_name }}{{ $child->guardian_contact ? ' | '.$child->guardian_contact : '' }}</td>
+                                    @if (auth()->user()->canMergeDuplicates())
                                     <td class="text-right">
                                         <button
                                             type="button"
@@ -40,6 +43,7 @@
                                             Keep This Record
                                         </button>
                                     </td>
+                                    @endif
                                 </tr>
                             @endforeach
                         </tbody>

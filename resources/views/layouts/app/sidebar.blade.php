@@ -10,75 +10,125 @@
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
+            @php
+                $sidebarUser = auth()->user()->loadMissing([
+                    'barangay.municipalityRelation.province.region',
+                    'municipality.province.region',
+                ]);
+                $sidebarBarangay = $sidebarUser->barangay;
+                $sidebarMunicipality = $sidebarBarangay?->municipalityRelation ?? $sidebarUser->municipality;
+                $sidebarProvince = $sidebarMunicipality?->province;
+                $sidebarRegion = $sidebarProvince?->region;
+                $sidebarPrimaryLocation = collect([$sidebarBarangay?->name, $sidebarMunicipality?->name])->filter()->implode(' · ');
+                $sidebarSecondaryLocation = collect([$sidebarProvince?->name, $sidebarRegion?->name])->filter()->implode(' · ');
+            @endphp
+
+            @if ($sidebarRegion || $sidebarProvince || $sidebarMunicipality || $sidebarBarangay)
+                <div class="space-y-0.5 px-3 py-2 text-[10px] leading-4 text-slate-500 dark:text-zinc-400">
+                    @if ($sidebarPrimaryLocation !== '')
+                        <div class="truncate font-medium text-slate-600 dark:text-zinc-300">{{ $sidebarPrimaryLocation }}</div>
+                    @endif
+                    @if ($sidebarSecondaryLocation !== '')
+                        <div class="truncate">{{ $sidebarSecondaryLocation }}</div>
+                    @endif
+                </div>
+            @endif
+
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Platform')" class="grid">
-                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('Dashboard') }}
-                    </flux:sidebar.item>
-                    @if (auth()->user()->canViewChildrenRegistry())
-                        <flux:sidebar.item icon="users" :href="route('children.index')" :current="request()->routeIs('children.*')" wire:navigate>
-                            {{ __('Children') }}
-                        </flux:sidebar.item>
-                    @endif
-                    @if (auth()->user()->canViewVerificationQueue())
-                        <flux:sidebar.item icon="clipboard-document-check" :href="route('verification-queue.index')" :current="request()->routeIs('verification-queue.*')" wire:navigate>
-                            {{ __('Verification Queue') }}
-                        </flux:sidebar.item>
-                    @endif
-                    @if (auth()->user()->canViewDefaulters())
-                        <flux:sidebar.item icon="bell-alert" :href="route('defaulters.index')" :current="request()->routeIs('defaulters.*')" wire:navigate>
-                            {{ __('Defaulters') }}
-                        </flux:sidebar.item>
-                    @endif
-                    @if (auth()->user()->canManageAnnouncements() || auth()->user()->isParent())
-                        <flux:sidebar.item icon="megaphone" :href="route('announcements.index')" :current="request()->routeIs('announcements.*')" wire:navigate>
-                            {{ __('Announcements') }}
-                        </flux:sidebar.item>
-                    @endif
-                    @if (auth()->user()->canViewAefiReports())
-                        <flux:sidebar.item icon="exclamation-triangle" :href="route('aefi-reports.index')" :current="request()->routeIs('aefi-reports.*')" wire:navigate>
-                            {{ __('AEFI') }}
-                        </flux:sidebar.item>
-                    @endif
-                    @if (auth()->user()->canViewDuplicates())
-                        <flux:sidebar.item icon="squares-2x2" :href="route('duplicates.index')" :current="request()->routeIs('duplicates.*')" wire:navigate>
-                            {{ __('Duplicates') }}
-                        </flux:sidebar.item>
-                    @endif
-                    @if (auth()->user()->canManageBarangayStaff())
-                        <flux:sidebar.item icon="user-plus" :href="route('nurses.index')" :current="request()->routeIs('nurses.*')" wire:navigate>
-                            {{ auth()->user()->canManageBarangayAdmins() ? __('Barangay Admins') : __('Nurses') }}
-                        </flux:sidebar.item>
-                    @endif
-                    @if (auth()->user()->isSuperAdmin())
-                        <flux:sidebar.item icon="user-group" :href="route('groups.index')" :current="request()->routeIs('groups.*')" wire:navigate>
-                            {{ __('Locations') }}
-                        </flux:sidebar.item>
-                    @endif
-                    @if (auth()->user()->isSuperAdmin() || auth()->user()->isBarangayAdmin() || auth()->user()->isNurse())
+                <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
+                    {{ __('Dashboard') }}
+                </flux:sidebar.item>
+
+                @if (auth()->user()->canViewChildrenRegistry()
+                    || auth()->user()->canViewVerificationQueue()
+                    || auth()->user()->canViewDefaulters()
+                    || (auth()->user()->canViewDuplicates() && ! auth()->user()->isSuperAdmin())
+                    || auth()->user()->canViewAefiReports())
+                    <flux:sidebar.group expandable :heading="__('Child Records')" class="grid">
+                        @if (auth()->user()->canViewChildrenRegistry())
+                            <flux:sidebar.item icon="users" :href="route('children.index')" :current="request()->routeIs('children.*')" wire:navigate>
+                                {{ __('Children') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if (auth()->user()->canViewVerificationQueue())
+                            <flux:sidebar.item icon="clipboard-document-check" :href="route('verification-queue.index')" :current="request()->routeIs('verification-queue.*')" wire:navigate>
+                                {{ __('Verification Queue') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if (auth()->user()->canViewDefaulters())
+                            <flux:sidebar.item icon="bell-alert" :href="route('defaulters.index')" :current="request()->routeIs('defaulters.*')" wire:navigate>
+                                {{ __('Defaulters') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if (auth()->user()->canViewDuplicates() && ! auth()->user()->isSuperAdmin())
+                            <flux:sidebar.item icon="squares-2x2" :href="route('duplicates.index')" :current="request()->routeIs('duplicates.*')" wire:navigate>
+                                {{ __('Duplicates') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if (auth()->user()->canViewAefiReports())
+                            <flux:sidebar.item icon="exclamation-triangle" :href="route('aefi-reports.index')" :current="request()->routeIs('aefi-reports.*')" wire:navigate>
+                                {{ __('AEFI') }}
+                            </flux:sidebar.item>
+                        @endif
+                    </flux:sidebar.group>
+                @endif
+
+                @if (auth()->user()->canManagePlatform() || auth()->user()->canViewInventory())
+                    <flux:sidebar.group expandable :heading="__('Vaccination Program')" class="grid">
+                        @if (auth()->user()->canManagePlatform())
+                            <flux:sidebar.item icon="calendar-days" :href="route('vaccine-schedules.index')" :current="request()->routeIs('vaccine-schedules.*')" wire:navigate>
+                                {{ __('Schedules') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if (auth()->user()->canViewInventory())
+                            <flux:sidebar.item icon="archive-box" :href="route('vaccine-inventory.index')" :current="request()->routeIs('vaccine-inventory.*')" wire:navigate>
+                                {{ __('Vaccine Inventory') }}
+                            </flux:sidebar.item>
+                        @endif
+                    </flux:sidebar.group>
+                @endif
+
+                @if (auth()->user()->isSuperAdmin() || auth()->user()->isBarangayAdmin() || auth()->user()->isNurse())
+                    <flux:sidebar.group expandable :heading="__('Operations')" class="grid">
                         <flux:sidebar.item icon="arrow-path" :href="route('sync.index')" :current="request()->routeIs('sync.*')" wire:navigate>
                             {{ __('Sync Data') }}
                         </flux:sidebar.item>
-                    @endif
-                    @if (auth()->user()->canManagePlatform())
-                        <flux:sidebar.item icon="calendar-days" :href="route('vaccine-schedules.index')" :current="request()->routeIs('vaccine-schedules.*')" wire:navigate>
-                            {{ __('Schedules') }}
+                    </flux:sidebar.group>
+                @endif
+
+                @if (auth()->user()->canManageAnnouncements() || auth()->user()->isParent())
+                    <flux:sidebar.group expandable :heading="__('Communications')" class="grid">
+                        <flux:sidebar.item icon="megaphone" :href="route('announcements.index')" :current="request()->routeIs('announcements.*')" wire:navigate>
+                            {{ __('Announcements') }}
                         </flux:sidebar.item>
-                    @endif
-                    @if (auth()->user()->canManageInventory())
-                        <flux:sidebar.item icon="archive-box" :href="route('vaccine-inventory.index')" :current="request()->routeIs('vaccine-inventory.*')" wire:navigate>
-                            {{ __('Vaccine Inventory') }}
-                        </flux:sidebar.item>
-                    @endif
-                    @if (auth()->user()->canViewOversight())
+                    </flux:sidebar.group>
+                @endif
+
+                @if ((auth()->user()->canManageBarangayStaff() && ! auth()->user()->isSuperAdmin()) || auth()->user()->isSuperAdmin())
+                    <flux:sidebar.group expandable :heading="__('Administration')" class="grid">
+                        @if (auth()->user()->canManageBarangayStaff() && ! auth()->user()->isSuperAdmin())
+                            <flux:sidebar.item icon="user-plus" :href="route(auth()->user()->canManageBarangayAdmins() ? 'municipal-admins.index' : 'nurses.index')" :current="request()->routeIs('nurses.*', 'municipal-admins.*')" wire:navigate>
+                                {{ auth()->user()->canManageBarangayAdmins() ? __('Barangay Admins') : __('Nurses') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if (auth()->user()->isSuperAdmin())
+                            <flux:sidebar.item icon="user-group" :href="route('groups.index')" :current="request()->routeIs('groups.*')" wire:navigate>
+                                {{ __('Group Management') }}
+                            </flux:sidebar.item>
+                        @endif
+                    </flux:sidebar.group>
+                @endif
+
+                @if (auth()->user()->canViewOversight())
+                    <flux:sidebar.group expandable :heading="__('Insights & Oversight')" class="grid">
                         <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
                             {{ __('Reports') }}
                         </flux:sidebar.item>
                         <flux:sidebar.item icon="list-bullet" :href="route('audit-logs.index')" :current="request()->routeIs('audit-logs.*')" wire:navigate>
                             {{ __('Audit Logs') }}
                         </flux:sidebar.item>
-                    @endif
-                </flux:sidebar.group>
+                    </flux:sidebar.group>
+                @endif
             </flux:sidebar.nav>
 
             <flux:spacer />

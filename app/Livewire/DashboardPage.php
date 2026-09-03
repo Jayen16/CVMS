@@ -21,7 +21,7 @@ class DashboardPage extends Component
     {
         $user = auth()->user();
         $announcements = ClinicAnnouncement::query()
-            ->with('barangay')
+            ->with(['barangay', 'region', 'province', 'municipality'])
             ->where('active', true)
             ->whereDate('starts_on', '<=', today()->addDays(30))
             ->where(function ($query) {
@@ -29,9 +29,7 @@ class DashboardPage extends Component
             })
             ->when($user->isParent(), fn ($query) => $query->whereIn('audience', ['all', 'parents']))
             ->when($user->isNurse() || $user->isBarangayAdmin(), fn ($query) => $query->whereIn('audience', ['all', 'staff']))
-            ->when($user->isNurse() || $user->isBarangayAdmin(), fn ($query) => $query->where(function ($builder) use ($user) {
-                $builder->whereNull('barangay_id')->orWhere('barangay_id', $user->barangay_id);
-            }))
+            ->visibleTo($user)
             ->orderBy('starts_on')
             ->take(6)
             ->get();
@@ -53,11 +51,11 @@ class DashboardPage extends Component
                 ],
                 'barangays' => Barangay::query()
                     ->withCount('children')
+                    ->withCount('vaccinations')
                     ->withCount(['users as barangay_admins_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'barangay_admin')])
                     ->withCount(['users as nurses_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'nurse')])
-                    ->with(['children.vaccinations'])
                     ->orderBy('name')
-                    ->get(),
+                    ->paginate(50),
                 'announcements' => $announcements,
             ])->layout('layouts.app', ['title' => 'Dashboard']);
         }
@@ -104,12 +102,22 @@ class DashboardPage extends Component
                 'role' => 'municipal_admin',
                 'stats' => [
                     'municipality' => $user->municipality()->value('name') ?? 'Unassigned',
+                    'barangays' => Barangay::where('municipality_id', $user->municipality_id)->count(),
+                    'barangayAdmins' => User::notArchived()->where('municipality_id', $user->municipality_id)->whereJsonContains('roles', 'barangay_admin')->count(),
                     'nurses' => User::notArchived()->where('municipality_id', $user->municipality_id)->whereJsonContains('roles', 'nurse')->count(),
                     'children' => ChildProfile::query()->visibleTo($user)->count(),
                     'vaccinations' => VaccinationRecord::whereHas('child', fn ($query) => $query->whereIn('barangay_id', $user->accessibleBarangayIds()))->count(),
                     'pending' => VaccinationRecord::where('verification_status', 'pending')->whereHas('child', fn ($query) => $query->whereIn('barangay_id', $user->accessibleBarangayIds()))->count(),
                     'pendingSync' => $pendingSync,
                 ],
+                'barangays' => Barangay::query()
+                    ->where('municipality_id', $user->municipality_id)
+                    ->withCount('children')
+                    ->withCount('vaccinations')
+                    ->withCount(['users as barangay_admins_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'barangay_admin')])
+                    ->withCount(['users as nurses_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'nurse')])
+                    ->orderBy('name')
+                    ->get(),
                 'children' => $children,
                 'announcements' => $announcements,
             ])->layout('layouts.app', ['title' => 'Dashboard']);

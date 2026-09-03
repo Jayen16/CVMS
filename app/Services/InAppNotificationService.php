@@ -52,7 +52,7 @@ class InAppNotificationService
 
     public function announcementPublished(ClinicAnnouncement $announcement): void
     {
-        $announcement->loadMissing('barangay');
+        $announcement->loadMissing(['barangay', 'region', 'province', 'municipality']);
 
         $this->audienceUsers($announcement)->each(function (User $user) use ($announcement): void {
             $this->notifyOnce($user, "announcement:{$announcement->id}", new InAppNotification(
@@ -110,9 +110,22 @@ class InAppNotificationService
                     ->orWhereJsonContains('roles', 'barangay_admin')
                     ->orWhereJsonContains('roles', 'nurse');
             }))
-            ->when($announcement->barangay_id !== null, fn ($query) => $query->where(function ($query) use ($announcement): void {
-                $query->whereNull('barangay_id')->orWhere('barangay_id', $announcement->barangay_id);
-            }))
+            ->where(function ($query) use ($announcement): void {
+                if (! $announcement->region_id && ! $announcement->province_id && ! $announcement->municipality_id && ! $announcement->barangay_id) {
+                    $query->whereNotNull('users.id');
+                } elseif ($announcement->barangay_id) {
+                    $query->where(function ($users) use ($announcement): void {
+                        $users->whereNull('users.barangay_id')->orWhere('users.barangay_id', $announcement->barangay_id);
+                    });
+                } else {
+                    $query->where(function ($users) use ($announcement): void {
+                        $users->whereNull('users.barangay_id')
+                            ->when($announcement->region_id, fn ($scope) => $scope->orWhereHas('barangay.municipalityRelation.province', fn ($location) => $location->whereKey($announcement->region_id)))
+                            ->when($announcement->province_id, fn ($scope) => $scope->orWhereHas('barangay.municipalityRelation', fn ($location) => $location->where('province_id', $announcement->province_id)))
+                            ->when($announcement->municipality_id, fn ($scope) => $scope->orWhereHas('barangay', fn ($location) => $location->where('municipality_id', $announcement->municipality_id)));
+                    });
+                }
+            })
             ->get();
     }
 

@@ -12,7 +12,7 @@
 
 
         @if (! auth()->user()->isParent())
-            <form method="GET" action="{{ route('children.index') }}" class="app-panel flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <form method="GET" action="{{ route('children.index') }}" class="app-panel flex flex-col gap-3 md:flex-row md:items-end md:justify-between" x-data="{ loading: false }" @submit="loading = true">
                 <label class="grid flex-1 gap-2 text-sm">
                     <span class="font-medium text-slate-800 dark:text-zinc-100">Filter by vaccination taken</span>
                     <select name="vaccine_type_id" class="app-input">
@@ -23,7 +23,7 @@
                     </select>
                 </label>
                 <div class="flex gap-2">
-                    <button class="app-button-primary">Filter</button>
+                    <button class="app-button-primary inline-flex items-center gap-2" :disabled="loading"><span x-show="loading" x-cloak class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span><span x-text="loading ? 'Filtering…' : 'Filter'"></span></button>
                     <a href="{{ route('children.index') }}" class="app-button-secondary">Clear</a>
                 </div>
             </form>
@@ -66,4 +66,3 @@
 
         {{ $children->links() }}
     </div>
-

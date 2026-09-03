@@ -6,6 +6,7 @@ use App\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Barangay extends Model
 {
@@ -44,6 +45,12 @@ class Barangay extends Model
     public function children(): HasMany
     {
         return $this->hasMany(ChildProfile::class);
+    }
+
+    /** @return HasManyThrough<VaccinationRecord, ChildProfile, $this> */
+    public function vaccinations(): HasManyThrough
+    {
+        return $this->hasManyThrough(VaccinationRecord::class, ChildProfile::class);
     }
 
     /**

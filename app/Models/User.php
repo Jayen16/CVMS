@@ -242,12 +242,12 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canManageNurses(): bool
     {
-        return $this->isMunicipalAdmin() || $this->isBarangayAdmin();
+        return $this->isBarangayAdmin();
     }
 
     public function canManageBarangayAdmins(): bool
     {
-        return $this->isSuperAdmin();
+        return $this->isSuperAdmin() || $this->isMunicipalAdmin();
     }
 
     public function canManageGroups(): bool
@@ -257,7 +257,7 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canManageChildren(): bool
     {
-        return $this->isNurse();
+        return $this->isBarangayAdmin() || $this->isNurse();
     }
 
     public function canViewChildrenRegistry(): bool
@@ -267,12 +267,12 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canVerifyVaccinations(): bool
     {
-        return $this->isNurse();
+        return $this->isBarangayAdmin() || $this->isNurse();
     }
 
     public function canSubmitAefiReports(): bool
     {
-        return $this->isNurse();
+        return $this->isBarangayAdmin() || $this->isNurse();
     }
 
     public function canViewOversight(): bool
@@ -305,6 +305,11 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canManageInventory(): bool
     {
+        return $this->isSuperAdmin() || $this->isBarangayAdmin() || $this->isNurse();
+    }
+
+    public function canViewInventory(): bool
+    {
         return $this->isSuperAdmin() || $this->isMunicipalAdmin() || $this->isBarangayAdmin() || $this->isNurse();
     }
 
@@ -315,7 +320,7 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canMergeDuplicates(): bool
     {
-        return $this->canViewDuplicates();
+        return $this->isSuperAdmin() || $this->isBarangayAdmin() || $this->isNurse();
     }
 
     public function canViewDefaulters(): bool

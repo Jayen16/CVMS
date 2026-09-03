@@ -95,6 +95,9 @@ class OfflineSyncService
         return match ($model::class) {
             ChildProfile::class => [
                 'sync_uuid' => $model->sync_uuid,
+                'region_name' => $model->region?->name,
+                'province_name' => $model->province?->name,
+                'municipality_name' => $model->municipality?->name,
                 'barangay_name' => $model->barangay?->name,
                 'creator_email' => $model->creator?->email,
                 'first_name' => $model->first_name,
@@ -181,11 +184,23 @@ class OfflineSyncService
         }
 
         $barangayId = DB::connection($connection)->table('barangays')->where('name', $payload['barangay_name'])->value('id');
+        $regionId = filled($payload['region_name'] ?? null)
+            ? DB::connection($connection)->table('regions')->where('name', $payload['region_name'])->value('id')
+            : null;
+        $provinceId = filled($payload['province_name'] ?? null)
+            ? DB::connection($connection)->table('provinces')->where('name', $payload['province_name'])->where('region_id', $regionId)->value('id')
+            : null;
+        $municipalityId = filled($payload['municipality_name'] ?? null)
+            ? DB::connection($connection)->table('municipalities')->where('name', $payload['municipality_name'])->where('province_id', $provinceId)->value('id')
+            : null;
         $creatorId = DB::connection($connection)->table('users')->where('email', $payload['creator_email'])->value('id');
 
         DB::connection($connection)->table('child_profiles')->updateOrInsert(
             ['sync_uuid' => $payload['sync_uuid']],
             [
+                'region_id' => $regionId,
+                'province_id' => $provinceId,
+                'municipality_id' => $municipalityId,
                 'barangay_id' => $barangayId,
                 'created_by' => $creatorId,
                 'first_name' => $payload['first_name'],

@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Barangay;
+use App\Models\Municipality;
+use App\Models\Province;
+use App\Models\Region;
 use App\Models\User;
 use App\Models\VaccineInventoryItem;
 use App\Models\VaccineInventoryTransaction;
@@ -22,9 +25,12 @@ class VaccineInventoryController extends Controller
     public function index(): View
     {
         $user = auth()->user();
-        $this->authorizeInventory($user);
+        $this->authorizeInventoryView($user);
 
-        $selectedBarangay = $user->isSuperAdmin()
+        $regionFilter = $user->isSuperAdmin() ? request()->string('region')->toString() : '';
+        $provinceFilter = $user->isSuperAdmin() && $regionFilter !== '' ? request()->string('province')->toString() : '';
+        $municipalityFilter = $user->isSuperAdmin() && $provinceFilter !== '' ? request()->string('municipality')->toString() : '';
+        $selectedBarangay = $user->isSuperAdmin() || $user->isMunicipalAdmin()
             ? request()->string('barangay')->toString()
             : (string) $user->barangay_id;
 
@@ -59,7 +65,15 @@ class VaccineInventoryController extends Controller
         return view('vaccine-inventory.index', [
             'transactions' => $transactions,
             'balances' => $balances,
-            'barangays' => $user->isSuperAdmin() ? Barangay::orderBy('name')->get() : collect(),
+            'regions' => $user->isSuperAdmin() ? Region::orderBy('name')->get() : collect(),
+            'provinces' => $user->isSuperAdmin() && $regionFilter !== '' ? Province::where('region_id', $regionFilter)->orderBy('name')->get() : collect(),
+            'municipalities' => $user->isSuperAdmin() && $provinceFilter !== '' ? Municipality::where('province_id', $provinceFilter)->orderBy('name')->get() : collect(),
+            'barangays' => ($user->isSuperAdmin() && $municipalityFilter !== '') || $user->isMunicipalAdmin()
+                ? Barangay::whereIn('id', $user->accessibleBarangayIds())->when($municipalityFilter !== '', fn ($query) => $query->where('municipality_id', $municipalityFilter))->orderBy('name')->get()
+                : collect(),
+            'regionFilter' => $regionFilter ?: 'all',
+            'provinceFilter' => $provinceFilter ?: 'all',
+            'municipalityFilter' => $municipalityFilter ?: 'all',
             'selectedBarangay' => $selectedBarangay,
             'types' => VaccineInventoryTransaction::typeOptions(),
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
@@ -70,9 +84,9 @@ class VaccineInventoryController extends Controller
     public function report(Request $request)
     {
         $user = auth()->user();
-        $this->authorizeInventory($user);
+        $this->authorizeInventoryView($user);
         $validated = $request->validate(['barangay' => ['nullable', 'exists:barangays,id']]);
-        $barangayId = $user->isSuperAdmin() ? ($validated['barangay'] ?? null) : $user->barangay_id;
+        $barangayId = $this->requestedBarangay($user, $validated['barangay'] ?? null);
 
         if (! $barangayId) {
             return back()->withErrors(['barangay' => 'Select a barangay before printing the inventory report.']);
@@ -129,9 +143,9 @@ class VaccineInventoryController extends Controller
     public function csv(Request $request)
     {
         $user = auth()->user();
-        $this->authorizeInventory($user);
+        $this->authorizeInventoryView($user);
         $validated = $request->validate(['barangay' => ['nullable', 'exists:barangays,id']]);
-        $barangayId = $user->isSuperAdmin() ? ($validated['barangay'] ?? null) : $user->barangay_id;
+        $barangayId = $this->requestedBarangay($user, $validated['barangay'] ?? null);
 
         if (! $barangayId) {
             return back()->withErrors(['barangay' => 'Select a barangay before exporting inventory data.']);
@@ -389,5 +403,25 @@ class VaccineInventoryController extends Controller
     private function authorizeInventory(?User $user): void
     {
         abort_unless($user?->canManageInventory(), 403);
+    }
+
+    private function authorizeInventoryView(?User $user): void
+    {
+        abort_unless($user?->canViewInventory(), 403);
+    }
+
+    private function requestedBarangay(User $user, ?string $barangayId): ?string
+    {
+        if ($user->isSuperAdmin()) {
+            return $barangayId;
+        }
+
+        if ($user->isMunicipalAdmin()) {
+            abort_unless($barangayId && $user->accessibleBarangayIds()->contains($barangayId), 403);
+
+            return $barangayId;
+        }
+
+        return $user->barangay_id;
     }
 }

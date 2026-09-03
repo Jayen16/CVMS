@@ -21,12 +21,8 @@ class NursesPage extends Component
         return view('nurses.index', [
             'staff' => User::query()
                 ->whereJsonContains('roles', $managedRole)
-                ->when(
-                    $user->canManageNurses(),
-                    fn ($query) => $user->isMunicipalAdmin()
-                        ? $query->where('municipality_id', $user->municipality_id)
-                        : $query->where('barangay_id', $user->barangay_id)
-                )
+                ->when($user->isMunicipalAdmin(), fn ($query) => $query->where('municipality_id', $user->municipality_id))
+                ->when($user->isBarangayAdmin(), fn ($query) => $query->where('barangay_id', $user->barangay_id))
                 ->with('barangay')
                 ->latest()
                 ->paginate(12),

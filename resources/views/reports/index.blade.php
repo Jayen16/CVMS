@@ -7,57 +7,96 @@
             </div>
 
             <div class="flex flex-wrap gap-2">
-                <a href="{{ route('reports.csv', request()->only(['start_date', 'end_date', 'schedule_version', 'include_aefi'])) }}" class="app-button-secondary inline-flex items-center gap-2" aria-label="Export report data for Excel as CSV">
-                    <flux:icon.arrow-down-tray class="size-4" />
-                    <span>Export Excel</span>
-                </a>
-                <a href="{{ route('reports.pdf', request()->only(['start_date', 'end_date', 'schedule_version', 'include_aefi'])) }}" class="app-button-primary inline-flex items-center gap-2" target="_blank" rel="noopener" aria-label="Print report as PDF">
-                    <flux:icon.printer class="size-4" />
-                    <span>Print PDF</span>
-                </a>
+                <form method="POST" action="{{ route('reports.export.queue', 'both') }}" x-data="{loading:false}" @submit="loading=true">
+                    @csrf
+                    @foreach (request()->only(['start_date', 'end_date', 'region_id', 'province_id', 'municipality_id', 'barangay_id', 'schedule_version']) as $key => $value)
+                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                    @endforeach
+                    <button type="submit" class="app-button-primary inline-flex items-center gap-2" :disabled="loading">
+                        <flux:icon.arrow-down-tray class="size-4" x-show="!loading" />
+                        <flux:icon.arrow-path class="size-4 animate-spin" x-show="loading" />
+                        <span x-text="loading ? 'Preparing export…' : 'Export PDF + Excel-compatible ZIP'"></span>
+                    </button>
+                </form>
             </div>
         </div>
 
+        @if (session('status'))
+            <div class="app-alert-success">{{ session('status') }}</div>
+        @endif
+
+        @if (request('export'))
+            <div class="app-card" x-data="{status:'queued', progress:0, url:null, poll:null}" x-init="poll=setInterval(async()=>{ const response=await fetch('{{ route('reports.export.status', request('export')) }}'); const data=await response.json(); status=data.status; progress=data.progress; url=data.download_url; if(status==='ready'||status==='failed') clearInterval(poll)},1500)" x-cloak>
+                <div class="flex items-center gap-3 p-4" x-show="status !== 'ready' && status !== 'failed'">
+                    <span class="size-5 animate-spin rounded-full border-2 border-teal-200 border-t-teal-600"></span>
+                    <div class="flex-1"><p class="font-medium">Preparing your export…</p><div class="mt-2 h-2 rounded-full bg-slate-100"><div class="h-2 rounded-full bg-teal-600 transition-all" :style="`width: ${progress}%`"></div></div></div>
+                    <span class="text-sm text-zinc-500" x-text="`${progress}%`"></span>
+                </div>
+                <div class="p-4" x-show="status === 'ready'"><p class="font-medium">Export ready.</p><a class="app-button-primary mt-3 inline-flex" :href="url">Download ZIP</a></div>
+                <div class="p-4 text-red-700" x-show="status === 'failed'">The export could not be completed. Please try again.</div>
+            </div>
+        @endif
+
         <section class="app-card p-4">
-            <form method="GET" action="{{ route('reports.index') }}" class="grid gap-4 md:grid-cols-[1fr_1fr_1fr_1fr_auto] md:items-end">
-                <label class="space-y-1.5">
-                    <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Start date</span>
-                    <input
-                        type="date"
-                        name="start_date"
-                        value="{{ request('start_date', $startDate->toDateString()) }}"
-                        class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-                    >
-                </label>
-                <label class="space-y-1.5">
-                    <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">End date</span>
-                    <input
-                        type="date"
-                        name="end_date"
-                        value="{{ request('end_date', $endDate->toDateString()) }}"
-                        class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-                    >
-                </label>
-                <label class="space-y-1.5">
-                    <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Schedule version</span>
-                    <select
-                        name="schedule_version"
-                        class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
-                    >
-                        <option value="all" @selected(($scheduleVersionFilter ?? 'all') === 'all')>All versions</option>
-                        <option value="unassigned" @selected(($scheduleVersionFilter ?? 'all') === 'unassigned')>Legacy / unspecified</option>
-                        @foreach ($scheduleVersionOptions as $version)
-                            <option value="{{ $version->id }}" @selected((string) ($scheduleVersionFilter ?? 'all') === (string) $version->id)>
-                                {{ $version->name }} ({{ $version->version_code }})
-                            </option>
-                        @endforeach
-                    </select>
-                </label>
-                <label class="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
-                    <input type="checkbox" name="include_aefi" value="1" @checked($includeAefi) class="rounded border-slate-300 text-teal-600 focus:ring-teal-500">
-                    <span>Include AEFI in printable report</span>
-                </label>
-                <button type="submit" class="app-button-secondary">Generate</button>
+            <form method="GET" action="{{ route('reports.index') }}" class="flex flex-wrap items-end gap-3" x-data="{loading:false}" @submit="loading=true">
+                <div class="basis-full">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-teal-600 dark:text-teal-400">Report period and options</p>
+                </div>
+                <div class="flex my-2">
+                    <label class="space-y-1.5">
+                        <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Start date</span>
+                        <input
+                            type="date"
+                            name="start_date"
+                            value="{{ request('start_date', $startDate->toDateString()) }}"
+                            class="min-w-40 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                        >
+                    </label>
+                    <label class="space-y-1.5">
+                        <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">End date</span>
+                        <input
+                            type="date"
+                            name="end_date"
+                            value="{{ request('end_date', $endDate->toDateString()) }}"
+                            class="min-w-40 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                        >
+                    </label>
+                    <label class="space-y-1.5">
+                        <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Schedule version</span>
+                        <select
+                            name="schedule_version"
+                            class="min-w-48 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 shadow-sm focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                        >
+                            <option value="all" @selected(($scheduleVersionFilter ?? 'all') === 'all')>All versions</option>
+                            <option value="unassigned" @selected(($scheduleVersionFilter ?? 'all') === 'unassigned')>Legacy / unspecified</option>
+                            @foreach ($scheduleVersionOptions as $version)
+                                <option value="{{ $version->id }}" @selected((string) ($scheduleVersionFilter ?? 'all') === (string) $version->id)>
+                                    {{ $version->name }} ({{ $version->version_code }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <label class="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+                        <input type="checkbox" name="include_aefi" value="1" @checked($includeAefi) class="rounded border-slate-300 text-teal-600 focus:ring-teal-500">
+                        <span>Include AEFI in printable report</span>
+                    </label>
+                </div>
+                <div class="basis-full">
+                    <x-location-filters
+                        :regions="$regionOptions"
+                        :provinces="$provinceOptions"
+                        :municipalities="$municipalityOptions"
+                        :barangays="$barangayOptions"
+                        :region-value="$regionFilter"
+                        :province-value="$provinceFilter"
+                        :municipality-value="$municipalityFilter"
+                        :barangay-value="$barangayFilter"
+                    />
+                </div>
+                <button type="submit" class="app-button-secondary inline-flex items-center gap-2" :disabled="loading">
+                    <span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-teal-700" x-show="loading"></span>
+                    <span x-text="loading ? 'Generating…' : 'Generate'"></span>
+                </button>
             </form>
         </section>
 
@@ -103,6 +142,9 @@
                         </tbody>
                     </table>
                 </div>
+                @if (method_exists($barangays, 'links'))
+                    <div class="border-t border-slate-200 px-5 py-3 dark:border-zinc-800">{{ $barangays->links() }}</div>
+                @endif
             </section>
 
             <section class="app-card">
@@ -224,6 +266,9 @@
                     </tbody>
                 </table>
             </div>
+            @if (method_exists($barangays, 'links'))
+                <div class="border-t border-slate-200 px-5 py-3 dark:border-zinc-800">{{ $barangays->links() }}</div>
+            @endif
         </section>
 
         @if (! auth()->user()->isSuperAdmin())

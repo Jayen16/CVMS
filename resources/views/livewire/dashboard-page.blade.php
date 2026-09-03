@@ -25,7 +25,7 @@
             @if (auth()->user()->canManageChildren())
                 <a href="{{ route('children.create') }}" class="app-button-primary" wire:navigate>New child</a>
             @elseif (auth()->user()->canManageBarangayStaff())
-                <a href="{{ route('nurses.index') }}" class="app-button-primary" wire:navigate>{{ auth()->user()->canManageBarangayAdmins() ? 'Manage barangay admins' : 'Manage nurses' }}</a>
+                <a href="{{ route(auth()->user()->canManageBarangayAdmins() ? 'municipal-admins.index' : 'nurses.index') }}" class="app-button-primary" wire:navigate>{{ auth()->user()->canManageBarangayAdmins() ? 'Manage barangay admins' : 'Manage nurses' }}</a>
             @endif
         </div>
     </div>
@@ -76,7 +76,7 @@
                                 <td>{{ $barangay->barangay_admins_count }}</td>
                                 <td>{{ $barangay->nurses_count }}</td>
                                 <td>{{ $barangay->children_count }}</td>
-                                <td>{{ $barangay->children->sum(fn ($child) => $child->vaccinations->count()) }}</td>
+                                <td>{{ $barangay->vaccinations_count }}</td>
                             </tr>
                         @empty
                             <tr><td colspan="5" class="px-4 py-6 text-center text-zinc-500">No barangays yet.</td></tr>
@@ -84,6 +84,9 @@
                     </tbody>
                 </table>
             </div>
+            @if (method_exists($barangays, 'links'))
+                <div class="border-t border-slate-200 px-5 py-3 dark:border-zinc-800">{{ $barangays->links() }}</div>
+            @endif
         </section>
     @elseif ($role === 'barangay_admin')
         <div class="grid gap-4 md:grid-cols-5">
@@ -124,13 +127,41 @@
             </div>
         </section>
     @elseif ($role === 'municipal_admin')
-        <div class="grid gap-4 md:grid-cols-5">
+        <div class="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
             <x-stat-card label="Assigned municipality" :value="$stats['municipality']" />
+            <x-stat-card label="Barangays" :value="$stats['barangays']" />
+            <x-stat-card label="Barangay admins" :value="$stats['barangayAdmins']" />
             <x-stat-card label="Nurses" :value="$stats['nurses']" />
             <x-stat-card label="Children" :value="$stats['children']" />
             <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" />
             <x-stat-card label="Pending verification" :value="$stats['pending']" />
         </div>
+        <div class="mt-4 app-card flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h2 class="app-card-title">Municipality oversight</h2>
+                <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Review barangay performance and manage the Barangay Admins assigned to your municipality.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a href="{{ route('municipal-admins.index') }}" class="app-button-secondary" wire:navigate>Barangay admins</a>
+                <a href="{{ route('reports.index') }}" class="app-button-secondary" wire:navigate>Reports</a>
+                <a href="{{ route('audit-logs.index') }}" class="app-button-secondary" wire:navigate>Audit logs</a>
+            </div>
+        </div>
+        <section class="app-card mt-4">
+            <div class="app-card-header"><h2 class="app-card-title">Barangay statistics</h2></div>
+            <div class="overflow-x-auto">
+                <table class="app-table">
+                    <thead><tr><th class="px-4 py-3 font-medium">Barangay</th><th class="px-4 py-3 font-medium">Admins</th><th class="px-4 py-3 font-medium">Nurses</th><th class="px-4 py-3 font-medium">Children</th><th class="px-4 py-3 font-medium">Vaccination records</th></tr></thead>
+                    <tbody>
+                        @forelse ($barangays as $barangay)
+                            <tr class="app-table-row"><td class="font-medium">{{ $barangay->name }}</td><td>{{ $barangay->barangay_admins_count }}</td><td>{{ $barangay->nurses_count }}</td><td>{{ $barangay->children_count }}</td><td>{{ $barangay->vaccinations_count }}</td></tr>
+                        @empty
+                            <tr><td colspan="5" class="px-4 py-6 text-center text-zinc-500">No barangays assigned to this municipality.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
         <section class="app-card mt-4">
             <div class="app-card-header"><h2 class="app-card-title">Recent child profiles</h2></div>
             <div class="divide-y divide-slate-200 dark:divide-zinc-800">
