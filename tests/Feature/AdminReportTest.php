@@ -96,6 +96,12 @@ test('nurses cannot access admin reports', function () {
     $this->actingAs($nurse)
         ->get(route('reports.index'))
         ->assertForbidden();
+
+    $this->actingAs($nurse)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertDontSee('>Reports<')
+        ->assertDontSee('Population Background');
 });
 
 test('admins can export filtered vaccination report data as csv', function () {

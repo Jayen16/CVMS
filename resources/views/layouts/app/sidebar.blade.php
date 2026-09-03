@@ -95,12 +95,14 @@
                                 {{ __('Vaccine demand forecast') }}
                             </flux:sidebar.item>
                         @endif
-                        <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
-                            {{ __('Reports') }}
-                        </flux:sidebar.item>
-                        <flux:sidebar.item icon="clipboard-document-list" :href="route('population-background.index')" :current="request()->routeIs('population-background.*')" wire:navigate>
-                            {{ __('Population Background') }}
-                        </flux:sidebar.item>
+                        @if (auth()->user()->canViewOversight())
+                            <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
+                                {{ __('Reports') }}
+                            </flux:sidebar.item>
+                            <flux:sidebar.item icon="clipboard-document-list" :href="route('population-background.index')" :current="request()->routeIs('population-background.*')" wire:navigate>
+                                {{ __('Population Background') }}
+                            </flux:sidebar.item>
+                        @endif
                     </flux:sidebar.group>
                 @endif
                 @if (auth()->user()->canArchiveReports() || auth()->user()->canViewOversight() || auth()->user()->canArchiveChildren())
