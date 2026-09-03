@@ -7,7 +7,7 @@ use App\Models\ClinicAnnouncement;
 use App\Models\Municipality;
 use App\Models\Province;
 use App\Models\Region;
-use App\Services\InAppNotificationService;
+// use App\Services\InAppNotificationService;
 use App\Services\OfflineSyncService;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
@@ -124,7 +124,7 @@ class AnnouncementsPage extends Component
         }
     }
 
-    public function save(OfflineSyncService $offlineSync, InAppNotificationService $notifications): void
+    public function save(OfflineSyncService $offlineSync/*, InAppNotificationService $notifications*/): void
     {
         abort_unless(auth()->user()->canManageAnnouncements(), 403);
 
@@ -178,7 +178,7 @@ class AnnouncementsPage extends Component
             ]);
 
             $offlineSync->queueUpsert($announcement->load(['barangay', 'creator']));
-            $notifications->announcementPublished($announcement);
+            // $notifications->announcementPublished($announcement);
         }
 
         $this->reset('title', 'location', 'message', 'ends_on');
