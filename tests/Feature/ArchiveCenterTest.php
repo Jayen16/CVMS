@@ -7,6 +7,22 @@ use App\Models\ChildProfile;
 use App\Models\User;
 use App\Models\VaccineType;
 
+test('archive with no matching records returns to the archive center with an error', function () {
+    $admin = User::factory()->create(['role' => 'superadmin', 'roles' => ['superadmin']]);
+
+    $this->actingAs($admin)
+        ->post(route('archives.store'), [
+            'type' => 'aefi',
+            'date_from' => '2025-01-01',
+            'date_to' => '2025-12-31',
+            'archive_reason' => 'Closed reporting year',
+        ])
+        ->assertRedirect(route('archives.index'))
+        ->assertSessionHasErrors([
+            'archive' => 'No active records matched that type and date range.',
+        ]);
+});
+
 test('authorized staff can archive matching AEFI reports by date range', function () {
     $barangay = Barangay::create(['name' => 'Report Archive Barangay']);
     $admin = User::factory()->create([

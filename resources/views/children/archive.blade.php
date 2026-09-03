@@ -10,7 +10,7 @@
             <h1 class="page-title">Archived child records</h1>
             <p class="page-subtitle">Archived records are hidden from daily operations. Vaccination history and audit history remain intact.</p>
         </div>
-        <a href="{{ route('children.index') }}" class="app-button-secondary">Back to children</a>
+        {{-- <a href="{{ route('children.index') }}" class="app-button-secondary">Back to children</a> --}}
     </div>
 
     <div class="app-card overflow-x-auto">

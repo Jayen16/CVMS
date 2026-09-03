@@ -31,6 +31,7 @@
             @error('date_from')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
             @error('date_to')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
             @error('archive_reason')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+            @error('archive')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
             <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
                 Archiving hides matching records from active reports. It does not permanently delete clinical data.
             </div>

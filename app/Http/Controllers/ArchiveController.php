@@ -9,6 +9,7 @@ use App\Models\ReportExport;
 use App\Models\VaccinationRecord;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 class ArchiveController extends Controller
@@ -93,7 +94,10 @@ class ArchiveController extends Controller
 
         $definition = self::TYPES[$validated['type']];
         $query = $definition['model']::query()
-            ->whereBetween($definition['date'], [$validated['date_from'], $validated['date_to']]);
+            ->whereBetween($definition['date'], [
+                Carbon::parse($validated['date_from'])->startOfDay(),
+                Carbon::parse($validated['date_to'])->endOfDay(),
+            ]);
 
         if ($validated['type'] === 'aefi' || $validated['type'] === 'vaccinations') {
             $query->whereHas('child', fn ($child) => $this->scopeChild($child));
@@ -102,7 +106,11 @@ class ArchiveController extends Controller
         }
 
         $records = $query->get();
-        abort_if($records->isEmpty(), 422, 'No active records matched that type and date range.');
+        if ($records->isEmpty()) {
+            return to_route('archives.index')
+                ->withInput()
+                ->withErrors(['archive' => 'No active records matched that type and date range.']);
+        }
 
         foreach ($records as $record) {
             $record->forceFill([

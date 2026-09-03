@@ -40,35 +40,16 @@
                 </flux:sidebar.item>
 
                 @if (auth()->user()->canViewChildrenRegistry()
-                    || auth()->user()->canArchiveChildren()
-                    || auth()->user()->canViewVerificationQueue()
-                    || auth()->user()->canViewDefaulters()
-                    || (auth()->user()->canViewDuplicates() && ! auth()->user()->isSuperAdmin())
-                    || auth()->user()->canViewAefiReports())
+                    || auth()->user()->canViewVerificationQueue())
                     <flux:sidebar.group expandable :heading="__('Child Records')" class="grid">
                         @if (auth()->user()->canViewChildrenRegistry())
                             <flux:sidebar.item icon="users" :href="route('children.index')" :current="request()->routeIs('children.*')" wire:navigate>
                                 {{ __('Children') }}
                             </flux:sidebar.item>
                         @endif
-                        @if (auth()->user()->canArchiveChildren())
-                            <flux:sidebar.item icon="archive-box" :href="route('children.archive.index')" :current="request()->routeIs('children.archive.*')" wire:navigate>
-                                {{ __('Archived Children') }}
-                            </flux:sidebar.item>
-                        @endif
                         @if (auth()->user()->canViewVerificationQueue())
                             <flux:sidebar.item icon="clipboard-document-check" :href="route('verification-queue.index')" :current="request()->routeIs('verification-queue.*')" wire:navigate>
                                 {{ __('Verification Queue') }}
-                            </flux:sidebar.item>
-                        @endif
-                        @if (auth()->user()->canViewDuplicates() && ! auth()->user()->isSuperAdmin())
-                            <flux:sidebar.item icon="squares-2x2" :href="route('duplicates.index')" :current="request()->routeIs('duplicates.*')" wire:navigate>
-                                {{ __('Duplicates') }}
-                            </flux:sidebar.item>
-                        @endif
-                        @if (auth()->user()->canViewAefiReports())
-                            <flux:sidebar.item icon="exclamation-triangle" :href="route('aefi-reports.index')" :current="request()->routeIs('aefi-reports.*')" wire:navigate>
-                                {{ __('AEFI') }}
                             </flux:sidebar.item>
                         @endif
                     </flux:sidebar.group>
@@ -86,22 +67,6 @@
                                 {{ __('Vaccine Inventory') }}
                             </flux:sidebar.item>
                         @endif
-                    </flux:sidebar.group>
-                @endif
-
-                @if (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin() || auth()->user()->isBarangayAdmin())
-                    <flux:sidebar.group expandable :heading="__('Operations')" class="grid">
-                        <flux:sidebar.item icon="arrow-path" :href="route('sync.index')" :current="request()->routeIs('sync.*')" wire:navigate>
-                            {{ __('Sync Data') }}
-                        </flux:sidebar.item>
-                    </flux:sidebar.group>
-                @endif
-
-                @if (auth()->user()->canManageAnnouncements() || auth()->user()->isParent())
-                    <flux:sidebar.group expandable :heading="__('Communications')" class="grid">
-                        <flux:sidebar.item icon="megaphone" :href="route('announcements.index')" :current="request()->routeIs('announcements.*')" wire:navigate>
-                            {{ __('Announcements') }}
-                        </flux:sidebar.item>
                     </flux:sidebar.group>
                 @endif
 
@@ -126,30 +91,40 @@
                             <flux:sidebar.item icon="calendar-days" :href="route('schedule-monitoring.index')" :current="request()->routeIs('schedule-monitoring.*')" wire:navigate>
                                 {{ __('Schedule monitoring') }}
                             </flux:sidebar.item>
-                            <flux:sidebar.item icon="bell-alert" :href="route('defaulters.index')" :current="request()->routeIs('defaulters.*')" wire:navigate>
-                                {{ __('Defaulters') }}
-                            </flux:sidebar.item>
                             <flux:sidebar.item icon="chart-bar" :href="route('predictive-analytics.index')" :current="request()->routeIs('predictive-analytics.*')" wire:navigate>
                                 {{ __('Vaccine demand forecast') }}
                             </flux:sidebar.item>
                         @endif
+                        <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
+                            {{ __('Reports') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('population-background.index')" :current="request()->routeIs('population-background.*')" wire:navigate>
+                            {{ __('Population Background') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endif
+                @if (auth()->user()->canArchiveReports() || auth()->user()->canViewOversight() || auth()->user()->canArchiveChildren())
+                    <flux:sidebar.group expandable :heading="__('Data Management')" class="grid">
                         @if (auth()->user()->canViewOversight())
-                            <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
-                                {{ __('Reports') }}
-                            </flux:sidebar.item>
-                            <flux:sidebar.item icon="clipboard-document-list" :href="route('population-background.index')" :current="request()->routeIs('population-background.*')" wire:navigate>
-                                {{ __('Population Background') }}
-                            </flux:sidebar.item>
                             <flux:sidebar.item icon="list-bullet" :href="route('audit-logs.index')" :current="request()->routeIs('audit-logs.*')" wire:navigate>
                                 {{ __('Audit Logs') }}
                             </flux:sidebar.item>
                         @endif
-                    </flux:sidebar.group>
-                @endif
-                @if (auth()->user()->canArchiveReports())
-                    <flux:sidebar.group expandable :heading="__('Data Management')" class="grid">
+                        @if (auth()->user()->canArchiveChildren())
+                            <flux:sidebar.item icon="archive-box" :href="route('children.archive.index')" :current="request()->routeIs('children.archive.*')" wire:navigate>
+                                {{ __('Archived Children') }}
+                            </flux:sidebar.item>
+                        @endif
                         <flux:sidebar.item icon="archive-box" :href="route('archives.index')" :current="request()->routeIs('archives.*')" wire:navigate>
                             {{ __('Archive Center') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endif
+
+                @if (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin() || auth()->user()->isBarangayAdmin())
+                    <flux:sidebar.group expandable :heading="__('Operations')" class="grid">
+                        <flux:sidebar.item icon="arrow-path" :href="route('sync.index')" :current="request()->routeIs('sync.*')" wire:navigate>
+                            {{ __('Sync Data') }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>
                 @endif

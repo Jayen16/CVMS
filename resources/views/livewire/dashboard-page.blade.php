@@ -228,8 +228,6 @@
 
         <div class="mt-4 flex flex-wrap gap-2">
             <a href="{{ route('verification-queue.index') }}" class="app-button-secondary" wire:navigate>Verification queue</a>
-            <a href="{{ route('defaulters.index') }}" class="app-button-secondary" wire:navigate>Defaulters</a>
-            <a href="{{ route('aefi-reports.index') }}" class="app-button-secondary" wire:navigate>AEFI reports</a>
         </div>
 
         <section class="app-card">
@@ -249,34 +247,4 @@
         </section>
     @endif
 
-    <section class="app-card">
-        <div class="app-card-header flex items-center justify-between">
-            <h2 class="app-card-title">Clinic announcements</h2>
-            @if (auth()->user()->canManageAnnouncements())
-                <a href="{{ route('announcements.index') }}" class="app-button-secondary" wire:navigate>Manage announcements</a>
-            @endif
-        </div>
-        <div class="grid gap-3 md:grid-cols-2">
-            @forelse ($announcements as $announcement)
-                <article class="rounded-lg border border-slate-200 bg-slate-50 p-4 mx-2 my-2 dark:border-zinc-800 dark:bg-zinc-950">
-                    <div class="flex items-center justify-between gap-3">
-                        <div class="font-semibold text-slate-950 dark:text-white">{{ $announcement->title }}</div>
-                        <span class="status-pill bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200">{{ ucfirst($announcement->category) }}</span>
-                    </div>
-                    <div class="mt-2 text-sm text-slate-600 dark:text-zinc-300">
-                        {{ $announcement->starts_on->format('M d, Y') }}@if ($announcement->ends_on) to {{ $announcement->ends_on->format('M d, Y') }}@endif
-                        @if ($announcement->barangay)
-                            | {{ $announcement->barangay->name }}
-                        @endif
-                        @if ($announcement->location)
-                            | {{ $announcement->location }}
-                        @endif
-                    </div>
-                    <p class="mt-3 text-sm leading-6 text-slate-600 dark:text-zinc-300">{{ $announcement->message }}</p>
-                </article>
-            @empty
-                <p class="text-sm text-zinc-500">No active clinic announcements.</p>
-            @endforelse
-        </div>
-    </section>
 </div>

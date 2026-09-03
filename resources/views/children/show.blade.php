@@ -151,21 +151,19 @@
             </div>
         </section>
 
-        @if (auth()->user()->canViewAefiReports() || auth()->user()->canManageChildren())
+        @if (auth()->user()->canManageChildren())
             @php
                 $availableTabs = auth()->user()->canManageChildren()
-                    ? ['vaccination' => 'Record vaccination', 'aefi' => 'AEFI reporting', 'parents' => 'Linked parents']
-                    : ['aefi' => 'AEFI reporting'];
+                    ? ['vaccination' => 'Record vaccination', 'parents' => 'Linked parents']
+                    : [];
                 if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin()) {
                     $availableTabs['transfer'] = 'Transfer child';
                 }
                 $activeTab = array_key_first($availableTabs);
 
-                if ($errors->hasAny(['vaccination_record_id', 'event_date', 'severity', 'outcome', 'symptoms', 'notes'])) {
-                    $activeTab = 'aefi';
-                } elseif (auth()->user()->canManageChildren() && $errors->hasAny(['name', 'email', 'phone', 'relationship'])) {
+                if ($errors->hasAny(['name', 'email', 'phone', 'relationship'])) {
                     $activeTab = 'parents';
-                } elseif (auth()->user()->canManageChildren() && $errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'vaccine_inventory_item_id', 'remarks'])) {
+                } elseif ($errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'vaccine_inventory_item_id', 'remarks'])) {
                     $activeTab = 'vaccination';
                 } elseif ((auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin()) && $errors->has('barangay_id')) {
                     $activeTab = 'transfer';
@@ -393,7 +391,7 @@
                     </form>
                 @endif
 
-                @if (auth()->user()->canViewAefiReports() || auth()->user()->canManageChildren())
+                @if (auth()->user()->canManageChildren())
                     <section class="order-first col-span-full grid gap-4" data-child-tabs data-active-tab="{{ $activeTab }}">
                         <div class="flex flex-wrap gap-2">
                             @foreach ($availableTabs as $tabKey => $tabLabel)
@@ -429,59 +427,6 @@
                                 </form>
                             </section>
                         @endif
-
-                        <section class="app-panel {{ $activeTab === 'aefi' ? '' : 'hidden' }}" data-tab-panel="aefi">
-                            <h2 class="app-card-title">AEFI reporting</h2>
-                            @if (auth()->user()->canSubmitAefiReports())
-                                <form method="POST" action="{{ route('children.aefi-reports.store', $child) }}" class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                    @csrf
-                                    <x-form-field label="Linked vaccination record" name="vaccination_record_id" type="select" :options="$child->vaccinations->pluck('vaccineType.name', 'id')" />
-                                    <x-form-field label="Event date" name="event_date" type="date" />
-                                    <x-form-field label="Severity" name="severity" type="select" :options="['mild' => 'Mild', 'moderate' => 'Moderate', 'severe' => 'Severe']" />
-                                    <div class="sm:col-span-2 lg:col-span-3">
-                                        <x-form-field label="Outcome" name="outcome" />
-                                    </div>
-                                    <div class="sm:col-span-2 lg:col-span-3">
-                                        <x-form-field label="Symptoms" name="symptoms" type="textarea" />
-                                    </div>
-                                    <div class="sm:col-span-2 lg:col-span-3">
-                                        <x-form-field label="Notes" name="notes" type="textarea" />
-                                    </div>
-                                    <button class="app-button-primary sm:col-span-2 lg:col-span-3">Save AEFI report</button>
-                                </form>
-                            @endif
-
-                            <div class="mt-6 overflow-x-auto rounded-lg border border-slate-200 dark:border-zinc-800">
-                                <table class="app-table w-full min-w-[900px]">
-                                    <thead>
-                                        <tr>
-                                            <th class="px-4 py-3 font-medium">Event date</th>
-                                            <th class="px-4 py-3 font-medium">Vaccine</th>
-                                            <th class="px-4 py-3 font-medium">Severity</th>
-                                            <th class="px-4 py-3 font-medium">Outcome</th>
-                                            <th class="px-4 py-3 font-medium">Symptoms</th>
-                                            <th class="px-4 py-3 font-medium">Notes</th>
-                                            <th class="px-4 py-3 font-medium">Reported by</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse ($child->adverseEventReports->sortByDesc('event_date') as $report)
-                                            <tr class="app-table-row align-top">
-                                                <td class="whitespace-nowrap">{{ $report->event_date?->format('M d, Y') ?? '—' }}</td>
-                                                <td>{{ $report->vaccinationRecord?->vaccineType?->name ?? $report->vaccineType?->name ?? '—' }}</td>
-                                                <td class="whitespace-nowrap">{{ ucfirst($report->severity) }}</td>
-                                                <td>{{ $report->outcome ?: '—' }}</td>
-                                                <td class="min-w-48">{{ $report->symptoms }}</td>
-                                                <td class="min-w-48">{{ $report->notes ?: '—' }}</td>
-                                                <td class="whitespace-nowrap">{{ $report->reporter?->name ?? '—' }}</td>
-                                            </tr>
-                                        @empty
-                                            <tr><td colspan="7" class="px-4 py-8 text-center text-zinc-500">No AEFI reports for this child yet.</td></tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
 
                         @if (auth()->user()->canManageChildren())
                         <section class="app-panel flex flex-col {{ $activeTab === 'parents' ? '' : 'hidden' }}" data-tab-panel="parents">
@@ -730,7 +675,7 @@
         </div>
     </div>
 
-    @if (auth()->user()->canViewAefiReports() || auth()->user()->canManageChildren())
+    @if (auth()->user()->canManageChildren())
         <script>
             (() => {
                 const tabsRoot = document.querySelector('[data-child-tabs]');
