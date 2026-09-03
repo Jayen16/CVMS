@@ -5,7 +5,7 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "share:tunnel": "npm run build && if exist public\\hot del /f /q public\\hot && php artisan optimize:clear"
+        "share:tunnel": "npm run build && if [ -f public/hot ]; then rm -f public/hot; fi && php artisan optimize:clear"
     },
     "dependencies": {
         "@laravel/passkeys": "^0.2.0",

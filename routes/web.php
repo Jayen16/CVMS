@@ -9,6 +9,7 @@ use App\Http\Controllers\ChildParentController;
 use App\Http\Controllers\ChildProfileController;
 use App\Http\Controllers\ChildTimelinePdfController;
 use App\Http\Controllers\ClinicAnnouncementController;
+use App\Http\Controllers\FacilityActivationController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\ManualSyncController;
@@ -39,6 +40,20 @@ use App\Livewire\VaccineScheduleFormPage;
 use App\Livewire\VaccineSchedulesPage;
 use App\Livewire\VerificationQueuePage;
 use Illuminate\Support\Facades\Route;
+
+if (config('system.instance_type') === 'facility') {
+    Route::middleware('unactivated.installation')->group(function (): void {
+        Route::get('activate', [FacilityActivationController::class, 'show'])->name('facility.activate');
+        Route::post('activate', [FacilityActivationController::class, 'activate'])->name('facility.activate.store');
+    });
+} else {
+    Route::middleware(['auth', 'verified'])->group(function (): void {
+        Route::get('central/facilities', [FacilityActivationController::class, 'facilities'])->name('central.facilities.index');
+        Route::post('central/facilities', [FacilityActivationController::class, 'storeFacility'])->name('central.facilities.store');
+        Route::post('central/facilities/{facility}/activation-code', [FacilityActivationController::class, 'issueCode'])->name('central.facilities.issue-code');
+        Route::post('central/facilities/{facility}/revoke-connections', [FacilityActivationController::class, 'revokeConnections'])->name('central.facilities.revoke-connections');
+    });
+}
 
 Route::get('/', function () {
     if (auth()->check()) {
