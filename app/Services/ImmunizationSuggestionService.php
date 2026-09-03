@@ -45,12 +45,14 @@ class ImmunizationSuggestionService
         }
 
         $today = Carbon::today();
-        $isOverdue = $candidate['due_at']->lt($today);
-        $actionDate = $isOverdue ? $today : $candidate['due_at'];
-        $status = $isOverdue ? 'overdue' : 'upcoming';
-        $timingNote = $isOverdue
-            ? "This dose is overdue from {$candidate['due_at']->format('M d, Y')}; suggested action date is {$actionDate->format('M d, Y')}."
-            : "Suggested action date is {$actionDate->format('M d, Y')}.";
+        $status = $this->statusForDueDate($candidate['due_at'], $today);
+        $actionDate = $candidate['due_at']->isPast() ? $today : $candidate['due_at'];
+        $timingNote = match ($status) {
+            'due' => "This dose is due today ({$candidate['due_at']->format('M d, Y')}).",
+            'delayed' => "This dose was due on {$candidate['due_at']->format('M d, Y')} and is delayed; suggested action date is {$actionDate->format('M d, Y')}.",
+            'overdue' => "This dose is overdue from {$candidate['due_at']->format('M d, Y')}; suggested action date is {$actionDate->format('M d, Y')}.",
+            default => "Suggested action date is {$actionDate->format('M d, Y')}.",
+        };
 
         return [
             'vaccine_code' => $candidate['code'],
@@ -69,6 +71,27 @@ class ImmunizationSuggestionService
             ],
             'suggested_schedule_version_id' => $candidate['version_id'],
         ];
+    }
+
+    public function statusForDueDate(Carbon $dueAt, ?Carbon $today = null): string
+    {
+        $today ??= Carbon::today();
+        $dueDate = $dueAt->copy()->startOfDay();
+        $todayDate = $today->copy()->startOfDay();
+
+        if ($dueDate->isAfter($todayDate)) {
+            return 'upcoming';
+        }
+
+        if ($dueDate->equalTo($todayDate)) {
+            return 'due';
+        }
+
+        $daysLate = $dueDate->diffInDays($todayDate);
+
+        return $daysLate >= max(1, (int) config('immunization.overdue_threshold_days', 7))
+            ? 'overdue'
+            : 'delayed';
     }
 
     /**
