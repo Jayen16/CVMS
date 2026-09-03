@@ -124,6 +124,26 @@ select:focus[data-flux-control] {
         @apply rounded-[1.5rem] border border-emerald-100 bg-white/90 p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900/75;
     }
 
+    .rhu-feature-tile {
+        @apply rounded-2xl border border-white/80 bg-white/65 p-4 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white/90 dark:border-white/10 dark:bg-zinc-900/55 dark:hover:bg-zinc-900/80;
+    }
+
+    .rhu-feature-tile h2 {
+        @apply mt-3 text-sm font-semibold text-slate-950 dark:text-white;
+    }
+
+    .rhu-feature-tile p:last-child {
+        @apply mt-1 text-xs leading-5 text-slate-500 dark:text-zinc-400;
+    }
+
+    .rhu-feature-icon {
+        @apply text-xs font-bold tracking-[0.18em] text-emerald-600 dark:text-emerald-400;
+    }
+
+    .rhu-monogram {
+        @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(145deg,#047857,#0e7490)] text-[0.65rem] font-bold tracking-[0.08em] text-white shadow-md ring-4 ring-emerald-100/80 dark:ring-emerald-950/60;
+    }
+
     .app-appearance-toggle {
         @apply inline-flex rounded-xl border border-slate-200 bg-white/90 p-1 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/85;
     }
