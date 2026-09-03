@@ -1,14 +1,14 @@
 <?php
 
 use App\Http\Controllers\AdminReportController;
-use App\Http\Controllers\AdverseEventReportController;
+// use App\Http\Controllers\AdverseEventReportController;
 use App\Http\Controllers\Api\OfflineVaccinationSyncController;
 use App\Http\Controllers\Api\ParentChildController;
 use App\Http\Controllers\ArchiveController;
 use App\Http\Controllers\ChildParentController;
 use App\Http\Controllers\ChildProfileController;
 use App\Http\Controllers\ChildTimelinePdfController;
-use App\Http\Controllers\ClinicAnnouncementController;
+// use App\Http\Controllers\ClinicAnnouncementController;
 use App\Http\Controllers\FacilityActivationController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\LocationController;
@@ -22,8 +22,8 @@ use App\Http\Controllers\VaccinationRecordController;
 use App\Http\Controllers\VaccineCardController;
 use App\Http\Controllers\VaccineInventoryController;
 use App\Http\Controllers\VaccineScheduleController;
-use App\Livewire\AefiReportsPage;
-use App\Livewire\AnnouncementsPage;
+// use App\Livewire\AefiReportsPage;
+// use App\Livewire\AnnouncementsPage;
 use App\Livewire\AuditLogsPage;
 use App\Livewire\ChildCreatePage;
 use App\Livewire\ChildEditPage;
@@ -31,8 +31,8 @@ use App\Livewire\ChildrenIndexPage;
 use App\Livewire\ChildShowPage;
 use App\Livewire\ChildTimelinePage;
 use App\Livewire\DashboardPage;
-use App\Livewire\DefaulterPage;
-use App\Livewire\DuplicateChildrenPage;
+// use App\Livewire\DefaulterPage;
+// use App\Livewire\DuplicateChildrenPage;
 use App\Livewire\ImmunizationSchedulePage;
 use App\Livewire\NotificationsPage;
 use App\Livewire\PredictiveAnalyticsPage;
@@ -51,10 +51,11 @@ if (config('system.instance_type') === 'facility') {
     });
 } else {
     Route::middleware(['auth', 'verified'])->group(function (): void {
-        Route::get('central/facilities', [FacilityActivationController::class, 'facilities'])->name('central.facilities.index');
-        Route::post('central/facilities', [FacilityActivationController::class, 'storeFacility'])->name('central.facilities.store');
-        Route::post('central/facilities/{facility}/activation-code', [FacilityActivationController::class, 'issueCode'])->name('central.facilities.issue-code');
-        Route::post('central/facilities/{facility}/revoke-connections', [FacilityActivationController::class, 'revokeConnections'])->name('central.facilities.revoke-connections');
+        // Central Facility Management disabled temporarily:
+        // Route::get('central/facilities', [FacilityActivationController::class, 'facilities'])->name('central.facilities.index');
+        // Route::post('central/facilities', [FacilityActivationController::class, 'storeFacility'])->name('central.facilities.store');
+        // Route::post('central/facilities/{facility}/activation-code', [FacilityActivationController::class, 'issueCode'])->name('central.facilities.issue-code');
+        // Route::post('central/facilities/{facility}/revoke-connections', [FacilityActivationController::class, 'revokeConnections'])->name('central.facilities.revoke-connections');
     });
 }
 
@@ -140,21 +141,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('sync', SyncDataPage::class)->name('sync.index');
     Route::get('sync/all', SyncDataPage::class)->name('sync.all');
     Route::post('sync/manual', [ManualSyncController::class, 'store'])->name('sync.manual');
-    Route::get('announcements', AnnouncementsPage::class)->name('announcements.index');
-    Route::get('announcements/all', AnnouncementsPage::class)->name('announcements.all');
+    // Announcement feature disabled temporarily:
+    // Route::get('announcements', AnnouncementsPage::class)->name('announcements.index');
+    // Route::get('announcements/all', AnnouncementsPage::class)->name('announcements.all');
     Route::get('notifications', NotificationsPage::class)->name('notifications.index');
     Route::get('notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
-    Route::post('announcements', [ClinicAnnouncementController::class, 'store'])->name('announcements.store');
-    Route::post('announcements/{announcement}/toggle', [ClinicAnnouncementController::class, 'toggle'])->name('announcements.toggle');
-    Route::delete('announcements/{announcement}', [ClinicAnnouncementController::class, 'destroy'])->name('announcements.destroy');
+    // Route::post('announcements', [ClinicAnnouncementController::class, 'store'])->name('announcements.store');
+    // Route::post('announcements/{announcement}/toggle', [ClinicAnnouncementController::class, 'toggle'])->name('announcements.toggle');
+    // Route::delete('announcements/{announcement}', [ClinicAnnouncementController::class, 'destroy'])->name('announcements.destroy');
     Route::get('verification-queue', VerificationQueuePage::class)->name('verification-queue.index');
-    Route::get('defaulters', DefaulterPage::class)->name('defaulters.index');
+    // Route::get('defaulters', DefaulterPage::class)->name('defaulters.index');
     Route::get('schedule-monitoring', ImmunizationSchedulePage::class)->name('schedule-monitoring.index');
     Route::get('predictive-analytics', PredictiveAnalyticsPage::class)->name('predictive-analytics.index');
-    Route::get('duplicates', DuplicateChildrenPage::class)->name('duplicates.index');
-    Route::get('aefi-reports', AefiReportsPage::class)->name('aefi-reports.index');
-    Route::get('aefi-reports/csv', [AdverseEventReportController::class, 'csv'])->name('aefi-reports.csv');
-    Route::post('children/{child}/aefi-reports', [AdverseEventReportController::class, 'store'])->name('children.aefi-reports.store');
+    // Duplicate Children detection disabled temporarily:
+    // Route::get('duplicates', DuplicateChildrenPage::class)->name('duplicates.index');
+    // AEFI/adverse event reports disabled temporarily:
+    // Route::get('aefi-reports', AefiReportsPage::class)->name('aefi-reports.index');
+    // Route::get('aefi-reports/csv', [AdverseEventReportController::class, 'csv'])->name('aefi-reports.csv');
+    // Route::post('children/{child}/aefi-reports', [AdverseEventReportController::class, 'store'])->name('children.aefi-reports.store');
     Route::get('vaccine-schedules', VaccineSchedulesPage::class)->name('vaccine-schedules.index');
     Route::get('vaccine-inventory', [VaccineInventoryController::class, 'index'])->name('vaccine-inventory.index');
     Route::get('vaccine-inventory/report', [VaccineInventoryController::class, 'report'])->name('vaccine-inventory.report');

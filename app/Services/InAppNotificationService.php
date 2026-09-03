@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\ClinicAnnouncement;
 use App\Models\User;
+// use App\Models\ClinicAnnouncement;
 use App\Models\VaccinationRecord;
 use App\Notifications\InAppNotification;
 use Illuminate\Notifications\DatabaseNotification;
@@ -50,6 +50,7 @@ class InAppNotificationService
         ));
     }
 
+    /* Announcement notifications disabled temporarily. Keep this implementation for reactivation.
     public function announcementPublished(ClinicAnnouncement $announcement): void
     {
         $announcement->loadMissing(['barangay', 'region', 'province', 'municipality']);
@@ -64,6 +65,7 @@ class InAppNotificationService
             ));
         });
     }
+    */
 
     private function verificationResult(VaccinationRecord $record, string $status): void
     {
@@ -84,7 +86,7 @@ class InAppNotificationService
         ));
     }
 
-    /** @return Collection<int, User> */
+    // @return Collection<int, User>
     private function staffForBarangay(?string $barangayId)
     {
         return User::query()
@@ -96,7 +98,8 @@ class InAppNotificationService
             ->get();
     }
 
-    /** @return Collection<int, User> */
+    /* Kept disabled together with announcementPublished().
+    // @return Collection<int, User>
     private function audienceUsers(ClinicAnnouncement $announcement)
     {
         return User::query()
@@ -128,6 +131,7 @@ class InAppNotificationService
             })
             ->get();
     }
+    */
 
     private function notifyOnce(User $user, string $key, InAppNotification $notification): void
     {

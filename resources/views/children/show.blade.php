@@ -12,7 +12,6 @@
             archiveOpen: false,
             archiveAction: '',
             archiveName: @js($child->full_name),
-            transferOpen: false,
             showConfirmModal(actionLabel, message, form) {
                 this.confirmActionLabel = actionLabel;
                 this.confirmMessage = message;
@@ -151,54 +150,22 @@
             </div>
         </section>
 
-        @if (auth()->user()->canViewAefiReports() || auth()->user()->canManageChildren())
+        @if (auth()->user()->canManageChildren())
             @php
                 $availableTabs = auth()->user()->canManageChildren()
-                    ? ['vaccination' => 'Record vaccination', 'aefi' => 'AEFI reporting', 'parents' => 'Linked parents']
-                    : ['aefi' => 'AEFI reporting'];
-                if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin()) {
-                    $availableTabs['transfer'] = 'Transfer child';
-                }
+                    ? ['vaccination' => 'Record vaccination', 'parents' => 'Linked parents']
+                    : [];
                 $activeTab = array_key_first($availableTabs);
 
-                if ($errors->hasAny(['vaccination_record_id', 'event_date', 'severity', 'outcome', 'symptoms', 'notes'])) {
-                    $activeTab = 'aefi';
-                } elseif (auth()->user()->canManageChildren() && $errors->hasAny(['name', 'email', 'phone', 'relationship'])) {
+                if ($errors->hasAny(['name', 'email', 'phone', 'relationship'])) {
                     $activeTab = 'parents';
-                } elseif (auth()->user()->canManageChildren() && $errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'vaccine_inventory_item_id', 'remarks'])) {
+                } elseif ($errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'vaccine_inventory_item_id', 'remarks'])) {
                     $activeTab = 'vaccination';
-                } elseif ((auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin()) && $errors->has('barangay_id')) {
-                    $activeTab = 'transfer';
                 }
             @endphp
         @endif
 
         <div class="grid gap-6">
-        @if ($child->transferHistory->isNotEmpty())
-            <section class="app-card">
-                <div class="app-card-header">
-                    <div>
-                        <p class="eyebrow">Child Records</p>
-                        <h2 class="app-card-title">Barangay transfer history</h2>
-                    </div>
-                </div>
-                <div class="divide-y divide-slate-100 dark:divide-zinc-800">
-                    @foreach ($child->transferHistory->sortByDesc('transferred_at') as $transfer)
-                        <div class="px-5 py-4">
-                            <p class="font-medium">{{ $transfer->from_barangay_name }} → {{ $transfer->to_barangay_name }}</p>
-                            <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">
-                                {{ $transfer->transferred_at->format('M d, Y g:i A') }}
-                                · Processed by {{ $transfer->transferred_by_name ?? 'System' }}
-                            </p>
-                            @if ($transfer->reason)
-                                <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Reason: {{ $transfer->reason }}</p>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-            </section>
-        @endif
-
         <section
                 class="app-card {{ auth()->user()->isParent() ? 'order-2' : '' }} {{ auth()->user()->canManageChildren() && $activeTab !== 'vaccination' ? 'hidden' : '' }}"
                 @if (auth()->user()->canManageChildren()) data-tab-panel="vaccination" @endif
@@ -393,7 +360,7 @@
                     </form>
                 @endif
 
-                @if (auth()->user()->canViewAefiReports() || auth()->user()->canManageChildren())
+                @if (auth()->user()->canManageChildren())
                     <section class="order-first col-span-full grid gap-4" data-child-tabs data-active-tab="{{ $activeTab }}">
                         <div class="flex flex-wrap gap-2">
                             @foreach ($availableTabs as $tabKey => $tabLabel)
@@ -429,59 +396,6 @@
                                 </form>
                             </section>
                         @endif
-
-                        <section class="app-panel {{ $activeTab === 'aefi' ? '' : 'hidden' }}" data-tab-panel="aefi">
-                            <h2 class="app-card-title">AEFI reporting</h2>
-                            @if (auth()->user()->canSubmitAefiReports())
-                                <form method="POST" action="{{ route('children.aefi-reports.store', $child) }}" class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                    @csrf
-                                    <x-form-field label="Linked vaccination record" name="vaccination_record_id" type="select" :options="$child->vaccinations->pluck('vaccineType.name', 'id')" />
-                                    <x-form-field label="Event date" name="event_date" type="date" />
-                                    <x-form-field label="Severity" name="severity" type="select" :options="['mild' => 'Mild', 'moderate' => 'Moderate', 'severe' => 'Severe']" />
-                                    <div class="sm:col-span-2 lg:col-span-3">
-                                        <x-form-field label="Outcome" name="outcome" />
-                                    </div>
-                                    <div class="sm:col-span-2 lg:col-span-3">
-                                        <x-form-field label="Symptoms" name="symptoms" type="textarea" />
-                                    </div>
-                                    <div class="sm:col-span-2 lg:col-span-3">
-                                        <x-form-field label="Notes" name="notes" type="textarea" />
-                                    </div>
-                                    <button class="app-button-primary sm:col-span-2 lg:col-span-3">Save AEFI report</button>
-                                </form>
-                            @endif
-
-                            <div class="mt-6 overflow-x-auto rounded-lg border border-slate-200 dark:border-zinc-800">
-                                <table class="app-table w-full min-w-[900px]">
-                                    <thead>
-                                        <tr>
-                                            <th class="px-4 py-3 font-medium">Event date</th>
-                                            <th class="px-4 py-3 font-medium">Vaccine</th>
-                                            <th class="px-4 py-3 font-medium">Severity</th>
-                                            <th class="px-4 py-3 font-medium">Outcome</th>
-                                            <th class="px-4 py-3 font-medium">Symptoms</th>
-                                            <th class="px-4 py-3 font-medium">Notes</th>
-                                            <th class="px-4 py-3 font-medium">Reported by</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse ($child->adverseEventReports->sortByDesc('event_date') as $report)
-                                            <tr class="app-table-row align-top">
-                                                <td class="whitespace-nowrap">{{ $report->event_date?->format('M d, Y') ?? '—' }}</td>
-                                                <td>{{ $report->vaccinationRecord?->vaccineType?->name ?? $report->vaccineType?->name ?? '—' }}</td>
-                                                <td class="whitespace-nowrap">{{ ucfirst($report->severity) }}</td>
-                                                <td>{{ $report->outcome ?: '—' }}</td>
-                                                <td class="min-w-48">{{ $report->symptoms }}</td>
-                                                <td class="min-w-48">{{ $report->notes ?: '—' }}</td>
-                                                <td class="whitespace-nowrap">{{ $report->reporter?->name ?? '—' }}</td>
-                                            </tr>
-                                        @empty
-                                            <tr><td colspan="7" class="px-4 py-8 text-center text-zinc-500">No AEFI reports for this child yet.</td></tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
 
                         @if (auth()->user()->canManageChildren())
                         <section class="app-panel flex flex-col {{ $activeTab === 'parents' ? '' : 'hidden' }}" data-tab-panel="parents">
@@ -623,53 +537,11 @@
                         </section>
                         @endif
 
-                        @if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin())
-                            <section class="app-panel {{ $activeTab === 'transfer' ? '' : 'hidden' }}" data-tab-panel="transfer">
-                                <div class="flex flex-wrap items-center justify-between gap-4">
-                                    <div>
-                                        <h2 class="app-card-title">Transfer child to another clinic</h2>
-                                        <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Move this child’s record to a different barangay clinic.</p>
-                                    </div>
-                                    <button type="button" class="app-button-secondary shrink-0" @click="transferOpen = true">Transfer child</button>
-                                </div>
-                            </section>
-                        @endif
                     </section>
                 @endif
             </div>
         </div>
 
-        @if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin())
-            <div
-                x-cloak
-                x-show="transferOpen"
-                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="transfer-child-title"
-                @keydown.escape.window="transferOpen = false"
-            >
-                <div class="app-panel w-full max-w-md" @click.outside="transferOpen = false">
-                    <p class="eyebrow">Child Records</p>
-                    <h2 id="transfer-child-title" class="app-card-title mt-1">Transfer child</h2>
-                    <p class="mt-2 text-sm text-slate-600 dark:text-zinc-300">Select the barangay clinic where this child should be registered.</p>
-                    <form method="POST" action="{{ route('children.transfer', $child) }}" class="mt-5 grid gap-4">
-                        @csrf
-                        <x-form-field
-                            label="New barangay"
-                            name="barangay_id"
-                            type="select"
-                            :options="\App\Models\Barangay::orderBy('name')->pluck('name', 'id')"
-                            :value="$child->barangay_id"
-                        />
-                        <div class="flex justify-end gap-2">
-                            <button type="button" class="app-button-secondary" @click="transferOpen = false">Cancel</button>
-                            <button class="app-button-primary">Transfer child</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        @endif
         <form method="POST" x-ref="verificationForm" class="hidden">
             @csrf
         </form>
@@ -730,7 +602,7 @@
         </div>
     </div>
 
-    @if (auth()->user()->canViewAefiReports() || auth()->user()->canManageChildren())
+    @if (auth()->user()->canManageChildren())
         <script>
             (() => {
                 const tabsRoot = document.querySelector('[data-child-tabs]');

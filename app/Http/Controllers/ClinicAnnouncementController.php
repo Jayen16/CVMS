@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Barangay;
 use App\Models\ClinicAnnouncement;
-use App\Services\InAppNotificationService;
+// use App\Services\InAppNotificationService;
 use App\Services\OfflineSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,7 +34,7 @@ class ClinicAnnouncementController extends Controller
         ]);
     }
 
-    public function store(Request $request, OfflineSyncService $offlineSync, InAppNotificationService $notifications): RedirectResponse
+    public function store(Request $request, OfflineSyncService $offlineSync/*, InAppNotificationService $notifications*/): RedirectResponse
     {
         abort_unless(auth()->user()->canManageAnnouncements(), 403);
 
@@ -63,7 +63,7 @@ class ClinicAnnouncementController extends Controller
             'active' => true,
         ]);
         $offlineSync->queueUpsert($announcement->load(['barangay', 'creator']));
-        $notifications->announcementPublished($announcement);
+        // $notifications->announcementPublished($announcement);
 
         return to_route('announcements.index')->with('status', 'Clinic announcement posted.');
     }

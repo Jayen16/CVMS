@@ -1,10 +1,10 @@
 <?php
 
-use App\Models\ClinicAnnouncement;
+// use App\Models\ClinicAnnouncement;
 use App\Models\User;
 use App\Notifications\InAppNotification;
-use App\Services\InAppNotificationService;
 
+/* Announcement notification test disabled while the Announcement feature is hidden.
 test('published announcements create one in-app notification for the intended audience', function () {
     $parent = User::factory()->create(['role' => 'parent']);
     $nurse = User::factory()->create(['role' => 'nurse']);
@@ -18,13 +18,14 @@ test('published announcements create one in-app notification for the intended au
         'active' => true,
     ]);
 
-    app(InAppNotificationService::class)->announcementPublished($announcement);
-    app(InAppNotificationService::class)->announcementPublished($announcement);
+    app(\App\Services\InAppNotificationService::class)->announcementPublished($announcement);
+    app(\App\Services\InAppNotificationService::class)->announcementPublished($announcement);
 
     expect($parent->notifications()->count())->toBe(1)
         ->and($nurse->notifications()->count())->toBe(1)
         ->and($parent->notifications()->first()->data['title'])->toBe('Child Health Day');
 });
+*/
 
 test('users can view and mark an in-app notification as read', function () {
     $user = User::factory()->create();
