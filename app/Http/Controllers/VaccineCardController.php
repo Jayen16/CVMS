@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\ChildProfile;
 use App\Services\QrCodeService;
 use Illuminate\View\View;
@@ -13,6 +14,7 @@ class VaccineCardController extends Controller
     {
         abort_unless(auth()->user()->canViewChildrenRegistry(), 403);
         $this->authorizeChild($child);
+        AuditLog::recordAction('printed', 'Printed vaccine card', $child, ['format' => 'pdf']);
 
         return view('children.card', $this->cardData($child, $qrCodes));
     }

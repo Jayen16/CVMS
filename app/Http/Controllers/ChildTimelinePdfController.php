@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\ChildProfile;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineSchedule;
@@ -18,6 +19,7 @@ class ChildTimelinePdfController extends Controller
     {
         abort_unless(auth()->user()->canViewChildrenRegistry(), 403);
         $this->authorizeChild($child);
+        AuditLog::recordAction('printed', 'Printed child vaccination timeline', $child, ['format' => 'pdf']);
 
         $child->load(['barangay', 'vaccinations.vaccineType']);
         $selectedVaccine = $request->string('vaccine')->toString();

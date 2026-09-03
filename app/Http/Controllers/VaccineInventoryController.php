@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Models\Barangay;
 use App\Models\User;
 use App\Models\VaccineInventoryItem;
@@ -77,6 +78,7 @@ class VaccineInventoryController extends Controller
         }
 
         $barangay = Barangay::findOrFail($barangayId);
+        AuditLog::recordAction('printed', 'Printed vaccine inventory report', $barangay, ['format' => 'pdf']);
         $items = VaccineInventoryItem::query()
             ->where('barangay_id', $barangayId)
             ->with('vaccineType')

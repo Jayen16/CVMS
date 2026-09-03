@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\AdverseEventReport;
+use App\Models\AuditLog;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\ChildVaccineSeriesVersion;
@@ -60,6 +61,44 @@ class DemoDataSeeder extends Seeder
         $this->seedAefiReports();
         $this->seedReminders();
         $this->seedSyncData();
+        $this->seedAuditLogs();
+    }
+
+    private function seedAuditLogs(): void
+    {
+        $child = ChildProfile::query()->first();
+        $barangay = Barangay::query()->first();
+        $admin = $this->users['superadmin'] ?? User::query()->whereJsonContains('roles', 'superadmin')->first();
+        $nurse = $this->users['starter_nurse'] ?? User::query()->whereJsonContains('roles', 'nurse')->first();
+
+        if ($admin === null || $nurse === null || $child === null || $barangay === null) {
+            return;
+        }
+
+        $samples = [
+            [$nurse, 'created', 'Created Child Profile', $child, ['first_name' => 'Maria', 'last_name' => 'Santos'], [], '/children'],
+            [$nurse, 'updated', 'Updated Vaccination Record', $child, ['verification_status' => 'verified'], ['verification_status' => 'pending'], '/vaccinations/record/verify'],
+            [$admin, 'printed', 'Printed child vaccination timeline', $child, ['format' => 'pdf'], [], '/children/'.$child?->id.'/timeline/pdf'],
+            [$admin, 'printed', 'Printed vaccine inventory report', $barangay, ['format' => 'pdf'], [], '/vaccine-inventory/report'],
+        ];
+
+        foreach ($samples as [$user, $event, $description, $target, $newValues, $oldValues, $url]) {
+            AuditLog::query()->firstOrCreate([
+                'user_id' => $user->id,
+                'event' => $event,
+                'description' => $description,
+                'auditable_id' => $target?->id,
+            ], [
+                'auditable_type' => $target?->getMorphClass() ?? AuditLog::class,
+                'old_values' => $oldValues,
+                'new_values' => $newValues,
+                'url' => $url,
+                'ip_address' => '192.168.1.'.random_int(10, 99),
+                'user_agent' => 'Mozilla/5.0 (Demo Audit Seeder)',
+                'created_at' => now()->subMinutes(random_int(5, 180)),
+                'updated_at' => now(),
+            ]);
+        }
     }
 
     private function seedScheduleVersions(): void

@@ -69,6 +69,9 @@
                         <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
                             {{ __('Reports') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="list-bullet" :href="route('audit-logs.index')" :current="request()->routeIs('audit-logs.*')" wire:navigate>
+                            {{ __('Audit Logs') }}
+                        </flux:sidebar.item>
                     @endif
                 </flux:sidebar.group>
             </flux:sidebar.nav>
