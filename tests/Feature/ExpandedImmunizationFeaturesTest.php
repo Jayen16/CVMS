@@ -1,21 +1,21 @@
 <?php
 
+use App\Livewire\DuplicateChildrenPage;
 use App\Models\AdverseEventReport;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
-use App\Models\ClinicAnnouncement;
 use App\Models\ChildVaccineSeriesVersion;
+use App\Models\ClinicAnnouncement;
 use App\Models\OfflineSyncOutbox;
 use App\Models\User;
-use App\Models\VaccineScheduleVersion;
-use App\Models\VaccinationReminder;
 use App\Models\VaccinationRecord;
+use App\Models\VaccinationReminder;
+use App\Models\VaccineScheduleVersion;
 use App\Models\VaccineType;
 use App\Services\DuplicateChildDetectionService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
-use App\Livewire\DuplicateChildrenPage;
 
 test('parent submissions can include photo proof and appear on the digital vaccine card', function () {
     Storage::fake('public');
@@ -65,7 +65,7 @@ test('parent submissions can include photo proof and appear on the digital vacci
         ->assertSee($child->full_name);
 });
 
-test('parent dashboard shows due calendar and clinic announcements', function () {
+test('parent dashboard shows the due calendar without announcements', function () {
     $barangay = Barangay::create(['name' => 'Calendar Barangay']);
     $parent = User::factory()->create(['role' => 'parent']);
     $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
@@ -97,7 +97,8 @@ test('parent dashboard shows due calendar and clinic announcements', function ()
         ->get(route('dashboard'))
         ->assertOk()
         ->assertSee('This month’s family due calendar')
-        ->assertSee('Saturday vaccine day');
+        ->assertDontSee('Saturday vaccine day')
+        ->assertDontSee('Clinic announcements');
 });
 
 test('staff can use verification queue, defaulter list, and duplicate detection', function () {
