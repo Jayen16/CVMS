@@ -65,6 +65,9 @@
                             <flux:sidebar.item icon="bell-alert" :href="route('defaulters.index')" :current="request()->routeIs('defaulters.*')" wire:navigate>
                                 {{ __('Defaulters') }}
                             </flux:sidebar.item>
+                            <flux:sidebar.item icon="chart-bar" :href="route('predictive-analytics.index')" :current="request()->routeIs('predictive-analytics.*')" wire:navigate>
+                                {{ __('Predictive analytics') }}
+                            </flux:sidebar.item>
                         @endif
                         @if (auth()->user()->canViewDuplicates() && ! auth()->user()->isSuperAdmin())
                             <flux:sidebar.item icon="squares-2x2" :href="route('duplicates.index')" :current="request()->routeIs('duplicates.*')" wire:navigate>

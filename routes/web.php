@@ -34,6 +34,7 @@ use App\Livewire\DashboardPage;
 use App\Livewire\DefaulterPage;
 use App\Livewire\DuplicateChildrenPage;
 use App\Livewire\NotificationsPage;
+use App\Livewire\PredictiveAnalyticsPage;
 use App\Livewire\NursesPage;
 use App\Livewire\ReportsPage;
 use App\Livewire\SyncDataPage;
@@ -147,6 +148,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('announcements/{announcement}', [ClinicAnnouncementController::class, 'destroy'])->name('announcements.destroy');
     Route::get('verification-queue', VerificationQueuePage::class)->name('verification-queue.index');
     Route::get('defaulters', DefaulterPage::class)->name('defaulters.index');
+    Route::get('predictive-analytics', PredictiveAnalyticsPage::class)->name('predictive-analytics.index');
     Route::get('duplicates', DuplicateChildrenPage::class)->name('duplicates.index');
     Route::get('aefi-reports', AefiReportsPage::class)->name('aefi-reports.index');
     Route::get('aefi-reports/csv', [AdverseEventReportController::class, 'csv'])->name('aefi-reports.csv');
