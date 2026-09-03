@@ -15,6 +15,7 @@ new #[Title('Profile settings')] class extends Component {
     public string $name = '';
     public string $email = '';
     public string $phone = '';
+    public string $current_password = '';
 
     /**
      * Mount the component.
@@ -33,11 +34,16 @@ new #[Title('Profile settings')] class extends Component {
     {
         $user = Auth::user();
 
-        $validated = $this->validate($this->profileRules($user->id));
-
+        $phone = \App\Models\User::normalizePhone($this->phone ?: null);
+        $identifierChanged = $this->email !== ($user->email ?? '') || $phone !== ($user->phone ?? null);
+        $rules = $this->profileRules($user->id);
+        if ($user->isParent() && $identifierChanged) {
+            $rules['current_password'] = ['required', 'current_password:web'];
+        }
+        $validated = $this->validate($rules);
+        $validated['phone'] = $phone;
+        unset($validated['current_password']);
         $user->fill($validated);
-
-        $validated['phone'] = \App\Models\User::normalizePhone($validated['phone'] ?? null);
 
         if ($user->isDirty('email') && filled($validated['email'])) {
             $user->email_verified_at = null;
@@ -46,6 +52,10 @@ new #[Title('Profile settings')] class extends Component {
         }
 
         $user->save();
+        if ($user->isParent()) {
+            app(\App\Services\OfflineSyncService::class)->queueGuardian($user);
+        }
+        $this->current_password = '';
 
         Flux::toast(variant: 'success', text: __('Profile updated.'));
     }
@@ -116,6 +126,10 @@ new #[Title('Profile settings')] class extends Component {
                     </div>
                 @endif
             </div>
+
+            @if (Auth::user()->isParent())
+                <flux:input wire:model="current_password" :label="__('Current password (required when changing email or phone)')" type="password" autocomplete="current-password" />
+            @endif
 
             <div class="flex items-center gap-4">
                 <div class="flex items-center justify-end">

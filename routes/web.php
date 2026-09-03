@@ -17,6 +17,7 @@ use App\Http\Controllers\MunicipalAdminController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NurseController;
 use App\Http\Controllers\PopulationBackgroundController;
+use App\Http\Controllers\PhonePasswordResetController;
 use App\Http\Controllers\VaccinationRecordController;
 use App\Http\Controllers\VaccineCardController;
 use App\Http\Controllers\VaccineInventoryController;
@@ -63,6 +64,12 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 Route::get('vaccine-cards/{token}', [VaccineCardController::class, 'validateToken'])->name('vaccine-cards.validate');
+Route::get('forgot-password/phone', [PhonePasswordResetController::class, 'create'])->name('password.phone.request');
+Route::post('forgot-password/phone', [PhonePasswordResetController::class, 'sendCode'])->middleware('throttle:5,1')->name('password.phone.send');
+Route::post('forgot-password/phone/reset', [PhonePasswordResetController::class, 'reset'])->middleware('throttle:10,1')->name('password.phone.reset');
+Route::get('reset-password/phone/{token}', [PhonePasswordResetController::class, 'showLink'])->name('password.phone.link');
+Route::post('reset-password/phone/{token}', [PhonePasswordResetController::class, 'resetLink'])->middleware('throttle:10,1')->name('password.phone.link.reset');
+Route::post('users/{user}/password-link', [PhonePasswordResetController::class, 'sendStaffLink'])->middleware('auth')->name('users.password-link');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardPage::class)->name('dashboard');
@@ -86,6 +93,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('children/{child}/card/pdf', [VaccineCardController::class, 'pdf'])->name('children.card.pdf');
     Route::post('children/{child}/parents', [ChildParentController::class, 'store'])->name('children.parents.store');
     Route::post('children/{child}/parents/{parent}/setup-link', [ChildParentController::class, 'resendSetupLink'])->name('children.parents.setup-link');
+    Route::post('children/{child}/parents/{parent}/password-link', [ChildParentController::class, 'sendPasswordLink'])->name('children.parents.password-link');
     Route::delete('children/{child}/parents/{parent}', [ChildParentController::class, 'destroy'])->name('children.parents.destroy');
     Route::post('children/{child}/vaccinations', [VaccinationRecordController::class, 'store'])->name('children.vaccinations.store');
     Route::put('vaccinations/{record}', [VaccinationRecordController::class, 'update'])->name('vaccinations.update');

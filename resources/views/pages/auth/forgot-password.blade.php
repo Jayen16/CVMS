@@ -22,6 +22,7 @@
                 {{ __('Email password reset link') }}
             </flux:button>
         </form>
+        <div class="text-center text-sm"><a class="text-teal-700 hover:underline" href="{{ route('password.phone.request') }}">Reset using phone number</a></div>
 
         <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-400">
             <span>{{ __('Or, return to') }}</span>

@@ -105,6 +105,7 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => $role,
                 'roles' => [$role],
+                'permissions' => $role === 'nurse' ? User::defaultNursePermissions() : null,
                 'municipality_id' => $municipalityId,
                 'barangay_id' => $barangayId,
                 'is_active' => true,

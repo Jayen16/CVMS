@@ -45,7 +45,7 @@ class VaccineCardController extends Controller
      */
     private function cardData(ChildProfile $child, QrCodeService $qrCodes): array
     {
-        $child->loadMissing(['barangay', 'vaccinations.vaccineType', 'vaccinations.verifier']);
+        $child->loadMissing(['barangay.municipalityRelation.province', 'vaccinations.vaccineType', 'vaccinations.verifier']);
         $validationUrl = route('vaccine-cards.validate', $child->ensureVaccineCardToken());
 
         return [

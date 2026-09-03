@@ -12,6 +12,7 @@
             archiveOpen: false,
             archiveAction: '',
             archiveName: @js($child->full_name),
+            transferOpen: false,
             showConfirmModal(actionLabel, message, form) {
                 this.confirmActionLabel = actionLabel;
                 this.confirmMessage = message;
@@ -148,8 +149,58 @@
             </div>
         </section>
 
-        <div class="grid gap-6 xl:grid-cols-[1fr_360px]">
+        @if (auth()->user()->canViewAefiReports() || auth()->user()->canManageChildren())
+            @php
+                $availableTabs = auth()->user()->canManageChildren()
+                    ? ['vaccination' => 'Record vaccination', 'aefi' => 'AEFI reporting', 'parents' => 'Linked parents']
+                    : ['aefi' => 'AEFI reporting'];
+                if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin()) {
+                    $availableTabs['transfer'] = 'Transfer child';
+                }
+                $activeTab = array_key_first($availableTabs);
+
+                if ($errors->hasAny(['vaccination_record_id', 'event_date', 'severity', 'outcome', 'symptoms', 'notes'])) {
+                    $activeTab = 'aefi';
+                } elseif (auth()->user()->canManageChildren() && $errors->hasAny(['name', 'email', 'phone', 'relationship'])) {
+                    $activeTab = 'parents';
+                } elseif (auth()->user()->canManageChildren() && $errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'remarks'])) {
+                    $activeTab = 'vaccination';
+                } elseif ((auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin()) && $errors->has('barangay_id')) {
+                    $activeTab = 'transfer';
+                }
+            @endphp
+        @endif
+
+        <div class="grid gap-6">
+        @if ($child->transferHistory->isNotEmpty())
             <section class="app-card">
+                <div class="app-card-header">
+                    <div>
+                        <p class="eyebrow">Child Records</p>
+                        <h2 class="app-card-title">Barangay transfer history</h2>
+                    </div>
+                </div>
+                <div class="divide-y divide-slate-100 dark:divide-zinc-800">
+                    @foreach ($child->transferHistory->sortByDesc('transferred_at') as $transfer)
+                        <div class="px-5 py-4">
+                            <p class="font-medium">{{ $transfer->from_barangay_name }} → {{ $transfer->to_barangay_name }}</p>
+                            <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">
+                                {{ $transfer->transferred_at->format('M d, Y g:i A') }}
+                                · Processed by {{ $transfer->transferred_by_name ?? 'System' }}
+                            </p>
+                            @if ($transfer->reason)
+                                <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Reason: {{ $transfer->reason }}</p>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endif
+
+        <section
+                class="app-card {{ auth()->user()->isParent() ? 'order-2' : '' }} {{ auth()->user()->canManageChildren() && $activeTab !== 'vaccination' ? 'hidden' : '' }}"
+                @if (auth()->user()->canManageChildren()) data-tab-panel="vaccination" @endif
+            >
                 <div class="app-card-header">
                     <h2 class="app-card-title">Vaccination history</h2>
                 </div>
@@ -206,6 +257,7 @@
                                         >
                                             {{ ucfirst($record->verification_status) }}
                                         </span>
+                                        <div class="mt-1 text-xs text-zinc-500">Recorded by {{ $record->recordedByDisplayName() }}</div>
                                         @if ($record->submitter)
                                             <div class="mt-1 text-xs text-zinc-500">Submitted by {{ $record->submitter->name }}</div>
                                         @endif
@@ -266,80 +318,86 @@
                 </div>
             </section>
 
-            <div class="grid content-start gap-6">
+            <div class="contents">
                 @if (auth()->user()->isParent())
                     @php
                         $defaultClinicName = $editableRecord?->clinic_name ?? $child->barangay?->name ?? 'Current clinic barangay';
                         $defaultClinicLocation = $editableRecord?->clinic_location ?? 'Indang, Cavite, Barangay 4 (pob.), Indang, Cavite, 4122';
                     @endphp
-                    <form method="POST" action="{{ $editableRecord ? route('vaccinations.update', $editableRecord) : route('children.vaccinations.store', $child) }}" class="app-panel grid content-start gap-4" enctype="multipart/form-data">
+                    <form
+                        method="POST"
+                        action="{{ $editableRecord ? route('vaccinations.update', $editableRecord) : route('children.vaccinations.store', $child) }}"
+                        class="app-panel order-1 grid content-start gap-4 sm:grid-cols-2 lg:grid-cols-3 {{ auth()->user()->canManageChildren() && $activeTab !== 'vaccination' ? 'hidden' : '' }}"
+                        x-data="{ submitHistoryOpen: false }"
+                        enctype="multipart/form-data"
+                        @if (auth()->user()->canManageChildren()) data-tab-panel="vaccination" @endif
+                    >
                         @csrf
                         @if ($editableRecord)
                             @method('PUT')
                         @endif
-                        <div>
-                            <h2 class="app-card-title">{{ $editableRecord ? 'Edit pending vaccination history' : 'Submit vaccination history' }}</h2>
-                            <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">
+                        <div class="sm:col-span-2 lg:col-span-3">
+                            <button
+                                type="button"
+                                class="flex w-full items-center justify-between gap-4 text-left"
+                                @click="submitHistoryOpen = !submitHistoryOpen"
+                                :aria-expanded="submitHistoryOpen.toString()"
+                                aria-controls="submit-vaccination-history-fields"
+                            >
+                                <span class="app-card-title">{{ $editableRecord ? 'Edit pending vaccination history' : 'Submit vaccination history' }}</span>
+                                <span x-show="submitHistoryOpen" x-cloak class="text-sm font-medium text-teal-700 dark:text-teal-300">Hide</span>
+                                <span x-show="!submitHistoryOpen" x-cloak class="text-2xl font-medium leading-none text-teal-700 dark:text-teal-300">+</span>
+                            </button>
+                        </div>
+                        <div id="submit-vaccination-history-fields" x-show="submitHistoryOpen" x-cloak class="contents">
+                            <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300 sm:col-span-2 lg:col-span-3">
                                 {{ $editableRecord ? 'You can correct this record until it is synchronized to Central. After synchronization, submit a new request if the facility rejects it.' : 'Records given outside the barangay clinic will stay pending until the clinic verifies them.' }}
                             </p>
-                        </div>
-                        <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" :value="$editableRecord?->vaccine_type_id" />
-                        <x-form-field label="Dose number" name="dose_number" type="number" :value="$editableRecord?->dose_number" />
-                        <x-form-field label="Date given" name="administered_at" type="date" :value="$editableRecord?->administered_at?->toDateString()" />
-                        <x-form-field label="Facility or clinic name" name="clinic_name" :value="$defaultClinicName" />
-                        <x-form-field label="Facility or clinic location" name="clinic_location" :value="$defaultClinicLocation" />
-                        <label class="grid gap-2 text-sm">
-                            <span class="font-medium text-slate-800 dark:text-zinc-100">Photo proof of vaccine card or record</span>
-                            <input type="file" name="proof_files[]" accept="image/*" multiple class="app-input">
-                            <span class="text-xs text-zinc-500">You can upload up to 5 photos.</span>
-                            @if ($editableRecord && $editableRecord->proofPaths() !== [])
-                                <div class="space-y-1 text-xs">
-                                    @foreach ($editableRecord->proofPaths() as $proofPath)
-                                        <a href="{{ route('vaccinations.proofs.show', ['record' => $editableRecord, 'proofIndex' => $loop->iteration]) }}" target="_blank" class="block text-teal-700 hover:underline dark:text-teal-300">
-                                            Current proof photo {{ $loop->iteration }}
-                                        </a>
-                                    @endforeach
-                                </div>
-                            @endif
-                            @error('proof_files')
-                                <span class="text-xs font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
-                            @enderror
-                            @error('proof_files.*')
-                                <span class="text-xs font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
-                            @enderror
-                        </label>
-                        <x-form-field label="Remarks" name="remarks" type="textarea" :value="$editableRecord?->remarks" />
-                        <div class="flex flex-wrap gap-2">
-                            <button class="app-button-primary">{{ $editableRecord ? 'Save changes' : 'Submit for clinic verification' }}</button>
-                            @if ($editableRecord)
-                                <a href="{{ route('children.show', $child) }}" class="app-button-secondary">Cancel</a>
-                            @endif
+                            <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" :value="$editableRecord?->vaccine_type_id" />
+                            <x-form-field label="Dose number" name="dose_number" type="number" :value="$editableRecord?->dose_number" />
+                            <x-form-field label="Date given" name="administered_at" type="date" :value="$editableRecord?->administered_at?->toDateString()" />
+                            <x-form-field label="Facility or clinic name" name="clinic_name" :value="$defaultClinicName" />
+                            <x-form-field label="Facility or clinic location" name="clinic_location" :value="$defaultClinicLocation" />
+                            <label class="grid gap-2 text-sm sm:col-span-2 lg:col-span-3">
+                                <span class="font-medium text-slate-800 dark:text-zinc-100">Photo proof of vaccine card or record</span>
+                                <input type="file" name="proof_files[]" accept="image/*" multiple class="app-input">
+                                <span class="text-xs text-zinc-500">You can upload up to 5 photos.</span>
+                                @if ($editableRecord && $editableRecord->proofPaths() !== [])
+                                    <div class="space-y-1 text-xs">
+                                        @foreach ($editableRecord->proofPaths() as $proofPath)
+                                            <a href="{{ route('vaccinations.proofs.show', ['record' => $editableRecord, 'proofIndex' => $loop->iteration]) }}" target="_blank" class="block text-teal-700 hover:underline dark:text-teal-300">
+                                                Current proof photo {{ $loop->iteration }}
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                @endif
+                                @error('proof_files')
+                                    <span class="text-xs font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
+                                @enderror
+                                @error('proof_files.*')
+                                    <span class="text-xs font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
+                                @enderror
+                            </label>
+                            <div class="sm:col-span-2 lg:col-span-3">
+                                <x-form-field label="Remarks" name="remarks" type="textarea" :value="$editableRecord?->remarks" />
+                            </div>
+                            <div class="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
+                                <button class="app-button-primary">{{ $editableRecord ? 'Save changes' : 'Submit for clinic verification' }}</button>
+                                @if ($editableRecord)
+                                    <a href="{{ route('children.show', $child) }}" class="app-button-secondary">Cancel</a>
+                                @endif
+                            </div>
                         </div>
                     </form>
                 @endif
 
                 @if (auth()->user()->canViewAefiReports() || auth()->user()->canManageChildren())
-                    @php
-                        $availableTabs = auth()->user()->canManageChildren()
-                            ? ['vaccination' => 'Record vaccination', 'aefi' => 'AEFI reporting', 'parents' => 'Linked parents']
-                            : ['aefi' => 'AEFI reporting'];
-                        $activeTab = array_key_first($availableTabs);
-
-                        if ($errors->hasAny(['vaccination_record_id', 'event_date', 'severity', 'outcome', 'symptoms', 'notes'])) {
-                            $activeTab = 'aefi';
-                        } elseif (auth()->user()->canManageChildren() && $errors->hasAny(['name', 'email', 'phone', 'relationship'])) {
-                            $activeTab = 'parents';
-                        } elseif (auth()->user()->canManageChildren() && $errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'remarks'])) {
-                            $activeTab = 'vaccination';
-                        }
-                    @endphp
-
-                    <section class="grid gap-4" data-child-tabs data-active-tab="{{ $activeTab }}">
+                    <section class="order-first col-span-full grid gap-4" data-child-tabs data-active-tab="{{ $activeTab }}">
                         <div class="flex flex-wrap gap-2">
                             @foreach ($availableTabs as $tabKey => $tabLabel)
                                 <button
                                     type="button"
-                                    class="rounded-full px-4 py-2 text-sm font-semibold transition {{ $activeTab === $tabKey ? 'bg-teal-600 text-white shadow-sm shadow-teal-900/20' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-800 dark:hover:bg-zinc-800' }}"
+                                    class="rounded-full px-4 py-2 text-sm font-semibold transition {{ $activeTab === $tabKey ? 'bg-teal-600 text-white shadow-sm shadow-teal-900/20' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-800' }}"
                                     data-tab-button
                                     data-tab-target="{{ $tabKey }}"
                                 >
@@ -350,14 +408,16 @@
 
                         @if (auth()->user()->canManageChildren())
                             <section class="app-panel {{ $activeTab === 'vaccination' ? '' : 'hidden' }}" data-tab-panel="vaccination">
-                                <form method="POST" action="{{ route('children.vaccinations.store', $child) }}" class="grid content-start gap-4">
+                                <form method="POST" action="{{ route('children.vaccinations.store', $child) }}" class="grid content-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                     @csrf
-                                    <h2 class="app-card-title">Record vaccination</h2>
+                                    <h2 class="app-card-title sm:col-span-2 lg:col-span-4">Record vaccination</h2>
                                     <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" />
                                     <x-form-field label="Dose number" name="dose_number" type="number" />
                                     <x-form-field label="Date given" name="administered_at" type="date" />
-                                    <x-form-field label="Remarks" name="remarks" type="textarea" />
-                                    <button class="app-button-primary">Save record</button>
+                                    <div class="sm:col-span-2 lg:col-span-4">
+                                        <x-form-field label="Remarks" name="remarks" type="textarea" />
+                                    </div>
+                                    <button class="app-button-primary sm:col-span-2 lg:col-span-4">Save record</button>
                                 </form>
                             </section>
                         @endif
@@ -365,77 +425,170 @@
                         <section class="app-panel {{ $activeTab === 'aefi' ? '' : 'hidden' }}" data-tab-panel="aefi">
                             <h2 class="app-card-title">AEFI reporting</h2>
                             @if (auth()->user()->canSubmitAefiReports())
-                                <form method="POST" action="{{ route('children.aefi-reports.store', $child) }}" class="mt-4 grid gap-4">
+                                <form method="POST" action="{{ route('children.aefi-reports.store', $child) }}" class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                     @csrf
                                     <x-form-field label="Linked vaccination record" name="vaccination_record_id" type="select" :options="$child->vaccinations->pluck('vaccineType.name', 'id')" />
                                     <x-form-field label="Event date" name="event_date" type="date" />
                                     <x-form-field label="Severity" name="severity" type="select" :options="['mild' => 'Mild', 'moderate' => 'Moderate', 'severe' => 'Severe']" />
-                                    <x-form-field label="Outcome" name="outcome" />
-                                    <x-form-field label="Symptoms" name="symptoms" type="textarea" />
-                                    <x-form-field label="Notes" name="notes" type="textarea" />
-                                    <button class="app-button-primary">Save AEFI report</button>
+                                    <div class="sm:col-span-2 lg:col-span-3">
+                                        <x-form-field label="Outcome" name="outcome" />
+                                    </div>
+                                    <div class="sm:col-span-2 lg:col-span-3">
+                                        <x-form-field label="Symptoms" name="symptoms" type="textarea" />
+                                    </div>
+                                    <div class="sm:col-span-2 lg:col-span-3">
+                                        <x-form-field label="Notes" name="notes" type="textarea" />
+                                    </div>
+                                    <button class="app-button-primary sm:col-span-2 lg:col-span-3">Save AEFI report</button>
                                 </form>
                             @endif
 
-                            <div class="mt-4 space-y-3">
-                                @forelse ($child->adverseEventReports->sortByDesc('event_date') as $report)
-                                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
-                                        <div class="font-medium text-slate-950 dark:text-white">{{ $report->event_date->format('M d, Y') }} | {{ ucfirst($report->severity) }}</div>
-                                        <div class="mt-1 text-sm text-slate-600 dark:text-zinc-300">{{ $report->symptoms }}</div>
-                                        <div class="mt-1 text-xs text-zinc-500">Reported by {{ $report->reporter->name }}</div>
-                                    </div>
-                                @empty
-                                    <p class="text-sm text-zinc-500">No AEFI reports for this child yet.</p>
-                                @endforelse
+                            <div class="mt-6 overflow-x-auto rounded-lg border border-slate-200 dark:border-zinc-800">
+                                <table class="app-table w-full min-w-[900px]">
+                                    <thead>
+                                        <tr>
+                                            <th class="px-4 py-3 font-medium">Event date</th>
+                                            <th class="px-4 py-3 font-medium">Vaccine</th>
+                                            <th class="px-4 py-3 font-medium">Severity</th>
+                                            <th class="px-4 py-3 font-medium">Outcome</th>
+                                            <th class="px-4 py-3 font-medium">Symptoms</th>
+                                            <th class="px-4 py-3 font-medium">Notes</th>
+                                            <th class="px-4 py-3 font-medium">Reported by</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse ($child->adverseEventReports->sortByDesc('event_date') as $report)
+                                            <tr class="app-table-row align-top">
+                                                <td class="whitespace-nowrap">{{ $report->event_date?->format('M d, Y') ?? '—' }}</td>
+                                                <td>{{ $report->vaccinationRecord?->vaccineType?->name ?? $report->vaccineType?->name ?? '—' }}</td>
+                                                <td class="whitespace-nowrap">{{ ucfirst($report->severity) }}</td>
+                                                <td>{{ $report->outcome ?: '—' }}</td>
+                                                <td class="min-w-48">{{ $report->symptoms }}</td>
+                                                <td class="min-w-48">{{ $report->notes ?: '—' }}</td>
+                                                <td class="whitespace-nowrap">{{ $report->reporter?->name ?? '—' }}</td>
+                                            </tr>
+                                        @empty
+                                            <tr><td colspan="7" class="px-4 py-8 text-center text-zinc-500">No AEFI reports for this child yet.</td></tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
                             </div>
                         </section>
 
                         @if (auth()->user()->canManageChildren())
-                        <section class="app-panel {{ $activeTab === 'parents' ? '' : 'hidden' }}" data-tab-panel="parents">
+                        <section class="app-panel flex flex-col {{ $activeTab === 'parents' ? '' : 'hidden' }}" data-tab-panel="parents">
                             <h2 class="app-card-title">Linked parents</h2>
-                            <div class="mt-3 divide-y divide-slate-200 text-sm dark:divide-zinc-800">
+                            <div class="order-2 mt-4 overflow-x-auto rounded-lg border border-slate-200 dark:border-zinc-800">
+                                <table class="app-table w-full min-w-[800px]">
+                                    <thead>
+                                        <tr>
+                                            <th class="px-4 py-3 font-medium">Parent</th>
+                                            <th class="px-4 py-3 font-medium">Contact</th>
+                                            <th class="px-4 py-3 font-medium">Relationship</th>
+                                            <th class="px-4 py-3 font-medium">Status</th>
+                                            <th class="px-4 py-3 font-medium">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
                                 @forelse ($child->parents as $parent)
-                                    <div class="flex items-center justify-between gap-3 py-2">
-                                        <div>
-                                            <div class="font-medium text-slate-950 dark:text-white">{{ $parent->name }}</div>
-                                            <div class="text-zinc-500">
-                                                {{ $parent->email }}{{ $parent->phone ? ' | '.$parent->phone : '' }} | {{ $parent->pivot->relationship }}
-                                            </div>
-                                            <div class="mt-1">
-                                                @if ($parent->invitation_accepted_at)
-                                                    <span class="status-pill status-verified">Configured</span>
-                                                @else
-                                                    <span class="status-pill status-pending">Pending password setup</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                        <div class="flex flex-wrap gap-2">
-                                            @if (! $parent->invitation_accepted_at)
-                                                <form method="POST" action="{{ route('children.parents.setup-link', ['child' => $child, 'parent' => $parent]) }}">
-                                                    @csrf
-                                                    <button class="app-button-secondary !px-3 !py-1.5 !text-xs">Resend link</button>
-                                                </form>
+                                    <tr class="app-table-row align-top">
+                                        <td class="font-medium text-slate-950 dark:text-white">{{ $parent->name }}</td>
+                                        <td>
+                                            {{ $parent->email ?: 'No email' }}
+                                            @if ($parent->phone)
+                                                <div class="text-zinc-500">{{ $parent->phone }}</div>
                                             @endif
+                                        </td>
+                                        <td class="capitalize">{{ $parent->pivot->relationship }}</td>
+                                        <td>
+                                            @if ($parent->invitation_accepted_at)
+                                                <span class="status-pill status-verified">Configured</span>
+                                            @else
+                                                <span class="status-pill status-pending">Pending password setup</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <div
+                                                class="relative"
+                                                x-data="{
+                                                    open: false,
+                                                    menuTop: 0,
+                                                    menuLeft: 0,
+                                                    toggleMenu() {
+                                                        this.open = ! this.open;
 
-                                            <form
-                                                method="POST"
-                                                action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => $parent]) }}"
-                                                @submit.prevent="showConfirmModal('Unlink parent', 'Unlink this parent from the child profile?', $event.currentTarget)"
+                                                        if (this.open) {
+                                                            this.$nextTick(() => {
+                                                                const button = this.$refs.trigger.getBoundingClientRect();
+                                                                const menu = this.$refs.menu;
+                                                                const menuHeight = menu.offsetHeight;
+                                                                const menuWidth = menu.offsetWidth;
+
+                                                                this.menuLeft = Math.min(window.innerWidth - menuWidth - 8, Math.max(8, button.right - menuWidth));
+                                                                this.menuTop = button.bottom + menuHeight + 8 <= window.innerHeight
+                                                                    ? button.bottom + 8
+                                                                    : Math.max(8, button.top - menuHeight - 8);
+                                                            });
+                                                        }
+                                                    },
+                                                }"
+                                                @keydown.escape.window="open = false"
                                             >
-                                                @csrf
-                                                @method('DELETE')
-                                                <button class="app-button-danger !px-3 !py-1.5 !text-xs">Unlink</button>
-                                            </form>
-                                        </div>
-                                    </div>
+                                                <button
+                                                    x-ref="trigger"
+                                                    type="button"
+                                                    class="app-button-secondary !px-3 !py-1.5 !text-lg !leading-none"
+                                                    aria-label="Parent actions"
+                                                    :aria-expanded="open.toString()"
+                                                    @click="toggleMenu()"
+                                                >
+                                                    &hellip;
+                                                </button>
+                                                <template x-teleport="body">
+                                                    <div
+                                                        x-ref="menu"
+                                                        x-cloak
+                                                        x-show="open"
+                                                        @click.outside="open = false"
+                                                        :style="`top: ${menuTop}px; left: ${menuLeft}px;`"
+                                                        class="fixed z-[100] grid min-w-44 gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
+                                                    >
+                                                    @if (! $parent->invitation_accepted_at)
+                                                        <form method="POST" action="{{ route('children.parents.setup-link', ['child' => $child, 'parent' => $parent]) }}">
+                                                            @csrf
+                                                            <button class="w-full rounded px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-zinc-800">Resend link</button>
+                                                        </form>
+                                                    @endif
+                                                    @if ($parent->email)
+                                                        <form method="POST" action="{{ route('children.parents.password-link', [$child, $parent]) }}">@csrf<input type="hidden" name="channel" value="email"><button class="w-full rounded px-3 py-2 text-left text-sm text-teal-700 hover:bg-slate-100 dark:text-teal-300 dark:hover:bg-zinc-800">Reset by email</button></form>
+                                                    @endif
+                                                    @if ($parent->phone)
+                                                        <form method="POST" action="{{ route('children.parents.password-link', [$child, $parent]) }}">@csrf<input type="hidden" name="channel" value="sms"><button class="w-full rounded px-3 py-2 text-left text-sm text-teal-700 hover:bg-slate-100 dark:text-teal-300 dark:hover:bg-zinc-800">Reset by text</button></form>
+                                                    @endif
+                                                    <form
+                                                        method="POST"
+                                                        action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => $parent]) }}"
+                                                        @submit.prevent="showConfirmModal('Unlink parent', 'Unlink this parent from the child profile?', $event.currentTarget)"
+                                                    >
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button class="w-full rounded px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30">Unlink</button>
+                                                    </form>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 @empty
-                                    <p class="py-2 text-zinc-500">No parent account linked yet.</p>
+                                    <tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500">No parent account linked yet.</td></tr>
                                 @endforelse
+                                    </tbody>
+                                </table>
                             </div>
 
-                            <form method="POST" action="{{ route('children.parents.store', $child) }}" class="mt-4 grid gap-4">
+                            <form method="POST" action="{{ route('children.parents.store', $child) }}" class="order-1 mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                 @csrf
-                                <div>
+                                <div class="sm:col-span-2 lg:col-span-4">
                                     <h3 class="text-sm font-semibold text-slate-950 dark:text-white">Invite parent</h3>
                                     <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Link the parent using either an email address or a phone number. Email can receive a password setup link, while phone-only parents can finish sign up using that phone number and a password.</p>
                                 </div>
@@ -457,39 +610,58 @@
                                         'other' => 'Other',
                                     ]"
                                 />
-                                <button class="app-button-primary">Link parent account</button>
+                                <button class="app-button-primary sm:col-span-2 lg:col-span-4">Link parent account</button>
                             </form>
                         </section>
                         @endif
-                    </section>
-                @endif
 
-                @if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin())
-                    <section class="app-panel grid gap-4">
-                        <div>
-                            <h2 class="app-card-title">Transfer child to another clinic</h2>
-                            <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Use this when the child has relocated and the registry should move to a new clinic.</p>
-                        </div>
-                        <form method="POST" action="{{ route('children.transfer', $child) }}" class="grid gap-4">
-                            @csrf
-                            <x-form-field
-                                label="New barangay"
-                                name="barangay_id"
-                                type="select"
-                                :options="\App\Models\Barangay::orderBy('name')->pluck('name', 'id')"
-                                :value="$child->barangay_id"
-                            />
-                            <button
-                                class="app-button-primary"
-                                @click.prevent="showConfirmModal('Transfer child', 'Transfer this child to another barangay?', $event.currentTarget.form)"
-                            >
-                                Transfer child
-                            </button>
-                        </form>
+                        @if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin())
+                            <section class="app-panel {{ $activeTab === 'transfer' ? '' : 'hidden' }}" data-tab-panel="transfer">
+                                <div class="flex flex-wrap items-center justify-between gap-4">
+                                    <div>
+                                        <h2 class="app-card-title">Transfer child to another clinic</h2>
+                                        <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Move this child’s record to a different barangay clinic.</p>
+                                    </div>
+                                    <button type="button" class="app-button-secondary shrink-0" @click="transferOpen = true">Transfer child</button>
+                                </div>
+                            </section>
+                        @endif
                     </section>
                 @endif
             </div>
         </div>
+
+        @if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin())
+            <div
+                x-cloak
+                x-show="transferOpen"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="transfer-child-title"
+                @keydown.escape.window="transferOpen = false"
+            >
+                <div class="app-panel w-full max-w-md" @click.outside="transferOpen = false">
+                    <p class="eyebrow">Child Records</p>
+                    <h2 id="transfer-child-title" class="app-card-title mt-1">Transfer child</h2>
+                    <p class="mt-2 text-sm text-slate-600 dark:text-zinc-300">Select the barangay clinic where this child should be registered.</p>
+                    <form method="POST" action="{{ route('children.transfer', $child) }}" class="mt-5 grid gap-4">
+                        @csrf
+                        <x-form-field
+                            label="New barangay"
+                            name="barangay_id"
+                            type="select"
+                            :options="\App\Models\Barangay::orderBy('name')->pluck('name', 'id')"
+                            :value="$child->barangay_id"
+                        />
+                        <div class="flex justify-end gap-2">
+                            <button type="button" class="app-button-secondary" @click="transferOpen = false">Cancel</button>
+                            <button class="app-button-primary">Transfer child</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endif
         <form method="POST" x-ref="verificationForm" class="hidden">
             @csrf
         </form>
@@ -557,13 +729,16 @@
                 if (!tabsRoot) return;
 
                 const buttons = tabsRoot.querySelectorAll('[data-tab-button]');
-                const panels = tabsRoot.querySelectorAll('[data-tab-panel]');
+                // Tab panels share the page layout with the controls, so query them
+                // from the document rather than relying on DOM nesting.
+                const panels = document.querySelectorAll('[data-tab-panel]');
                 const activeClasses = ['bg-teal-600', 'text-white', 'shadow-sm', 'shadow-teal-900/20'];
                 const inactiveClasses = ['bg-white', 'text-slate-700', 'ring-1', 'ring-slate-200', 'hover:bg-slate-50', 'dark:bg-zinc-900', 'dark:text-zinc-200', 'dark:ring-zinc-800', 'dark:hover:bg-zinc-800'];
 
                 const setActiveTab = (tabName) => {
                     buttons.forEach((button) => {
                         const isActive = button.dataset.tabTarget === tabName;
+                        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
                         button.classList.toggle('bg-teal-600', isActive);
                         button.classList.toggle('text-white', isActive);
                         button.classList.toggle('shadow-sm', isActive);
@@ -603,7 +778,7 @@
 
                 const queueKey = 'offline-vaccination-queue-{{ $child->id }}';
                 const notice = document.createElement('p');
-                notice.className = 'text-sm text-slate-600 dark:text-zinc-300';
+                notice.className = 'text-sm text-slate-600 dark:text-zinc-300 sm:col-span-2 lg:col-span-4';
                 notice.textContent = 'Offline queue ready. If you lose connection, nurse entries are saved in this device and synced when online.';
                 form.prepend(notice);
 

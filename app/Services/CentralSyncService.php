@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\ClinicAnnouncement;
+use App\Models\ChildTransferHistory;
+use App\Models\FacilityStaff;
 use App\Models\FacilityConnection;
 use App\Models\VaccineSchedule;
 use App\Models\VaccineType;
@@ -24,6 +26,18 @@ class CentralSyncService
 
         $after = $cursor ? Carbon::parse($cursor) : null;
         $data = [
+            'facility_staff' => $this->serializeModels(FacilityStaff::query()->where('facility_id', $connection->facility_id)->when($after, fn (Builder $query) => $query->where('updated_at', '>', $after))->orderBy('updated_at')->get(), fn (FacilityStaff $staff): array => [
+                'uuid' => (string) $staff->staff_uuid, 'name' => $staff->name, 'role' => $staff->role, 'active' => $staff->active,
+                'last_seen_at' => $staff->last_seen_at?->toIso8601String(), 'updated_at' => $staff->updated_at?->toIso8601String(),
+            ]),
+            'child_transfers' => $this->serializeModels(ChildTransferHistory::query()->where('facility_uuid', $connection->facility_id)->when($after, fn (Builder $query) => $query->where('updated_at', '>', $after))->orderBy('updated_at')->get(), fn (ChildTransferHistory $transfer): array => [
+                'uuid' => (string) $transfer->id, 'child_uuid' => $transfer->child_sync_uuid, 'facility_uuid' => $transfer->facility_uuid,
+                'from_barangay_name' => $transfer->from_barangay_name, 'to_barangay_name' => $transfer->to_barangay_name,
+                'municipality_code' => $transfer->municipality_code, 'transferred_by_uuid' => $transfer->transferred_by_uuid,
+                'transferred_by_name' => $transfer->transferred_by_name, 'transferred_by_role' => $transfer->transferred_by_role,
+                'transferred_at' => $transfer->transferred_at?->toIso8601String(), 'reason' => $transfer->reason,
+                'version' => $transfer->sync_version, 'updated_at' => $transfer->updated_at?->toIso8601String(),
+            ]),
             'vaccines' => $this->serializeModels(VaccineType::query()->when($after, fn (Builder $query) => $query->where('updated_at', '>', $after))->orderBy('updated_at')->get(), fn (VaccineType $vaccine): array => [
                 'uuid' => (string) $vaccine->getKey(),
                 'code' => $vaccine->code,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AuditLog;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
+use App\Models\ChildTransferHistory;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineType;
 use App\Services\ImmunizationSuggestionService;
@@ -175,11 +176,28 @@ class ChildProfileController extends Controller
             'last_name' => $child->last_name,
         ], $child);
 
+        $fromBarangay = $child->barangay()->firstOrFail();
+        $toBarangay = Barangay::query()->findOrFail($validated['barangay_id']);
+
         $child->update([
             'barangay_id' => $validated['barangay_id'],
         ]);
 
+        $transfer = ChildTransferHistory::query()->create([
+            'child_sync_uuid' => $child->sync_uuid,
+            'facility_uuid' => $child->facility_uuid,
+            'from_barangay_name' => $fromBarangay->name,
+            'to_barangay_name' => $toBarangay->name,
+            'municipality_code' => $toBarangay->municipalityRelation?->code,
+            'transferred_by_uuid' => auth()->id(),
+            'transferred_by_name' => auth()->user()->name,
+            'transferred_by_role' => auth()->user()->role,
+            'transferred_at' => now(),
+            'sync_version' => 1,
+        ]);
+
         $offlineSync->queueUpsert($child->fresh()->load(['barangay', 'creator']));
+        $offlineSync->queueUpsert($transfer);
 
         if (auth()->user()->isBarangayAdmin() && auth()->user()->barangay_id !== $child->barangay_id) {
             return to_route('children.index')->with('status', 'Child transferred to a new barangay.');
@@ -202,6 +220,7 @@ class ChildProfileController extends Controller
             'vaccinations.verifier',
             'adverseEventReports.vaccineType',
             'adverseEventReports.reporter',
+            'transferHistory',
         ]);
         $editableRecord = null;
 

@@ -101,6 +101,12 @@ class ChildProfile extends Model
         return $this->hasMany(VaccinationRecord::class);
     }
 
+    /** @return HasMany<ChildTransferHistory, $this> */
+    public function transferHistory(): HasMany
+    {
+        return $this->hasMany(ChildTransferHistory::class, 'child_sync_uuid', 'sync_uuid');
+    }
+
     /**
      * @return HasMany<AdverseEventReport, $this>
      */

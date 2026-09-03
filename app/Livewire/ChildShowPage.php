@@ -31,6 +31,7 @@ class ChildShowPage extends Component
             'vaccinations.submitter',
             'vaccinations.verifier',
             'adverseEventReports.vaccineType',
+            'adverseEventReports.vaccinationRecord.vaccineType',
             'adverseEventReports.reporter',
         ]);
 

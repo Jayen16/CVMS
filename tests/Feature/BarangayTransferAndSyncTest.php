@@ -2,6 +2,7 @@
 
 use App\Models\Barangay;
 use App\Models\ChildProfile;
+use App\Models\ChildTransferHistory;
 use App\Models\OfflineSyncOutbox;
 use App\Models\SyncStatus;
 use App\Models\User;
@@ -30,6 +31,10 @@ test('barangay admin can transfer a child to another barangay', function () {
         ->assertRedirect(route('children.index', absolute: false));
 
     expect($child->fresh()->barangay_id)->toBe($destination->id);
+    expect(ChildTransferHistory::query()->where('child_sync_uuid', $child->sync_uuid)->first())
+        ->from_barangay_name->toBe('Origin Barangay')
+        ->to_barangay_name->toBe('Destination Barangay')
+        ->transferred_by_name->toBe($admin->name);
 });
 
 test('manual sync records the latest sync timestamp', function () {

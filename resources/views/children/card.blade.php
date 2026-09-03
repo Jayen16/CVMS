@@ -18,7 +18,8 @@
                     <div class="p-4">
                         <h2 class="text-2xl font-semibold text-slate-950 dark:text-white">{{ $child->full_name }}</h2>
                         <div class="mt-2 text-sm text-slate-600 dark:text-zinc-300">
-                            {{ ucfirst($child->sex) }} | {{ $child->birthdate->format('M d, Y') }} | {{ $child->barangay?->name }}
+                            {{ ucfirst($child->sex) }} | {{ $child->birthdate->format('M d, Y') }}
+                            <div class="mt-1">{{ $child->barangay?->municipalityRelation?->province?->name ?? 'N/A' }} · {{ $child->barangay?->municipalityRelation?->name ?? 'N/A' }} · {{ $child->barangay?->name ?? 'N/A' }}</div>
                         </div>
                     </div>
                     <div class="mt-6 overflow-x-auto">
@@ -49,7 +50,6 @@
                 <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
                     <img src="{{ $qrCode }}" alt="Vaccine card QR code" class="mx-auto w-full max-w-[220px] rounded-lg bg-white p-3">
                     <p class="mt-4 text-xs leading-5 text-slate-600 dark:text-zinc-300">Scan this QR code at the clinic to open the validation page and confirm the child’s record quickly.</p>
-                    <a href="{{ $validationUrl }}" class="mt-4 block break-all text-xs text-teal-700 hover:underline dark:text-teal-300">{{ $validationUrl }}</a>
                 </div>
             </div>
         </section>

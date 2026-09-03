@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Barangay;
 use App\Models\ChildProfile;
+use App\Models\ChildTransferHistory;
 use App\Models\FacilityConnection;
 use App\Models\FacilityStaff;
 use App\Models\VaccinationRecord;
@@ -23,7 +24,7 @@ class CentralPushSyncService
         $accepted = [];
         DB::transaction(function () use ($events, $connection, &$accepted): void {
             foreach ($events as $event) {
-                if (! in_array($event['entity'], ['facility_staff', 'children', 'immunization_records', 'guardians', 'child_guardian_relationships', 'inventory_transactions', 'appointments', 'audit_events', 'notification_requests'], true)) {
+                if (! in_array($event['entity'], ['facility_staff', 'children', 'child_transfers', 'immunization_records', 'guardians', 'child_guardian_relationships', 'inventory_transactions', 'appointments', 'audit_events', 'notification_requests'], true)) {
                     abort(422, 'Unsupported synchronization entity.');
                 }
 
@@ -36,6 +37,7 @@ class CentralPushSyncService
                 $applied = match ($event['entity']) {
                     'facility_staff' => $this->applyStaff($connection->facility_id, $event),
                     'children' => $this->applyChild($connection->facility_id, $event),
+                    'child_transfers' => $this->applyChildTransfer($connection->facility_id, $event),
                     'immunization_records' => $this->applyImmunization($connection->facility_id, $event),
                     'guardians' => $this->applyGuardian($connection->facility_id, $event),
                     'child_guardian_relationships' => $this->applyRelationship($connection->facility_id, $event),
@@ -132,6 +134,21 @@ class CentralPushSyncService
             'administered_by_uuid' => $data['administered_by_uuid'], 'recorded_by_uuid' => $data['recorded_by_uuid'], 'administered_by_name' => $data['administered_by_name'],
             'recorded_by_name' => $data['recorded_by_name'], 'recorded_by_role' => $data['recorded_by_role'], 'sync_version' => $event['version'],
         ])->saveQuietly();
+
+        return true;
+    }
+
+    /** @param array<string, mixed> $event */
+    private function applyChildTransfer(string $facilityId, array $event): bool
+    {
+        $data = $event['data'];
+        ChildTransferHistory::query()->updateOrCreate(['id' => $event['record_uuid']], [
+            'child_sync_uuid' => $data['child_uuid'], 'facility_uuid' => $facilityId,
+            'from_barangay_name' => $data['from_barangay_name'], 'to_barangay_name' => $data['to_barangay_name'],
+            'municipality_code' => $data['municipality_code'] ?? null, 'transferred_by_uuid' => $data['transferred_by_uuid'] ?? null,
+            'transferred_by_name' => $data['transferred_by_name'] ?? null, 'transferred_by_role' => $data['transferred_by_role'] ?? null,
+            'transferred_at' => $data['transferred_at'], 'reason' => $data['reason'] ?? null, 'sync_version' => $event['version'],
+        ]);
 
         return true;
     }

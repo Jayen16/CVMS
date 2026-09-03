@@ -47,6 +47,7 @@ class NurseController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+            'phone' => ['nullable', 'string', 'max:32', Rule::unique('users', 'phone')],
             'barangay_id' => [$managesBarangayAdmins ? 'required' : 'nullable', 'exists:barangays,id'],
             'municipality_id' => ['nullable', 'exists:municipalities,id'],
             'barangay_name' => ['nullable', 'string', 'max:255'],
@@ -82,6 +83,7 @@ class NurseController extends Controller
         $staff = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'phone' => User::normalizePhone($validated['phone'] ?? null),
             'password' => Str::password(32),
             'role' => $roles[0],
             'roles' => $roles,

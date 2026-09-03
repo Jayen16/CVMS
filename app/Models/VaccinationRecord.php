@@ -83,6 +83,14 @@ class VaccinationRecord extends Model
         return $this->belongsTo(User::class, 'recorded_by');
     }
 
+    public function recordedByDisplayName(): string
+    {
+        $uuid = $this->recorded_by_uuid ?: $this->recorded_by;
+        $staff = $uuid ? FacilityStaff::query()->where('staff_uuid', $uuid)->when($this->facility_uuid, fn ($query) => $query->where('facility_id', $this->facility_uuid))->value('name') : null;
+
+        return $staff ?: $this->recorded_by_name ?: $this->recorder?->name ?: 'Unknown staff';
+    }
+
     /**
      * @return BelongsTo<User, $this>
      */
