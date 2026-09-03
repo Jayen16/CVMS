@@ -69,4 +69,4 @@ volumes:
   laravel_storage:
 networks:
   default:
-    internal: true
+    driver: bridge
