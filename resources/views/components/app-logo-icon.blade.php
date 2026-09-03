@@ -1,5 +1,1 @@
-<img
-    src="{{ asset(config('rhu.logo_path')) }}"
-    alt="{{ config('rhu.short_name') }}"
-    {{ $attributes->merge(['class' => 'rounded-full object-cover']) }}
->
+<span {{ $attributes->merge(['class' => 'rhu-monogram']) }} aria-label="{{ config('rhu.short_name') }}">RHU</span>

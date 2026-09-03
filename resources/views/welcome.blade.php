@@ -15,79 +15,82 @@
 </head>
 
 <body class="rhu-auth-shell min-h-screen text-slate-900 dark:text-zinc-100">
-    <div class="relative isolate overflow-hidden">
+    <div class="relative isolate min-h-screen overflow-hidden">
         <div class="rhu-auth-orb rhu-auth-orb-one"></div>
         <div class="rhu-auth-orb rhu-auth-orb-two"></div>
 
         <div class="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
             <header
-                class="flex items-center justify-between rounded-full border border-white/70 bg-white/80 px-4 py-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-zinc-950/80 sm:px-6">
+                class="flex items-center justify-between rounded-2xl border border-white/80 bg-white/75 px-4 py-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-zinc-950/75 sm:px-6">
                 <a href="{{ url('/') }}" class="flex items-center gap-3">
-                    <x-app-logo-icon class="h-12 w-12 shadow-md" />
+                    <span class="rhu-monogram" aria-hidden="true">RHU</span>
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">RHU</p>
+                        <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-emerald-700">RHU</p>
                         <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ config('rhu.system_name') }}</p>
                     </div>
                 </a>
-
+                <div class="hidden items-center gap-2 text-xs font-medium text-slate-500 sm:flex dark:text-zinc-400">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]"></span>
+                    Secure clinic access
+                </div>
             </header>
 
-            <main class="flex flex-1 items-center py-10 lg:py-16">
-                <div class="grid w-full items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-                    <section class="space-y-6">
-                        <p class="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-700">Indang, Cavite</p>
+            <main class="flex flex-1 items-center py-8 sm:py-12 lg:py-16">
+                <div class="grid w-full items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+                    <section class="space-y-7 lg:pb-6">
+                        <div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/80 px-3 py-1.5 text-xs font-semibold text-emerald-800 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300">
+                            <span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-[0.65rem] text-white">+</span>
+                            Care that keeps families on schedule
+                        </div>
                         <div class="space-y-4">
                             <h1
                                 class="max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
-                                A more welcoming child immunization portal for families and RHU staff.
+                                Every child’s next healthy step, <span class="text-emerald-700">within reach.</span>
                             </h1>
                             <p class="max-w-2xl text-lg leading-8 text-slate-600 dark:text-zinc-300">
-                                Manage child records, monitor due vaccinations, review submitted entries, and keep
-                                clinic communication organized in one place.
+                                The secure vaccination workspace for Rural Health Unit staff and families in your community.
+                                Find records, follow schedules, and keep care moving forward.
                             </p>
                         </div>
 
-                        <div class="flex flex-wrap gap-3 h-10">
-
+                        <div class="flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-slate-600 dark:text-zinc-300">
+                            <span class="flex items-center gap-2"><span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs text-emerald-700">✓</span> Centralized records</span>
+                            <span class="flex items-center gap-2"><span class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs text-emerald-700">✓</span> Timely reminders</span>
                         </div>
 
-                        <div class="grid gap-4 sm:grid-cols-3">
-                            <div class="app-panel border-white/80 bg-white/85 backdrop-blur dark:border-white/10 dark:bg-zinc-900/80">
-                                <p class="eyebrow">Track</p>
-                                <h2 class="mt-2 text-lg font-semibold text-slate-950 dark:text-white">Child records</h2>
-                                <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-zinc-300">Keep profiles, vaccine history, and
-                                    clinic follow-up easier to review.</p>
+                        <div class="grid max-w-2xl gap-3 sm:grid-cols-3">
+                            <div class="rhu-feature-tile">
+                                <p class="rhu-feature-icon">01</p>
+                                <h2>Track</h2>
+                                <p>Child records and vaccine history in one view.</p>
                             </div>
-                            <div class="app-panel border-white/80 bg-white/85 backdrop-blur dark:border-white/10 dark:bg-zinc-900/80">
-                                <p class="eyebrow">Coordinate</p>
-                                <h2 class="mt-2 text-lg font-semibold text-slate-950 dark:text-white">Barangay work</h2>
-                                <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-zinc-300">Support nurses, admins, and parents
-                                    with one shared workflow.</p>
+                            <div class="rhu-feature-tile">
+                                <p class="rhu-feature-icon">02</p>
+                                <h2>Coordinate</h2>
+                                <p>One shared workflow for every barangay.</p>
                             </div>
-                            <div class="app-panel border-white/80 bg-white/85 backdrop-blur dark:border-white/10 dark:bg-zinc-900/80">
-                                <p class="eyebrow">Inform</p>
-                                <h2 class="mt-2 text-lg font-semibold text-slate-950 dark:text-white">Clinic updates</h2>
-                                <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-zinc-300">Post announcements and help families
-                                    stay informed about schedules.</p>
+                            <div class="rhu-feature-tile">
+                                <p class="rhu-feature-icon">03</p>
+                                <h2>Inform</h2>
+                                <p>Clear clinic updates for families.</p>
                             </div>
                         </div>
                     </section>
 
                     <section
                         class="welcome-login-shell">
-                        <div class="flex items-center gap-4">
-                            <x-app-logo-icon class="h-20 w-20 shadow-lg" />
+                        <div class="flex items-start justify-between gap-4">
                             <div>
-                                <p class="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-700">Official
-                                    Facility</p>
-                                <h2 class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{{ config('rhu.name') }}</h2>
-                                <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-zinc-300">{{ config('rhu.system_name') }}</p>
+                                <p class="text-xs font-bold uppercase tracking-[0.24em] text-emerald-700">Welcome back</p>
+                                <h2 class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">Sign in to continue</h2>
+                                <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-zinc-300">Access your vaccination records and clinic workspace.</p>
                             </div>
+                            <span class="hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-xl text-emerald-700 sm:flex dark:bg-emerald-950/60 dark:text-emerald-300">↗</span>
                         </div>
 
 
 
-                        <div class="mt-6 flex flex-col gap-6 welcome-login-card">
+                        <div class="mt-7 flex flex-col gap-6">
 
                             <!-- Session Status -->
                             <x-auth-session-status class="text-center" :status="session('status')" />
@@ -114,17 +117,15 @@
                                     @endif
                                 </div>
 
-                                <!-- Remember Me -->
-                                <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
-
                                 <div class="flex items-center justify-end">
-                                    <flux:button variant="primary" type="submit" class="w-full"
+                                    <flux:button variant="primary" type="submit" class="w-full !rounded-xl !py-3"
                                         data-test="login-button">
-                                        {{ __('Log in') }}
+                                        {{ __('Sign in securely') }}
                                     </flux:button>
                                 </div>
                             </form>
                         </div>
+                        <p class="mt-6 text-center text-xs leading-5 text-slate-500 dark:text-zinc-400">Your information is protected and only available to authorized users.</p>
                     </section>
                 </div>
             </main>
