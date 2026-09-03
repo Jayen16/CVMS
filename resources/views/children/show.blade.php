@@ -218,7 +218,7 @@
                                     </td>
                                     @if (auth()->user()->isParent())
                                         <td>
-                                            @if ($record->submitted_by === auth()->id() && $record->isPendingVerification())
+                                            @if ($record->submitted_by === auth()->id() && $record->isParentEditable())
                                                 <a href="{{ route('children.show', ['child' => $child, 'edit_record' => $record->id]) }}" class="app-button-secondary !px-3 !py-1.5 !text-xs">
                                                     Edit
                                                 </a>
@@ -280,7 +280,7 @@
                         <div>
                             <h2 class="app-card-title">{{ $editableRecord ? 'Edit pending vaccination history' : 'Submit vaccination history' }}</h2>
                             <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">
-                                {{ $editableRecord ? 'You can correct this record while it is still pending clinic verification.' : 'Records given outside the barangay clinic will stay pending until the clinic verifies them.' }}
+                                {{ $editableRecord ? 'You can correct this record until it is synchronized to Central. After synchronization, submit a new request if the facility rejects it.' : 'Records given outside the barangay clinic will stay pending until the clinic verifies them.' }}
                             </p>
                         </div>
                         <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" :value="$editableRecord?->vaccine_type_id" />

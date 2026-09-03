@@ -118,7 +118,7 @@ class VaccinationRecordController extends Controller
 
         abort_unless(auth()->user()->isParent(), 403);
         abort_unless($record->submitted_by === auth()->id(), 403);
-        abort_unless($record->isPendingVerification(), 403);
+        abort_unless($record->isParentEditable(), 403, 'This submitted vaccination request is already synchronized and can no longer be edited.');
         abort_unless($record->child->parents()->whereKey(auth()->id())->exists(), 403);
     }
 
