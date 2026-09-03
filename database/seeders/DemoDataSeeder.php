@@ -8,11 +8,14 @@ use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\ChildVaccineSeriesVersion;
 use App\Models\ClinicAnnouncement;
+use App\Models\Municipality;
 use App\Models\OfflineSyncOutbox;
 use App\Models\SyncStatus;
 use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\VaccinationReminder;
+use App\Models\VaccineInventoryItem;
+use App\Models\VaccineInventoryTransaction;
 use App\Models\VaccineSchedule;
 use App\Models\VaccineScheduleVersion;
 use App\Models\VaccineType;
@@ -57,9 +60,12 @@ class DemoDataSeeder extends Seeder
         $this->seedScheduleVersions();
         $this->seedBarangays();
         $this->seedUsers();
-        $this->seedAnnouncements();
+        // Announcements are temporarily disabled; their routes are commented out.
+        // $this->seedAnnouncements();
         $this->seedChildrenAndVaccinationHistories();
-        $this->seedAefiReports();
+        $this->seedInventory();
+        // AEFI reports are temporarily disabled; their routes are commented out.
+        // $this->seedAefiReports();
         $this->seedReminders();
         $this->seedNotifications();
         $this->seedSyncData();
@@ -318,6 +324,58 @@ class DemoDataSeeder extends Seeder
             '09177777771',
             'parent',
         );
+    }
+
+    private function seedInventory(): void
+    {
+        $barangay = $this->barangays['barangay_1'];
+        $recorder = $this->users['starter_nurse'];
+        $today = Carbon::today();
+
+        foreach ([
+            ['code' => 'bcg', 'item' => 'DEMO-BCG-001', 'batch' => 'BCG-2026-01', 'quantity' => 40],
+            ['code' => 'hepb', 'item' => 'DEMO-HEPB-001', 'batch' => 'HEPB-2026-01', 'quantity' => 50],
+            ['code' => 'dtap', 'item' => 'DEMO-DTAP-001', 'batch' => 'DTAP-2026-01', 'quantity' => 75],
+            ['code' => 'pcv', 'item' => 'DEMO-PCV-001', 'batch' => 'PCV-2026-01', 'quantity' => 60],
+            ['code' => 'mmr', 'item' => 'DEMO-MMR-001', 'batch' => 'MMR-2026-01', 'quantity' => 45],
+        ] as $stock) {
+            $vaccine = $this->vaccines->get($stock['code']);
+
+            if ($vaccine === null) {
+                continue;
+            }
+
+            $item = VaccineInventoryItem::updateOrCreate(
+                ['item_code' => $stock['item']],
+                [
+                    'barangay_id' => $barangay->id,
+                    'vaccine_type_id' => $vaccine->id,
+                    'batch_number' => $stock['batch'],
+                    'expiry_date' => $today->copy()->addYear(),
+                    'received_at' => $today->copy()->subMonth(),
+                    'reference_number' => 'DEMO-RECEIPT-2026-01',
+                    'notes' => 'Demo inventory stock for testing and training.',
+                ],
+            );
+
+            VaccineInventoryTransaction::updateOrCreate(
+                ['sync_uuid' => 'demo-inventory-receipt-'.$stock['code']],
+                [
+                    'barangay_id' => $barangay->id,
+                    'vaccine_type_id' => $vaccine->id,
+                    'vaccine_inventory_item_id' => $item->id,
+                    'recorded_by' => $recorder->id,
+                    'transaction_type' => 'receipt',
+                    'movement' => 'in',
+                    'quantity' => $stock['quantity'],
+                    'batch_number' => $item->batch_number,
+                    'expiry_date' => $item->expiry_date,
+                    'transaction_date' => $today,
+                    'reference_number' => 'DEMO-RECEIPT-2026-01',
+                    'notes' => 'Demo inventory receipt.',
+                ],
+            );
+        }
     }
 
     private function seedAnnouncements(): void
@@ -896,15 +954,7 @@ class DemoDataSeeder extends Seeder
             'clipboard-document-check',
         );
 
-        $this->upsertNotification(
-            $this->users['starter_nurse'],
-            'demo-clinic-announcement',
-            'Saturday well-baby clinic',
-            'The next well-baby clinic schedule has been posted.',
-            route('announcements.index'),
-            'megaphone',
-            read: true,
-        );
+        // Announcement notifications are disabled with the announcements feature.
     }
 
     private function upsertNotification(
@@ -954,16 +1004,6 @@ class DemoDataSeeder extends Seeder
             ],
         );
 
-        SyncStatus::updateOrCreate(
-            ['scope' => 'announcements'],
-            [
-                'last_synced_by' => $this->users['riverside_admin']->id,
-                'last_synced_at' => now()->subDay(),
-                'last_processed' => 4,
-                'last_failed' => 0,
-            ],
-        );
-
         $pendingRecord = VaccinationRecord::query()
             ->where('child_profile_id', $this->children['liam_santos']->id)
             ->where('verification_status', 'pending')
@@ -987,29 +1027,6 @@ class DemoDataSeeder extends Seeder
                     'synced_at' => null,
                     'last_error' => 'Awaiting intermittent connectivity from mobile device.',
                     'attempts' => 2,
-                ],
-            );
-        }
-
-        $announcement = ClinicAnnouncement::query()->where('title', 'Saturday well-baby clinic')->first();
-
-        if ($announcement !== null) {
-            OfflineSyncOutbox::updateOrCreate(
-                [
-                    'model_type' => ClinicAnnouncement::class,
-                    'model_sync_uuid' => $announcement->sync_uuid,
-                    'operation' => 'upsert',
-                ],
-                [
-                    'payload' => [
-                        'sync_uuid' => $announcement->sync_uuid,
-                        'title' => $announcement->title,
-                        'active' => $announcement->active,
-                    ],
-                    'queued_at' => now()->subDays(1),
-                    'synced_at' => now()->subHours(20),
-                    'last_error' => null,
-                    'attempts' => 1,
                 ],
             );
         }
