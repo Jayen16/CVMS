@@ -32,6 +32,8 @@ class VaccineInventoryTransaction extends Model
         'transaction_date',
         'reference_number',
         'notes',
+        'sync_uuid',
+        'sync_version',
     ];
 
     protected function casts(): array
@@ -40,7 +42,16 @@ class VaccineInventoryTransaction extends Model
             'quantity' => 'integer',
             'expiry_date' => 'date',
             'transaction_date' => 'date',
+            'sync_version' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $transaction): void {
+            $transaction->sync_uuid ??= (string) \Illuminate\Support\Str::uuid();
+            $transaction->sync_version ??= 1;
+        });
     }
 
     public function barangay(): BelongsTo

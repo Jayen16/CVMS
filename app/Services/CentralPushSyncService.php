@@ -23,7 +23,7 @@ class CentralPushSyncService
         $accepted = [];
         DB::transaction(function () use ($events, $connection, &$accepted): void {
             foreach ($events as $event) {
-                if (! in_array($event['entity'], ['facility_staff', 'children', 'immunization_records'], true)) {
+                if (! in_array($event['entity'], ['facility_staff', 'children', 'immunization_records', 'guardians', 'child_guardian_relationships', 'inventory_transactions', 'appointments', 'audit_events', 'notification_requests'], true)) {
                     abort(422, 'Unsupported synchronization entity.');
                 }
 
@@ -37,6 +37,12 @@ class CentralPushSyncService
                     'facility_staff' => $this->applyStaff($connection->facility_id, $event),
                     'children' => $this->applyChild($connection->facility_id, $event),
                     'immunization_records' => $this->applyImmunization($connection->facility_id, $event),
+                    'guardians' => $this->applyGuardian($connection->facility_id, $event),
+                    'child_guardian_relationships' => $this->applyRelationship($connection->facility_id, $event),
+                    'inventory_transactions' => $this->applyInventoryTransaction($connection->facility_id, $event),
+                    'appointments' => $this->applyAppointment($connection->facility_id, $event),
+                    'audit_events' => $this->applyAuditEvent($connection->facility_id, $event),
+                    'notification_requests' => $this->applyNotificationRequest($connection->facility_id, $event),
                 };
 
                 DB::table('sync_processed_events')->insert([
@@ -127,6 +133,76 @@ class CentralPushSyncService
             'recorded_by_name' => $data['recorded_by_name'], 'recorded_by_role' => $data['recorded_by_role'], 'sync_version' => $event['version'],
         ])->saveQuietly();
 
+        return true;
+    }
+
+    private function applyGuardian(string $facilityId, array $event): bool
+    {
+        $data = $event['data'];
+        if ($event['operation'] === 'deleted') return false;
+        DB::table('facility_guardians')->updateOrInsert(['facility_id' => $facilityId, 'guardian_uuid' => $event['record_uuid']], [
+            'id' => (string) Str::uuid(), 'name' => $data['name'], 'email' => $data['email'] ?? null, 'phone' => $data['phone'] ?? null,
+            'active' => $data['active'] ?? true, 'sync_version' => $event['version'], 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        return true;
+    }
+
+    private function applyRelationship(string $facilityId, array $event): bool
+    {
+        $data = $event['data'];
+        $where = ['facility_id' => $facilityId, 'child_uuid' => $data['child_uuid'], 'guardian_uuid' => $data['guardian_uuid']];
+        if ($event['operation'] === 'deleted') return DB::table('facility_child_guardians')->where($where)->delete() > 0;
+        DB::table('facility_child_guardians')->updateOrInsert($where, ['id' => (string) Str::uuid(), 'relationship' => $data['relationship'], 'sync_version' => $event['version'], 'created_at' => now(), 'updated_at' => now()]);
+        return true;
+    }
+
+    private function applyInventoryTransaction(string $facilityId, array $event): bool
+    {
+        if ($event['operation'] === 'deleted') return false;
+        $data = $event['data'];
+        DB::table('facility_inventory_transactions')->updateOrInsert(['facility_id' => $facilityId, 'transaction_uuid' => $event['record_uuid']], [
+            'id' => (string) Str::uuid(), 'barangay_name' => $data['barangay_name'] ?? null, 'vaccine_code' => $data['vaccine_code'] ?? null,
+            'item_code' => $data['item_code'] ?? null, 'batch_number' => $data['batch_number'] ?? null, 'expiry_date' => $data['expiry_date'] ?? null,
+            'transaction_type' => $data['transaction_type'], 'movement' => $data['movement'], 'quantity' => $data['quantity'], 'transaction_date' => $data['transaction_date'],
+            'reference_number' => $data['reference_number'] ?? null, 'recorded_by_uuid' => $data['recorded_by_uuid'] ?? null, 'recorded_by_name' => $data['recorded_by_name'] ?? null,
+            'recorded_by_role' => $data['recorded_by_role'] ?? null, 'notes' => $data['notes'] ?? null, 'sync_version' => $event['version'], 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        return true;
+    }
+
+    private function applyAppointment(string $facilityId, array $event): bool
+    {
+        if ($event['operation'] === 'deleted') return false;
+        $data = $event['data'];
+        $childId = ChildProfile::withoutGlobalScopes()->where('sync_uuid', $data['child_uuid'])->value('id');
+        $vaccineId = $data['vaccine_code'] ? VaccineType::where('code', $data['vaccine_code'])->value('id') : null;
+        abort_unless($childId, 422, 'Appointment child dependency is missing.');
+        DB::table('child_appointments')->updateOrInsert(['id' => $event['record_uuid']], [
+            'child_profile_id' => $childId, 'vaccine_type_id' => $vaccineId, 'facility_uuid' => $facilityId, 'scheduled_for' => $data['scheduled_for'],
+            'status' => $data['status'], 'notes' => $data['notes'] ?? null, 'created_by' => null, 'created_by_name' => $data['created_by_name'] ?? null,
+            'created_by_role' => $data['created_by_role'] ?? null, 'sync_version' => $event['version'], 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        return true;
+    }
+
+    private function applyAuditEvent(string $facilityId, array $event): bool
+    {
+        $data = $event['data'];
+        DB::table('facility_audit_events')->updateOrInsert(['facility_id' => $facilityId, 'event_uuid' => $event['record_uuid']], [
+            'id' => (string) Str::uuid(), 'event' => $data['event'], 'auditable_type' => $data['auditable_type'], 'auditable_id' => $data['auditable_id'] ?? null,
+            'description' => $data['description'], 'old_values' => json_encode($data['old_values'] ?? []), 'new_values' => json_encode($data['new_values'] ?? []),
+            'actor_uuid' => $data['actor_uuid'] ?? null, 'actor_name' => $data['actor_name'] ?? null, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        return true;
+    }
+
+    private function applyNotificationRequest(string $facilityId, array $event): bool
+    {
+        $data = $event['data'];
+        DB::table('facility_notification_requests')->updateOrInsert(['facility_id' => $facilityId, 'notification_uuid' => $event['record_uuid']], [
+            'id' => (string) Str::uuid(), 'recipient_uuid' => $data['recipient_uuid'], 'notification_type' => $data['notification_type'],
+            'payload' => json_encode($data['payload'] ?? []), 'created_at' => now(), 'updated_at' => now(),
+        ]);
         return true;
     }
 

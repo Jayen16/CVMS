@@ -3,9 +3,14 @@
 namespace App\Services;
 
 use App\Models\ChildProfile;
+use App\Models\ChildAppointment;
+use App\Models\FacilityChildGuardian;
+use App\Models\FacilityGuardian;
 use App\Models\OfflineSyncOutbox;
 use App\Models\User;
 use App\Models\VaccinationRecord;
+use App\Models\VaccineInventoryTransaction;
+use App\Models\AuditLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -28,6 +33,9 @@ class OfflineSyncService
         $entity = match ($model::class) {
             ChildProfile::class => 'children',
             VaccinationRecord::class => 'immunization_records',
+            VaccineInventoryTransaction::class => 'inventory_transactions',
+            ChildAppointment::class => 'appointments',
+            AuditLog::class => 'audit_events',
             default => 'unsupported',
         };
 
@@ -53,6 +61,8 @@ class OfflineSyncService
         $entity = match ($model::class) {
             ChildProfile::class => 'children',
             VaccinationRecord::class => 'immunization_records',
+            VaccineInventoryTransaction::class => 'inventory_transactions',
+            ChildAppointment::class => 'appointments',
             default => 'unsupported',
         };
 
@@ -84,6 +94,55 @@ class OfflineSyncService
         OfflineSyncOutbox::create([
             'event_uuid' => (string) Str::uuid(), 'entity' => 'facility_staff', 'model_type' => User::class,
             'model_sync_uuid' => $user->id, 'operation' => 'updated', 'version' => 1, 'status' => 'pending',
+            'payload' => $payload, 'queued_at' => now(),
+        ]);
+    }
+
+    public function queueGuardian(User $user): void
+    {
+        if (! $this->shouldQueue() || ! $user->isParent()) return;
+        $this->queueEvent('guardians', $user->id, User::class, 'updated', [
+            'guardian_uuid' => $user->id, 'name' => $user->name, 'email' => $user->email, 'phone' => $user->phone, 'active' => (bool) $user->is_active,
+        ]);
+    }
+
+    public function queueRelationship(ChildProfile $child, User $parent, string $relationship, string $operation = 'updated'): void
+    {
+        if (! $this->shouldQueue()) return;
+        $this->queueEvent('child_guardian_relationships', $child->sync_uuid.'|'.$parent->id, ChildProfile::class, $operation, [
+            'child_uuid' => $child->sync_uuid, 'guardian_uuid' => $parent->id, 'relationship' => $relationship,
+        ]);
+    }
+
+    public function queueAudit(AuditLog $audit): void
+    {
+        if (! $this->shouldQueue() || ! in_array($audit->event, ['created', 'updated', 'deleted', 'verified', 'rejected', 'archived'], true)) return;
+        $this->queueEvent('audit_events', $audit->id, AuditLog::class, 'created', [
+            'event' => $audit->event, 'auditable_type' => $audit->auditable_type, 'auditable_id' => $audit->auditable_id,
+            'description' => $audit->description, 'old_values' => $audit->old_values, 'new_values' => $this->redact($audit->new_values ?? []),
+            'actor_uuid' => $audit->user_id, 'actor_name' => $audit->user?->name,
+        ]);
+    }
+
+    public function queueNotification(User $recipient, array $payload): void
+    {
+        if (! $this->shouldQueue()) return;
+        $this->queueEvent('notification_requests', (string) Str::uuid(), User::class, 'created', [
+            'recipient_uuid' => $recipient->id, 'notification_type' => 'in_app', 'payload' => $payload,
+        ]);
+    }
+
+    private function redact(array $values): array
+    {
+        foreach (['password', 'password_confirmation', 'remember_token', 'token'] as $key) unset($values[$key]);
+        return $values;
+    }
+
+    private function queueEvent(string $entity, string $recordUuid, string $modelType, string $operation, array $payload): void
+    {
+        OfflineSyncOutbox::create([
+            'event_uuid' => (string) Str::uuid(), 'entity' => $entity, 'model_type' => $modelType,
+            'model_sync_uuid' => $recordUuid, 'operation' => $operation, 'version' => 1, 'status' => 'pending',
             'payload' => $payload, 'queued_at' => now(),
         ]);
     }
@@ -137,6 +196,21 @@ class OfflineSyncService
                 'recorded_by_role' => $model->recorded_by_role ?: $model->recorder?->role,
                 'version' => (int) ($model->sync_version ?: 1),
                 'updated_at' => $model->updated_at?->toIso8601String(),
+            ],
+            VaccineInventoryTransaction::class => [
+                'sync_uuid' => $model->sync_uuid, 'barangay_name' => $model->barangay?->name,
+                'vaccine_code' => $model->vaccineType?->code, 'item_code' => $model->inventoryItem?->item_code,
+                'batch_number' => $model->batch_number, 'expiry_date' => $model->expiry_date?->toDateString(),
+                'transaction_type' => $model->transaction_type, 'movement' => $model->movement, 'quantity' => $model->quantity,
+                'transaction_date' => $model->transaction_date?->toDateString(), 'reference_number' => $model->reference_number,
+                'recorded_by_uuid' => $model->recorded_by, 'recorded_by_name' => $model->recorder?->name,
+                'recorded_by_role' => $model->recorder?->role, 'notes' => $model->notes, 'version' => (int) ($model->sync_version ?: 1),
+            ],
+            ChildAppointment::class => [
+                'child_uuid' => $model->child?->sync_uuid, 'vaccine_code' => $model->vaccineType?->code,
+                'scheduled_for' => $model->scheduled_for?->toIso8601String(), 'status' => $model->status, 'notes' => $model->notes,
+                'created_by_uuid' => $model->created_by, 'created_by_name' => $model->created_by_name, 'created_by_role' => $model->created_by_role,
+                'version' => (int) ($model->sync_version ?: 1),
             ],
             default => ['sync_uuid' => $model->sync_uuid],
         };

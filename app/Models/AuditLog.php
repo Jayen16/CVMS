@@ -30,7 +30,7 @@ class AuditLog extends Model
     {
         $request = app()->bound('request') ? request() : null;
 
-        self::query()->create([
+        $audit = self::query()->create([
             'user_id' => auth()->id(),
             'event' => $event,
             'auditable_type' => $target?->getMorphClass() ?? self::class,
@@ -42,6 +42,7 @@ class AuditLog extends Model
             'ip_address' => $request?->ip(),
             'user_agent' => $request?->userAgent(),
         ]);
+        app(\App\Services\OfflineSyncService::class)->queueAudit($audit);
     }
 
     /** @return BelongsTo<User, $this> */

@@ -6,6 +6,7 @@ use App\Models\ClinicAnnouncement;
 use App\Models\FacilityConnection;
 use App\Models\VaccineSchedule;
 use App\Models\VaccineType;
+use App\Models\ParentChangeRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -61,6 +62,11 @@ class CentralSyncService
                 'municipality_code' => $announcement->municipality?->code,
                 'barangay_name' => $announcement->barangay?->name,
                 'updated_at' => $announcement->updated_at?->toIso8601String(),
+            ]),
+            'parent_change_requests' => $this->serializeModels(ParentChangeRequest::query()->where('facility_id', $connection->facility_id)->when($after, fn (Builder $query) => $query->where('updated_at', '>', $after))->orderBy('updated_at')->get(), fn (ParentChangeRequest $request): array => [
+                'uuid' => (string) $request->request_uuid, 'child_uuid' => (string) $request->child_uuid, 'parent_uuid' => $request->parent_uuid,
+                'request_type' => $request->request_type, 'requested_data' => $request->requested_data, 'status' => $request->status,
+                'reviewer_name' => $request->reviewer_name, 'reviewer_note' => $request->reviewer_note, 'updated_at' => $request->updated_at?->toIso8601String(),
             ]),
         ];
 

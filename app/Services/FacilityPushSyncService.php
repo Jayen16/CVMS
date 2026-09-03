@@ -19,7 +19,7 @@ class FacilityPushSyncService
 
         $rows = OfflineSyncOutbox::query()
             ->whereIn('status', ['pending', 'failed'])
-            ->whereIn('entity', ['children', 'immunization_records'])
+            ->whereIn('entity', ['facility_staff', 'children', 'immunization_records', 'guardians', 'child_guardian_relationships', 'inventory_transactions', 'appointments', 'audit_events', 'notification_requests'])
             ->orderBy('queued_at')
             ->limit(50)
             ->get();

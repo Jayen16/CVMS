@@ -258,7 +258,8 @@ class VaccineInventoryController extends Controller
             }
         }
 
-        DB::transaction(function () use (&$validated, $user): void {
+        $transaction = null;
+        DB::transaction(function () use (&$validated, $user, &$transaction): void {
             if ($validated['transaction_type'] === 'receipt') {
                 $item = VaccineInventoryItem::create([
                     'item_code' => 'INV-'.now()->format('Ymd').'-'.strtoupper(Str::random(6)),
@@ -273,11 +274,12 @@ class VaccineInventoryController extends Controller
                 $validated['vaccine_inventory_item_id'] = $item->id;
             }
 
-            VaccineInventoryTransaction::create([
+            $transaction = VaccineInventoryTransaction::create([
                 ...$validated,
                 'recorded_by' => $user->id,
             ]);
         });
+        app(\App\Services\OfflineSyncService::class)->queueUpsert($transaction);
 
         return to_route('vaccine-inventory.index', ['barangay' => $user->isSuperAdmin() ? $validated['barangay_id'] : null])
             ->with('status', 'Inventory transaction recorded.');
@@ -303,7 +305,8 @@ class VaccineInventoryController extends Controller
             abort(403);
         }
 
-        DB::transaction(function () use ($validated, $user): void {
+        $transactions = [];
+        DB::transaction(function () use ($validated, $user, &$transactions): void {
             foreach ($validated['stocks'] as $stock) {
                 $item = VaccineInventoryItem::create([
                     'item_code' => 'INV-'.now()->format('Ymd').'-'.strtoupper(Str::random(6)),
@@ -316,7 +319,7 @@ class VaccineInventoryController extends Controller
                     'notes' => $stock['notes'] ?? null,
                 ]);
 
-                VaccineInventoryTransaction::create([
+                $transactions[] = VaccineInventoryTransaction::create([
                     'barangay_id' => $validated['barangay_id'],
                     'vaccine_type_id' => $stock['vaccine_type_id'],
                     'vaccine_inventory_item_id' => $item->id,
@@ -332,6 +335,7 @@ class VaccineInventoryController extends Controller
                 ]);
             }
         });
+        foreach ($transactions as $transaction) app(\App\Services\OfflineSyncService::class)->queueUpsert($transaction);
 
         return to_route('vaccine-inventory.index', ['barangay' => $user->isSuperAdmin() ? $validated['barangay_id'] : null])
             ->with('status', count($validated['stocks']).' stock item(s) saved.');
