@@ -83,10 +83,7 @@ class SyncDataPage extends Component
     public function render(): View
     {
         $user = auth()->user();
-        abort_unless(
-            $user->isSuperAdmin() || $user->isBarangayAdmin() || $user->isNurse(),
-            403
-        );
+        abort_unless($user->isAdmin(), 403);
 
         $latestStatus = SyncStatus::query()
             ->with('user')
@@ -137,14 +134,16 @@ class SyncDataPage extends Component
             $barangayIds = $barangayIds->intersect([$this->barangayId])->values();
         }
 
-        $allLocations = ! $regionSelected && $this->barangayId === 'all';
+        $allLocations = $user->isSuperAdmin() && ! $regionSelected && $this->barangayId === 'all';
         $syncUuids = $allLocations ? [] : $this->syncUuidsForBarangays($barangayIds);
 
         return [
             'regions' => $user->isSuperAdmin() ? Region::orderBy('name')->get() : collect(),
             'provinces' => $user->isSuperAdmin() && $regionSelected ? Province::where('region_id', $this->regionId)->orderBy('name')->get() : collect(),
             'municipalities' => $user->isSuperAdmin() && $provinceSelected ? Municipality::where('province_id', $this->provinceId)->orderBy('name')->get() : collect(),
-            'barangays' => $user->isSuperAdmin() && $municipalitySelected ? Barangay::whereIn('id', $barangayIds)->orderBy('name')->get() : collect(),
+            'barangays' => $user->isMunicipalAdmin()
+                ? Barangay::whereIn('id', $accessibleIds)->orderBy('name')->get()
+                : ($user->isSuperAdmin() && $municipalitySelected ? Barangay::whereIn('id', $barangayIds)->orderBy('name')->get() : collect()),
             'regionFilter' => $this->regionId,
             'provinceFilter' => $this->provinceId,
             'municipalityFilter' => $this->municipalityId,
