@@ -13,6 +13,7 @@ use App\Models\Region;
 use App\Models\SyncStatus;
 use App\Models\VaccinationRecord;
 use App\Models\User;
+use App\Models\SystemInstallation;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -89,6 +90,9 @@ class SyncDataPage extends Component
             ->with('user')
             ->where('scope', 'global')
             ->first();
+        $installation = config('system.instance_type') === 'facility'
+            ? SystemInstallation::query()->latest('created_at')->first()
+            : null;
 
         $locationData = $this->locationData($user);
         $rowsQuery = $this->locationScopedQuery(OfflineSyncOutbox::query(), $locationData['barangayIds'], $locationData['syncUuids'])
@@ -96,6 +100,7 @@ class SyncDataPage extends Component
 
         return view('livewire.sync-data-page', [
             'latestStatus' => $latestStatus,
+            'installation' => $installation,
             'pendingCount' => config('offline.enabled')
                 ? (clone $rowsQuery)->whereNull('synced_at')->count()
                 : 0,

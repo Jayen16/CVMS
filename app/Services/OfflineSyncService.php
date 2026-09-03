@@ -226,6 +226,12 @@ class OfflineSyncService
         } catch (\Throwable $exception) {
             report($exception);
 
+            if ($exception instanceof \Illuminate\Http\Client\RequestException
+                && in_array($exception->response?->status(), [401, 403], true)
+                && config('system.instance_type') === 'facility') {
+                app(FacilityActivationService::class)->localInstallation()->update(['status' => 'suspended']);
+            }
+
             return ['processed' => 0, 'failed' => 1];
         }
     }
