@@ -12,7 +12,6 @@
             archiveOpen: false,
             archiveAction: '',
             archiveName: @js($child->full_name),
-            transferOpen: false,
             showConfirmModal(actionLabel, message, form) {
                 this.confirmActionLabel = actionLabel;
                 this.confirmMessage = message;
@@ -156,47 +155,17 @@
                 $availableTabs = auth()->user()->canManageChildren()
                     ? ['vaccination' => 'Record vaccination', 'parents' => 'Linked parents']
                     : [];
-                if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin()) {
-                    $availableTabs['transfer'] = 'Transfer child';
-                }
                 $activeTab = array_key_first($availableTabs);
 
                 if ($errors->hasAny(['name', 'email', 'phone', 'relationship'])) {
                     $activeTab = 'parents';
                 } elseif ($errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'vaccine_inventory_item_id', 'remarks'])) {
                     $activeTab = 'vaccination';
-                } elseif ((auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin()) && $errors->has('barangay_id')) {
-                    $activeTab = 'transfer';
                 }
             @endphp
         @endif
 
         <div class="grid gap-6">
-        @if ($child->transferHistory->isNotEmpty())
-            <section class="app-card">
-                <div class="app-card-header">
-                    <div>
-                        <p class="eyebrow">Child Records</p>
-                        <h2 class="app-card-title">Barangay transfer history</h2>
-                    </div>
-                </div>
-                <div class="divide-y divide-slate-100 dark:divide-zinc-800">
-                    @foreach ($child->transferHistory->sortByDesc('transferred_at') as $transfer)
-                        <div class="px-5 py-4">
-                            <p class="font-medium">{{ $transfer->from_barangay_name }} → {{ $transfer->to_barangay_name }}</p>
-                            <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">
-                                {{ $transfer->transferred_at->format('M d, Y g:i A') }}
-                                · Processed by {{ $transfer->transferred_by_name ?? 'System' }}
-                            </p>
-                            @if ($transfer->reason)
-                                <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Reason: {{ $transfer->reason }}</p>
-                            @endif
-                        </div>
-                    @endforeach
-                </div>
-            </section>
-        @endif
-
         <section
                 class="app-card {{ auth()->user()->isParent() ? 'order-2' : '' }} {{ auth()->user()->canManageChildren() && $activeTab !== 'vaccination' ? 'hidden' : '' }}"
                 @if (auth()->user()->canManageChildren()) data-tab-panel="vaccination" @endif
@@ -568,53 +537,11 @@
                         </section>
                         @endif
 
-                        @if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin())
-                            <section class="app-panel {{ $activeTab === 'transfer' ? '' : 'hidden' }}" data-tab-panel="transfer">
-                                <div class="flex flex-wrap items-center justify-between gap-4">
-                                    <div>
-                                        <h2 class="app-card-title">Transfer child to another clinic</h2>
-                                        <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Move this child’s record to a different barangay clinic.</p>
-                                    </div>
-                                    <button type="button" class="app-button-secondary shrink-0" @click="transferOpen = true">Transfer child</button>
-                                </div>
-                            </section>
-                        @endif
                     </section>
                 @endif
             </div>
         </div>
 
-        @if (auth()->user()->isBarangayAdmin() || auth()->user()->isSuperAdmin())
-            <div
-                x-cloak
-                x-show="transferOpen"
-                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="transfer-child-title"
-                @keydown.escape.window="transferOpen = false"
-            >
-                <div class="app-panel w-full max-w-md" @click.outside="transferOpen = false">
-                    <p class="eyebrow">Child Records</p>
-                    <h2 id="transfer-child-title" class="app-card-title mt-1">Transfer child</h2>
-                    <p class="mt-2 text-sm text-slate-600 dark:text-zinc-300">Select the barangay clinic where this child should be registered.</p>
-                    <form method="POST" action="{{ route('children.transfer', $child) }}" class="mt-5 grid gap-4">
-                        @csrf
-                        <x-form-field
-                            label="New barangay"
-                            name="barangay_id"
-                            type="select"
-                            :options="\App\Models\Barangay::orderBy('name')->pluck('name', 'id')"
-                            :value="$child->barangay_id"
-                        />
-                        <div class="flex justify-end gap-2">
-                            <button type="button" class="app-button-secondary" @click="transferOpen = false">Cancel</button>
-                            <button class="app-button-primary">Transfer child</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        @endif
         <form method="POST" x-ref="verificationForm" class="hidden">
             @csrf
         </form>
