@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\RequireUnactivatedInstallation;
+use App\Http\Middleware\RequireParentPrivacyAcknowledgment;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,7 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->alias(['unactivated.installation' => RequireUnactivatedInstallation::class]);
+        $middleware->alias([
+            'unactivated.installation' => RequireUnactivatedInstallation::class,
+            'parent.privacy' => RequireParentPrivacyAcknowledgment::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

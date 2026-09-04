@@ -18,6 +18,7 @@ use App\Http\Controllers\MunicipalAdminController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NurseController;
 use App\Http\Controllers\PopulationBackgroundController;
+use App\Http\Controllers\PrivacyAcknowledgmentController;
 use App\Http\Controllers\PhonePasswordResetController;
 use App\Http\Controllers\VaccinationRecordController;
 use App\Http\Controllers\VaccineCardController;
@@ -83,7 +84,12 @@ Route::get('reset-password/phone/{token}', [PhonePasswordResetController::class,
 Route::post('reset-password/phone/{token}', [PhonePasswordResetController::class, 'resetLink'])->middleware('throttle:10,1')->name('password.phone.link.reset');
 Route::post('users/{user}/password-link', [PhonePasswordResetController::class, 'sendStaffLink'])->middleware('auth')->name('users.password-link');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function (): void {
+    Route::get('privacy-acknowledgment', [PrivacyAcknowledgmentController::class, 'show'])->name('privacy.acknowledgment');
+    Route::post('privacy-acknowledgment', [PrivacyAcknowledgmentController::class, 'store'])->name('privacy.acknowledgment.store');
+});
+
+Route::middleware(['auth', 'verified', 'parent.privacy'])->group(function () {
     Route::get('dashboard', DashboardPage::class)->name('dashboard');
     Route::get('children', ChildrenIndexPage::class)->name('children.index');
     Route::get('children/archive', [ChildProfileController::class, 'archiveIndex'])->name('children.archive.index');
