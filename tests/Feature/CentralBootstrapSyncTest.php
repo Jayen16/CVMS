@@ -55,6 +55,7 @@ class CentralBootstrapSyncTest extends TestCase
         $vaccineUuid = (string) Str::uuid();
         $scheduleUuid = (string) Str::uuid();
         $announcementUuid = (string) Str::uuid();
+        $localVaccine = VaccineType::create(['code' => 'SYNC-PENTA', 'name' => 'Local Penta', 'active' => true]);
         Http::fake([
             'https://central.test/oauth/token' => Http::response(['access_token' => 'token']),
             'https://central.test/api/v1/sync/pull*' => Http::response([
@@ -70,8 +71,8 @@ class CentralBootstrapSyncTest extends TestCase
         $result = app(FacilityPullSyncService::class)->synchronize();
 
         $this->assertSame(3, $result['processed']);
-        $this->assertDatabaseHas('vaccine_types', ['id' => $vaccineUuid, 'code' => 'SYNC-PENTA']);
-        $this->assertDatabaseHas('vaccine_schedules', ['id' => $scheduleUuid, 'vaccine_type_id' => $vaccineUuid]);
+        $this->assertDatabaseHas('vaccine_types', ['id' => $localVaccine->id, 'code' => 'SYNC-PENTA', 'name' => 'Sync Penta']);
+        $this->assertDatabaseHas('vaccine_schedules', ['id' => $scheduleUuid, 'vaccine_type_id' => $localVaccine->id]);
         $this->assertDatabaseHas('clinic_announcements', ['sync_uuid' => $announcementUuid, 'created_by' => null]);
         $this->assertSame('2026-09-02T12:00:00+00:00', $installation->fresh()->pull_cursor);
     }
