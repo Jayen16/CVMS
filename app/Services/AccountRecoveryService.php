@@ -23,7 +23,11 @@ class AccountRecoveryService
         abort_if(blank($user->phone), 422, 'This account has no registered phone number.');
         $token = Str::random(64);
         Cache::put('password-reset-link:'.hash('sha256', $token), ['user_id' => $user->id], now()->addHour());
-        $url = rtrim((string) config('app.public_url'), '/').route('password.phone.link', ['token' => $token], false);
+        $baseUrl = app()->environment('local')
+            || (config('system.instance_type') === 'facility' && config('offline.enabled'))
+            ? config('app.url')
+            : config('app.public_url');
+        $url = rtrim((string) $baseUrl, '/').route('password.phone.link', ['token' => $token], false);
         app(SmsGatewayFactory::class)->make()->send($user->phone, "CVMS password reset link: {$url} This link expires in 1 hour.");
         return 'sms';
     }

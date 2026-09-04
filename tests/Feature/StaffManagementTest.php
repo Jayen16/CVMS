@@ -69,6 +69,7 @@ test('municipal admins cannot create nurses, but barangay admins can', function 
         ->post(route('nurses.store'), [
             'name' => 'New Nurse',
             'email' => 'nurse@example.com',
+            'phone' => '09171234567',
         ])
         ->assertRedirect();
 

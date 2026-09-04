@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Facility;
 use App\Models\FacilityActivationCode;
+use App\Models\Barangay;
+use App\Models\SystemInstallation;
+use App\Models\User;
 use App\Services\FacilityActivationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -96,5 +99,27 @@ class FacilityActivationTest extends TestCase
         $this->assertDatabaseHas('facility_connections', ['facility_id' => $facility->id, 'status' => 'revoked']);
         $this->assertDatabaseHas('oauth_clients', ['id' => $result['passport_client_id'], 'revoked' => true]);
         $this->assertSame(0, $service->revokeFacilityConnections($facility));
+    }
+
+    public function test_activated_facility_can_create_its_first_barangay_admin(): void
+    {
+        $barangay = Barangay::create(['name' => 'Barangay One']);
+        SystemInstallation::create(['instance_uuid' => (string) Str::uuid(), 'facility_name' => 'Barangay One', 'status' => 'active']);
+
+        $response = $this->post(route('facility.setup.store'), [
+            'name' => 'Barangay Administrator', 'email' => 'admin@example.com', 'password' => 'Password123!', 'password_confirmation' => 'Password123!',
+        ]);
+
+        $response->assertRedirect(route('home'));
+        $this->assertDatabaseHas('users', ['email' => 'admin@example.com', 'role' => 'barangay_admin', 'barangay_id' => $barangay->id]);
+    }
+
+    public function test_setup_is_skipped_when_barangay_admin_already_exists(): void
+    {
+        $barangay = Barangay::create(['name' => 'Barangay Two']);
+        SystemInstallation::create(['instance_uuid' => (string) Str::uuid(), 'facility_name' => 'Barangay Two', 'status' => 'active']);
+        User::factory()->create(['role' => 'barangay_admin', 'roles' => ['barangay_admin'], 'barangay_id' => $barangay->id]);
+
+        $this->get(route('facility.setup'))->assertRedirect(route('home'));
     }
 }

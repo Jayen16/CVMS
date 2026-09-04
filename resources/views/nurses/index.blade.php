@@ -200,7 +200,7 @@
                         <p class="text-sm text-slate-600 dark:text-zinc-300">{{ $managedRole === 'barangay_admin' ? 'The Barangay Admin receives an email link to set their password. They can manage nurses for their assigned barangay.' : 'The nurse receives an email link to set their password. Until then, the account stays pending.' }}</p>
                         <x-form-field label="Name" name="name" />
                         <x-form-field label="Email" name="email" type="email" />
-                        <x-form-field label="Phone number (optional)" name="phone" type="tel" />
+                        <x-form-field label="Phone number" name="phone" type="tel" />
                         @if ($managedRole === 'barangay_admin')
                             <x-form-field label="Existing barangay" name="barangay_id" type="select" :options="$barangays->pluck('name', 'id')" />
                             <x-form-field label="Or new barangay" name="barangay_name" />
