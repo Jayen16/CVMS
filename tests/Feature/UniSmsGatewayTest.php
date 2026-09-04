@@ -39,3 +39,29 @@ test('UniSMS gateway fails clearly when configuration is incomplete', function (
     expect(fn () => app(SmsGatewayFactory::class)->make()->send('+639171234567', 'Test'))
         ->toThrow(RuntimeException::class, 'UniSMS is not configured');
 });
+
+test('UniSMS webhook accepts an authenticated status callback without logging message content', function () {
+    config(['reminders.sms.unisms.webhook_secret_key' => 'wh_test_secret']);
+
+    $response = $this->withHeader('webhook-secret-key', 'wh_test_secret')->postJson('/api/webhooks/unisms', [
+        'event' => 'message.failed',
+        'id' => 'msg_test',
+        'message' => [
+            'status' => 'failed',
+            'reference_id' => 'msg_test',
+            'recipient' => '+639171234567',
+            'fail_reason' => 'Unacceptable content',
+            'content' => 'secret OTP content',
+        ],
+    ]);
+
+    $response->assertOk()->assertJson(['received' => true]);
+});
+
+test('UniSMS webhook rejects an invalid secret', function () {
+    config(['reminders.sms.unisms.webhook_secret_key' => 'wh_test_secret']);
+
+    $this->withHeader('webhook-secret-key', 'wrong')->postJson('/api/webhooks/unisms', [
+        'event' => 'message.sent',
+    ])->assertUnauthorized();
+});
