@@ -47,6 +47,11 @@ class Barangay extends Model
         return $this->hasMany(ChildProfile::class);
     }
 
+    public function facilities(): HasMany
+    {
+        return $this->hasMany(Facility::class);
+    }
+
     /** @return HasManyThrough<VaccinationRecord, ChildProfile, $this> */
     public function vaccinations(): HasManyThrough
     {

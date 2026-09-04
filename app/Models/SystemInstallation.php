@@ -10,7 +10,7 @@ class SystemInstallation extends Model
 {
     use UsesUuidPrimaryKey;
 
-    protected $fillable = ['instance_uuid', 'facility_id', 'facility_code', 'facility_name', 'central_url', 'passport_client_id', 'passport_client_secret', 'status', 'activated_at', 'last_synchronized_at', 'pull_cursor', 'revoked_at'];
+    protected $fillable = ['instance_uuid', 'facility_id', 'facility_code', 'facility_name', 'barangay_id', 'central_url', 'passport_client_id', 'passport_client_secret', 'status', 'activated_at', 'last_synchronized_at', 'pull_cursor', 'revoked_at'];
 
     protected $hidden = ['passport_client_secret'];
 

@@ -56,6 +56,7 @@ if (config('system.instance_type') === 'facility') {
     Route::middleware(['auth', 'verified'])->group(function (): void {
         Route::get('central/facilities', [FacilityActivationController::class, 'facilities'])->name('central.facilities.index');
         Route::post('central/facilities', [FacilityActivationController::class, 'storeFacility'])->name('central.facilities.store');
+        Route::patch('central/facilities/{facility}', [FacilityActivationController::class, 'updateFacility'])->name('central.facilities.update');
         Route::post('central/facilities/{facility}/activation-code', [FacilityActivationController::class, 'issueCode'])->name('central.facilities.issue-code');
         Route::post('central/facilities/{facility}/revoke-connections', [FacilityActivationController::class, 'revokeConnections'])->name('central.facilities.revoke-connections');
     });

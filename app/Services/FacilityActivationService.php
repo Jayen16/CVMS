@@ -5,6 +5,10 @@ namespace App\Services;
 use App\Models\Facility;
 use App\Models\FacilityActivationCode;
 use App\Models\FacilityConnection;
+use App\Models\Barangay;
+use App\Models\Municipality;
+use App\Models\Province;
+use App\Models\Region;
 use App\Models\SystemInstallation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -34,14 +38,14 @@ class FacilityActivationService
         return $code;
     }
 
-    /** @return array<string, string> */
+    /** @return array<string, mixed> */
     public function activateCentral(string $code, string $instanceUuid, string $instanceName): array
     {
         return DB::transaction(function () use ($code, $instanceUuid, $instanceName): array {
             $activation = FacilityActivationCode::query()
                 ->whereNull('used_at')
                 ->where('expires_at', '>', now())
-                ->with('facility')
+                ->with('facility.barangay.municipalityRelation.province.region')
                 ->get()
                 ->first(fn (FacilityActivationCode $candidate): bool => Hash::check($code, $candidate->code_hash));
 
@@ -61,6 +65,7 @@ class FacilityActivationService
                 'facility_uuid' => (string) $activation->facility_id,
                 'facility_code' => $activation->facility->code,
                 'facility_name' => $activation->facility->name,
+                'location' => $this->locationPayload($activation->facility->barangay),
                 'passport_client_id' => (string) $client->getKey(),
                 'passport_client_secret' => (string) $client->plainSecret,
             ];
@@ -77,14 +82,43 @@ class FacilityActivationService
         ]);
         $response->throw();
         $data = $response->json('data');
+        $barangay = $this->storeLocalLocation($data['location'] ?? null);
 
         $installation->update([
-            'facility_id' => $data['facility_uuid'], 'facility_code' => $data['facility_code'], 'facility_name' => $data['facility_name'],
+            'facility_id' => $data['facility_uuid'], 'facility_code' => $data['facility_code'], 'facility_name' => $data['facility_name'], 'barangay_id' => $barangay?->id,
             'central_url' => rtrim($centralUrl, '/'), 'passport_client_id' => $data['passport_client_id'],
             'passport_client_secret' => $data['passport_client_secret'], 'status' => 'active', 'activated_at' => now(),
         ]);
 
         return $installation->fresh();
+    }
+
+    /** @return array<string, mixed>|null */
+    private function locationPayload(?Barangay $barangay): ?array
+    {
+        if ($barangay === null || $barangay->municipalityRelation === null || $barangay->municipalityRelation->province === null || $barangay->municipalityRelation->province->region === null) {
+            return null;
+        }
+
+        return [
+            'region' => ['id' => (string) $barangay->municipalityRelation->province->region->id, 'name' => $barangay->municipalityRelation->province->region->name, 'code' => $barangay->municipalityRelation->province->region->code],
+            'province' => ['id' => (string) $barangay->municipalityRelation->province->id, 'name' => $barangay->municipalityRelation->province->name, 'code' => $barangay->municipalityRelation->province->code],
+            'municipality' => ['id' => (string) $barangay->municipalityRelation->id, 'name' => $barangay->municipalityRelation->name, 'code' => $barangay->municipalityRelation->code],
+            'barangay' => ['id' => (string) $barangay->id, 'name' => $barangay->name],
+        ];
+    }
+
+    private function storeLocalLocation(?array $location): ?Barangay
+    {
+        if (blank($location) || blank($location['barangay']['id'] ?? null)) {
+            return null;
+        }
+
+        $region = Region::updateOrCreate(['id' => $location['region']['id']], ['name' => $location['region']['name'], 'code' => $location['region']['code']]);
+        $province = Province::updateOrCreate(['id' => $location['province']['id']], ['region_id' => $region->id, 'name' => $location['province']['name'], 'code' => $location['province']['code']]);
+        $municipality = Municipality::updateOrCreate(['id' => $location['municipality']['id']], ['province_id' => $province->id, 'name' => $location['municipality']['name'], 'code' => $location['municipality']['code']]);
+
+        return Barangay::updateOrCreate(['id' => $location['barangay']['id']], ['municipality_id' => $municipality->id, 'name' => $location['barangay']['name']]);
     }
 
     public function revokeFacilityConnections(Facility $facility): int
