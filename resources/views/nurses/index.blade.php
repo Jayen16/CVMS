@@ -32,12 +32,17 @@
             @endif
 
             @if (session('setup_link'))
-                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-100">
-                    <p class="font-semibold">Email delivery is set to log mode in this environment.</p>
-                    <p class="mt-1 break-all">
-                        Setup link:
-                        <a href="{{ session('setup_link') }}" class="font-semibold underline underline-offset-2">{{ session('setup_link') }}</a>
-                    </p>
+                <div x-data="{ copied: false, link: @js(session('setup_link')), fallbackCopy() { const input = document.createElement('textarea'); input.value = this.link; input.setAttribute('readonly', ''); input.style.position = 'fixed'; input.style.opacity = '0'; document.body.appendChild(input); input.select(); const copied = document.execCommand('copy'); input.remove(); if (! copied) throw new Error('Clipboard fallback failed'); }, async copyLink() { try { if (navigator.clipboard?.writeText) { try { await navigator.clipboard.writeText(this.link); } catch (error) { this.fallbackCopy(); } } else { this.fallbackCopy(); } this.copied = true; setTimeout(() => this.copied = false, 1500); } catch (error) { console.warn('Could not copy setup link', error); } } }" class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/60 dark:text-amber-100">
+                    @if (config('system.instance_type') === 'facility' && config('offline.enabled'))
+                        <p class="font-semibold">Offline facility setup link</p>
+                        <p class="mt-1">Copy this link and open it on the nurse’s computer to set the password.</p>
+                    @else
+                        <p class="font-semibold">Email delivery is set to log mode in this environment.</p>
+                    @endif
+                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                        <a href="{{ session('setup_link') }}" class="break-all font-semibold underline underline-offset-2">{{ session('setup_link') }}</a>
+                        <button type="button" class="app-button-secondary !px-3 !py-1.5 !text-xs" @click="copyLink()" x-text="copied ? 'Copied' : 'Copy link'">Copy link</button>
+                    </div>
                 </div>
             @endif
 

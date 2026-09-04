@@ -94,6 +94,16 @@ class NurseController extends Controller
             'invitation_accepted_at' => null,
         ]);
 
+        if ($this->usesOfflineFacilitySetup()) {
+            return $this->setupLinkResponse(
+                $staff,
+                $managesBarangayAdmins
+                    ? 'Barangay admin account created. Copy the local password setup link and open it on the user’s computer.'
+                    : 'Nurse account created. Copy the local password setup link and open it on the nurse’s computer.',
+                true,
+            );
+        }
+
         $status = Password::sendResetLink(['email' => $staff->email]);
 
         if ($status !== Password::RESET_LINK_SENT) {
@@ -115,6 +125,14 @@ class NurseController extends Controller
         $this->authorizeStaffManager();
         $this->authorizeManagedUser($nurse);
         abort_if($nurse->isArchived(), 422, 'Archived accounts cannot receive setup links.');
+
+        if ($this->usesOfflineFacilitySetup()) {
+            return $this->setupLinkResponse(
+                $nurse,
+                'A local password setup link is ready. Copy it and open it on the nurse’s computer.',
+                true,
+            );
+        }
 
         $status = Password::sendResetLink(['email' => $nurse->email]);
 
@@ -242,11 +260,11 @@ class NurseController extends Controller
         abort_unless(auth()->user()->canManageBarangayStaff(), 403);
     }
 
-    private function setupLinkResponse(User $user, string $statusMessage): RedirectResponse
+    private function setupLinkResponse(User $user, string $statusMessage, bool $forceSetupLink = false): RedirectResponse
     {
         $response = to_route('nurses.index')->with('status', $statusMessage);
 
-        if (! in_array(config('mail.default'), ['log', 'array'], true)) {
+        if (! $forceSetupLink && ! in_array(config('mail.default'), ['log', 'array'], true)) {
             return $response;
         }
 
@@ -256,5 +274,11 @@ class NurseController extends Controller
             'token' => $token,
             'email' => $user->email,
         ]));
+    }
+
+    private function usesOfflineFacilitySetup(): bool
+    {
+        return config('system.instance_type') === 'facility'
+            && (bool) config('offline.enabled');
     }
 }
