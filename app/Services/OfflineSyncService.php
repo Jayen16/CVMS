@@ -97,7 +97,13 @@ class OfflineSyncService
             return;
         }
 
-        $payload = ['name' => $user->name, 'role' => $user->role, 'active' => (bool) $user->is_active];
+        $payload = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'active' => (bool) $user->is_active,
+            'invitation_accepted_at' => $user->invitation_accepted_at?->toIso8601String(),
+        ];
         $latest = OfflineSyncOutbox::query()->where('entity', 'facility_staff')->where('model_sync_uuid', $user->id)->latest('created_at')->first();
         if ($latest && $latest->payload === $payload) {
             return;

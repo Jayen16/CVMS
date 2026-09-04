@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Barangay;
 use App\Models\User;
 use App\Services\FacilityActivationService;
+use App\Services\OfflineSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,8 @@ class FacilitySetupController extends Controller
         abort_unless($installation->status === 'active', 404);
 
         $barangay = $this->barangayForInstallation($installation);
+
+        abort_unless(filled($installation->setup_user_email), 422, 'No designated Barangay Admin is assigned to this facility. Contact the Central administrator.');
 
         if ($this->hasBarangayAdmin($barangay)) {
             return to_route('home');
@@ -38,22 +41,17 @@ class FacilitySetupController extends Controller
             return to_route('home');
         }
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'phone' => ['nullable', 'string', 'max:32', 'unique:users,phone'],
-            'password' => ['required', 'string', Password::default(), 'confirmed'],
-        ]);
+        abort_unless(filled($installation->setup_user_email), 422, 'No designated Barangay Admin is assigned to this facility. Contact the Central administrator.');
+        $data = $request->validate(['password' => ['required', 'string', Password::default(), 'confirmed']]);
 
-        DB::transaction(function () use ($data, $barangay): void {
+        DB::transaction(function () use ($data, $barangay, $installation): void {
             if ($this->hasBarangayAdmin($barangay)) {
                 return;
             }
 
             User::create([
-                'name' => $data['name'],
-                'email' => $data['email'] ?? null,
-                'phone' => User::normalizePhone($data['phone'] ?? null),
+                'name' => $installation->setup_user_name,
+                'email' => $installation->setup_user_email,
                 'password' => $data['password'],
                 'role' => 'barangay_admin',
                 'roles' => ['barangay_admin'],
@@ -62,6 +60,7 @@ class FacilitySetupController extends Controller
                 'is_active' => true,
                 'invitation_accepted_at' => now(),
             ]);
+            app(OfflineSyncService::class)->queueStaff(User::query()->where('email', $installation->setup_user_email)->firstOrFail());
         });
 
         return to_route('home')->with('status', 'Barangay administrator account created. You can now sign in.');
@@ -80,17 +79,10 @@ class FacilitySetupController extends Controller
 
     private function barangayForInstallation(\App\Models\SystemInstallation $installation): Barangay
     {
-        if ($installation->barangay_id && ($barangay = Barangay::find($installation->barangay_id))) {
-            return $barangay;
-        }
+        $barangay = $installation->barangay_id ? Barangay::find($installation->barangay_id) : null;
 
-        $name = trim((string) $installation->facility_name);
-        $barangay = Barangay::query()->where('name', $name)->first();
+        abort_unless($barangay, 422, 'This facility has no assigned Barangay. Contact the Central administrator.');
 
-        if ($barangay === null && str_starts_with(strtolower($name), 'barangay ')) {
-            $barangay = Barangay::query()->where('name', trim(substr($name, 9)))->first();
-        }
-
-        return $barangay ?? Barangay::query()->create(['name' => $name]);
+        return $barangay;
     }
 }

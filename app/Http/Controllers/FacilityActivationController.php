@@ -7,6 +7,7 @@ use App\Models\Barangay;
 use App\Models\Municipality;
 use App\Models\Province;
 use App\Models\Region;
+use App\Models\User;
 use App\Services\FacilityActivationService;
 use App\Services\FacilitySyncService;
 use Illuminate\Http\JsonResponse;
@@ -76,6 +77,8 @@ class FacilityActivationController extends Controller
             ->with('municipalityRelation')->orderBy('name')->get();
         $facilityBarangays = filled($filters['municipality'] ?? null) ? $barangays : collect();
 
+        $barangayAdmins = User::query()->notArchived()->whereJsonContains('roles', 'barangay_admin')->get()->groupBy('barangay_id');
+
         return view('central.facilities', [
             'facilities' => $facilities,
             'filters' => $filters,
@@ -85,6 +88,7 @@ class FacilityActivationController extends Controller
             'municipalities' => $municipalities,
             'barangays' => $barangays,
             'facilityBarangays' => $facilityBarangays,
+            'barangayAdmins' => $barangayAdmins,
         ]);
     }
 
@@ -111,12 +115,17 @@ class FacilityActivationController extends Controller
         return back()->with('status', 'Facility location assigned.');
     }
 
-    public function issueCode(Facility $facility, FacilityActivationService $activation): RedirectResponse
+    public function issueCode(Request $request, Facility $facility, FacilityActivationService $activation): RedirectResponse
     {
         abort_unless(request()->user()->isSuperAdmin(), 403);
+        $data = $request->validate(['designated_user_id' => ['required', 'exists:users,id']]);
+        $designatedUser = User::query()->notArchived()->whereKey($data['designated_user_id'])
+            ->where('barangay_id', $facility->barangay_id)
+            ->whereJsonContains('roles', 'barangay_admin')
+            ->firstOrFail();
 
         session()->put([
-            'activation_code' => $activation->issueCode($facility),
+            'activation_code' => $activation->issueCode($facility, $designatedUser),
             'activation_code_facility_id' => $facility->id,
             'activation_code_expires_at' => now()->addHours(config('system.activation_code_ttl_hours', 24))->toIso8601String(),
         ]);

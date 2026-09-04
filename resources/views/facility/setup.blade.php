@@ -9,9 +9,8 @@
 
         <form method="POST" action="{{ route('facility.setup.store') }}" class="flex flex-col gap-6">
             @csrf
-            <flux:input name="name" label="Full name" :value="old('name')" required autofocus autocomplete="name" />
-            <flux:input name="email" label="Email address" :value="old('email')" type="email" required autocomplete="email" />
-            <flux:input name="phone" label="Phone number (optional)" :value="old('phone')" autocomplete="tel" placeholder="09171234567" />
+            <flux:input name="name" label="Full name" value="{{ $installation->setup_user_name }}" readonly />
+            <flux:input name="email" label="Registered email address" value="{{ $installation->setup_user_email }}" type="email" readonly />
             <flux:input name="password" label="Password" type="password" required autocomplete="new-password" viewable />
             <flux:input name="password_confirmation" label="Confirm password" type="password" required autocomplete="new-password" viewable />
 
