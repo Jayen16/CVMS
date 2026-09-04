@@ -31,7 +31,6 @@
                 autocomplete="new-password"
                 :placeholder="__('Password')"
                 passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
             />
 
             <!-- Confirm Password -->
@@ -43,7 +42,6 @@
                 autocomplete="new-password"
                 :placeholder="__('Confirm password')"
                 passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
-                viewable
             />
 
             <div class="flex items-center justify-end">

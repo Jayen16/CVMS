@@ -31,7 +31,6 @@
                     required
                     autocomplete="current-password"
                     :placeholder="__('Password')"
-                    viewable
                 />
 
                 @if (Route::has('password.request'))
