@@ -233,7 +233,9 @@ class OfflineSyncService
         try {
             $result = app(FacilitySyncService::class)->synchronize();
 
-            return ['processed' => $result['processed'], 'failed' => $result['failed']];
+            // FacilitySyncService reports the number uploaded under `pushed`.
+            // Expose that count as `processed` to the manual-sync controller.
+            return ['processed' => $result['pushed'], 'failed' => $result['failed']];
         } catch (\Throwable $exception) {
             report($exception);
 
