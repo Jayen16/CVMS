@@ -76,9 +76,15 @@ class User extends Authenticatable implements PasskeyUser
     {
         $phone = self::normalizePhone($phone);
 
-        if (blank($phone)) return null;
-        if (str_starts_with($phone, '09')) return '+63'.substr($phone, 1);
-        if (str_starts_with($phone, '639')) return '+'.$phone;
+        if (blank($phone)) {
+            return null;
+        }
+        if (str_starts_with($phone, '09')) {
+            return '+63'.substr($phone, 1);
+        }
+        if (str_starts_with($phone, '639')) {
+            return '+'.$phone;
+        }
 
         return $phone;
     }
@@ -289,8 +295,7 @@ class User extends Authenticatable implements PasskeyUser
     {
         return $this->isSuperAdmin()
             || $this->isMunicipalAdmin()
-            || $this->isBarangayAdmin()
-            || ($this->isNurse() && $this->hasNursePermission('archive_reports'));
+            || $this->isBarangayAdmin();
     }
 
     public function canArchiveAuditLogs(): bool
@@ -383,7 +388,6 @@ class User extends Authenticatable implements PasskeyUser
             'view_children' => 'View child registry',
             'manage_children' => 'Create and update child records',
             'archive_children' => 'Archive and restore child records',
-            'archive_reports' => 'Archive and restore reports',
             'verify_vaccinations' => 'Verify or reject vaccinations',
             'view_verification_queue' => 'View verification queue',
             'submit_aefi_reports' => 'Submit AEFI reports',
@@ -426,7 +430,6 @@ class User extends Authenticatable implements PasskeyUser
                 'view_children',
                 'manage_children',
                 'archive_children',
-                'archive_reports',
                 'view_defaulters',
                 'view_duplicates',
                 'merge_duplicates',
