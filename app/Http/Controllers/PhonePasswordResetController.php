@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
@@ -18,6 +19,8 @@ class PhonePasswordResetController extends Controller
 {
     public function activation(): View
     {
+        $this->abortIfOfflineRecovery();
+
         return view('pages.auth.activate-account');
     }
 
@@ -28,6 +31,8 @@ class PhonePasswordResetController extends Controller
 
     public function sendOtp(Request $request, SmsGatewayFactory $sms): RedirectResponse
     {
+        $this->abortIfOfflineRecovery();
+
         $identifier = trim($request->validate(['identifier' => ['required', 'string', 'max:255']])['identifier']);
         $mode = $request->validate(['mode' => ['nullable', 'in:reset,activation']])['mode'] ?? 'reset';
         $email = filter_var($identifier, FILTER_VALIDATE_EMAIL) ? strtolower($identifier) : null;
@@ -153,6 +158,15 @@ class PhonePasswordResetController extends Controller
         return 'password-otp:'.hash('sha256', $identifier);
     }
 
+    private function abortIfOfflineRecovery(): void
+    {
+        abort_if(
+            config('system.instance_type') === 'facility' && config('offline.enabled'),
+            503,
+            'Password recovery is unavailable while this facility is offline. Please contact the RHU administrator.'
+        );
+    }
+
     public function showLink(string $token): View
     {
         abort_unless(Cache::has('password-reset-link:'.hash('sha256', $token)), 410, 'This password link is invalid or expired.');
@@ -176,6 +190,20 @@ class PhonePasswordResetController extends Controller
         abort_unless(auth()->user()->canManageBarangayStaff(), 403);
         abort_unless($user->isNurse() || $user->isBarangayAdmin(), 404);
         $channel = $request->validate(['channel' => ['required', 'in:email,sms']])['channel'];
+
+        if ($channel === 'email'
+            && config('system.instance_type') === 'facility'
+            && config('offline.enabled')) {
+            $token = PasswordBroker::broker()->createToken($user);
+
+            return to_route('nurses.index')
+                ->with('status', 'A local password reset link is ready. Copy it and open it on the nurse\'s computer.')
+                ->with('setup_link', route('password.reset', [
+                    'token' => $token,
+                    'email' => $user->email,
+                ]));
+        }
+
         $recovery->send($user, $channel);
 
         return to_route('nurses.index')->with('status', 'Password reset link sent by '.strtoupper($channel).'.');
