@@ -157,6 +157,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('sync')->name('sync.')->group(function (): void {
         Route::get('/', SyncDataPage::class)->name('index');
         Route::get('all', SyncDataPage::class)->name('all');
+        Route::get('processed', SyncDataPage::class)->name('processed');
         Route::post('manual', [ManualSyncController::class, 'store'])->name('manual');
     });
     // Announcement feature disabled temporarily:
