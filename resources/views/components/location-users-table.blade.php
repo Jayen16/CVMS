@@ -1,11 +1,16 @@
-@props(['users', 'addRoute', 'locationTree' => [], 'heading' => 'Assigned users'])
+@props(['users', 'addRoute', 'locationTree' => [], 'heading' => 'Assigned users', 'manageRoute' => null, 'roles' => []])
 
 <div class="mt-2 border-t border-slate-200 pt-3 dark:border-zinc-700">
     <div class="flex items-center justify-between">
         <h4 class="text-sm font-semibold">{{ $heading }}</h4>
-        <flux:modal.trigger name="add-user-{{ md5($addRoute) }}">
-            <flux:button size="sm" icon="plus" aria-label="Add user" />
-        </flux:modal.trigger>
+        <div class="flex items-center gap-2">
+            @if ($manageRoute)
+                <a href="{{ $manageRoute }}" class="app-button-secondary inline-flex !h-8 !w-8 items-center justify-center !p-0" title="Manage facilities" aria-label="Manage facilities"><flux:icon.building-office-2 class="size-4" /></a>
+            @endif
+            <flux:modal.trigger name="add-user-{{ md5($addRoute) }}">
+                <flux:button size="sm" icon="plus" title="Add {{ strtolower($heading === 'Municipality users' ? 'municipality' : 'barangay') }} user" aria-label="Add {{ strtolower($heading === 'Municipality users' ? 'municipality' : 'barangay') }} user" />
+            </flux:modal.trigger>
+        </div>
     </div>
 
     <flux:modal name="add-user-{{ md5($addRoute) }}" class="md:w-[34rem]">
@@ -14,6 +19,11 @@
             <div><flux:heading size="lg">Add user</flux:heading><flux:text class="mt-2">Enter the user’s name and email address.</flux:text></div>
             <flux:input label="Full name" name="name" placeholder="Full name" required />
             <flux:input label="Email address" name="email" type="email" placeholder="name@example.com" required />
+            @if (count($roles) > 1)
+                <flux:select label="Role" name="role" required><option value="">Select role</option>@foreach($roles as $role)<option value="{{ $role }}">{{ str($role)->replace('_', ' ')->title() }}</option>@endforeach</flux:select>
+            @elseif (count($roles) === 1)
+                <input type="hidden" name="role" value="{{ $roles[0] }}">
+            @endif
             <div class="flex"><flux:spacer /><flux:modal.close><flux:button type="button" variant="ghost">Cancel</flux:button></flux:modal.close><flux:button type="submit" variant="primary">Add user</flux:button></div>
         </form>
     </flux:modal>

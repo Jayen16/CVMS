@@ -10,7 +10,7 @@ class FacilityActivationCode extends Model
 {
     use UsesUuidPrimaryKey;
 
-    protected $fillable = ['facility_id', 'code_hash', 'expires_at', 'used_at'];
+    protected $fillable = ['facility_id', 'designated_user_id', 'code_hash', 'expires_at', 'used_at'];
 
     protected $hidden = ['code_hash'];
 
@@ -22,5 +22,10 @@ class FacilityActivationCode extends Model
     public function facility(): BelongsTo
     {
         return $this->belongsTo(Facility::class);
+    }
+
+    public function designatedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'designated_user_id');
     }
 }

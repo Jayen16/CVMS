@@ -6,7 +6,9 @@ use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\ChildTransferHistory;
 use App\Models\FacilityConnection;
+use App\Models\Facility;
 use App\Models\FacilityStaff;
+use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineType;
 use Illuminate\Support\Facades\DB;
@@ -67,6 +69,20 @@ class CentralPushSyncService
         FacilityStaff::query()->updateOrCreate(['facility_id' => $facilityId, 'staff_uuid' => $event['record_uuid']], [
             'name' => $data['name'], 'role' => $data['role'], 'active' => $data['active'], 'last_seen_at' => now(),
         ]);
+
+        if (filled($data['email'] ?? null)) {
+            User::query()
+                ->where('email', $data['email'])
+                ->where('barangay_id', Facility::query()->whereKey($facilityId)->value('barangay_id'))
+                ->where(function ($query) use ($data): void {
+                    $query->where('role', $data['role'])->orWhereJsonContains('roles', $data['role']);
+                })
+                ->update([
+                    'name' => $data['name'],
+                    'is_active' => (bool) $data['active'],
+                    'invitation_accepted_at' => $data['invitation_accepted_at'] ?? null,
+                ]);
+        }
 
         return true;
     }

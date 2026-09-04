@@ -9,6 +9,7 @@ use App\Models\Barangay;
 use App\Models\Municipality;
 use App\Models\Province;
 use App\Models\Region;
+use App\Models\User;
 use App\Models\SystemInstallation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -27,10 +28,11 @@ class FacilityActivationService
         ]);
     }
 
-    public function issueCode(Facility $facility): string
+    public function issueCode(Facility $facility, ?User $designatedUser = null): string
     {
         $code = strtoupper(Str::random(32));
         $facility->activationCodes()->create([
+            'designated_user_id' => $designatedUser?->id,
             'code_hash' => Hash::make($code),
             'expires_at' => now()->addHours(config('system.activation_code_ttl_hours', 24)),
         ]);
@@ -45,11 +47,12 @@ class FacilityActivationService
             $activation = FacilityActivationCode::query()
                 ->whereNull('used_at')
                 ->where('expires_at', '>', now())
-                ->with('facility.barangay.municipalityRelation.province.region')
+                ->with(['facility.barangay.municipalityRelation.province.region', 'designatedUser'])
                 ->get()
                 ->first(fn (FacilityActivationCode $candidate): bool => Hash::check($code, $candidate->code_hash));
 
             abort_unless($activation?->facility?->active, 422, 'Invalid or expired activation code.');
+            abort_unless($activation->designatedUser?->isBarangayAdmin(), 422, 'This activation code has no designated Barangay Admin.');
 
             $client = app(ClientRepository::class)->createClientCredentialsGrantClient(
                 $activation->facility->name.' ('.$instanceUuid.')',
@@ -66,6 +69,7 @@ class FacilityActivationService
                 'facility_code' => $activation->facility->code,
                 'facility_name' => $activation->facility->name,
                 'location' => $this->locationPayload($activation->facility->barangay),
+                'setup_user' => $activation->designatedUser ? ['name' => $activation->designatedUser->name, 'email' => $activation->designatedUser->email] : null,
                 'passport_client_id' => (string) $client->getKey(),
                 'passport_client_secret' => (string) $client->plainSecret,
             ];
@@ -86,6 +90,7 @@ class FacilityActivationService
 
         $installation->update([
             'facility_id' => $data['facility_uuid'], 'facility_code' => $data['facility_code'], 'facility_name' => $data['facility_name'], 'barangay_id' => $barangay?->id,
+            'setup_user_name' => $data['setup_user']['name'] ?? null, 'setup_user_email' => $data['setup_user']['email'] ?? null,
             'central_url' => rtrim($centralUrl, '/'), 'passport_client_id' => $data['passport_client_id'],
             'passport_client_secret' => $data['passport_client_secret'], 'status' => 'active', 'activated_at' => now(),
         ]);
