@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\ChildTransferHistory;
+use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineType;
 use App\Services\ImmunizationSuggestionService;
@@ -128,9 +129,41 @@ class ChildProfileController extends Controller
         $this->ensureNoDuplicateChild($validated);
 
         $child = ChildProfile::create($validated);
+        $this->linkGuardianAsParent($child, $validated, $offlineSync);
         $offlineSync->queueUpsert($child->load(['barangay', 'creator']));
 
         return to_route('children.show', $child)->with('status', 'Child profile created.');
+    }
+
+    private function linkGuardianAsParent(ChildProfile $child, array $validated, OfflineSyncService $offlineSync): void
+    {
+        $contact = trim((string) ($validated['guardian_contact'] ?? ''));
+        $email = str_contains($contact, '@') ? strtolower($contact) : null;
+        $phone = $email === null ? User::normalizePhone($contact) : null;
+        $parent = User::query()
+            ->when($email !== null, fn ($query) => $query->where('email', $email))
+            ->when($phone !== null, fn ($query) => $query->where('phone', $phone))
+            ->first();
+
+        if ($parent === null) {
+            $parent = User::create([
+                'name' => $validated['guardian_name'],
+                'email' => $email,
+                'phone' => $phone,
+                'password' => \Illuminate\Support\Str::password(32),
+                'role' => 'parent',
+                'roles' => ['parent'],
+                'invitation_accepted_at' => null,
+            ]);
+        } else {
+            abort_unless($parent->isParent(), 422, 'This guardian contact already belongs to a non-parent account.');
+        }
+
+        $child->parents()->syncWithoutDetaching([
+            $parent->id => ['relationship' => 'guardian'],
+        ]);
+        $offlineSync->queueGuardian($parent);
+        $offlineSync->queueRelationship($child, $parent, 'guardian');
     }
 
     public function edit(ChildProfile $child): View

@@ -35,12 +35,12 @@
 
     <div class="border-t border-slate-200 pt-5 dark:border-zinc-800">
         <div class="mb-4">
-            <h2 class="text-base font-semibold text-slate-950 dark:text-white">Guardian information</h2>
+            <h2 class="text-base font-semibold text-slate-950 dark:text-white">Link parent</h2>
             <p class="mt-1 text-sm text-slate-500 dark:text-zinc-400">Add a reliable contact and the child’s current home address.</p>
         </div>
     <div class="grid gap-4 md:grid-cols-2">
-        <x-form-field label="Guardian name" name="guardian_name" :value="$child->guardian_name" />
-        <x-form-field label="Guardian contact" name="guardian_contact" :value="$child->guardian_contact" />
+        <x-form-field label="Parent name" name="guardian_name" :value="$child->guardian_name" />
+        <x-form-field label="Parent contact" name="guardian_contact" :value="$child->guardian_contact" />
     </div>
 
     <x-form-field label="Address" name="address" type="textarea" :value="$child->address" />

@@ -47,10 +47,19 @@ class ChildParentController extends Controller
         $status = 'Parent account linked to child profile.';
 
         if ($parent === null) {
-            $request->validate([
-                'email' => [Rule::unique('users', 'email')],
-                'phone' => [Rule::unique('users', 'phone')],
-            ]);
+            $uniqueRules = [];
+
+            if (filled($validated['email'])) {
+                $uniqueRules['email'] = [Rule::unique('users', 'email')];
+            }
+
+            if (filled($validated['phone'])) {
+                $uniqueRules['phone'] = [Rule::unique('users', 'phone')];
+            }
+
+            if ($uniqueRules !== []) {
+                $request->validate($uniqueRules);
+            }
 
             $parent = User::create([
                 'name' => $validated['name'],
