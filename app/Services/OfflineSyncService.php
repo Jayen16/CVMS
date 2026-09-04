@@ -2,17 +2,16 @@
 
 namespace App\Services;
 
-use App\Models\ChildProfile;
+use App\Models\AuditLog;
 use App\Models\ChildAppointment;
+use App\Models\ChildProfile;
 use App\Models\ChildTransferHistory;
-use App\Models\FacilityChildGuardian;
-use App\Models\FacilityGuardian;
 use App\Models\OfflineSyncOutbox;
 use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineInventoryTransaction;
-use App\Models\AuditLog;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Str;
 
 /**
@@ -113,7 +112,9 @@ class OfflineSyncService
 
     public function queueGuardian(User $user): void
     {
-        if (! $this->shouldQueue() || ! $user->isParent()) return;
+        if (! $this->shouldQueue() || ! $user->isParent()) {
+            return;
+        }
         $this->queueEvent('guardians', $user->id, User::class, 'updated', [
             'guardian_uuid' => $user->id, 'name' => $user->name, 'email' => $user->email, 'phone' => $user->phone, 'active' => (bool) $user->is_active,
         ]);
@@ -121,15 +122,19 @@ class OfflineSyncService
 
     public function queueRelationship(ChildProfile $child, User $parent, string $relationship, string $operation = 'updated'): void
     {
-        if (! $this->shouldQueue()) return;
-        $this->queueEvent('child_guardian_relationships', $child->sync_uuid.'|'.$parent->id, ChildProfile::class, $operation, [
+        if (! $this->shouldQueue()) {
+            return;
+        }
+        $this->queueEvent('child_guardian_relationships', (string) Str::uuid(), ChildProfile::class, $operation, [
             'child_uuid' => $child->sync_uuid, 'guardian_uuid' => $parent->id, 'relationship' => $relationship,
         ]);
     }
 
     public function queueAudit(AuditLog $audit): void
     {
-        if (! $this->shouldQueue() || ! in_array($audit->event, ['created', 'updated', 'deleted', 'verified', 'rejected', 'archived'], true)) return;
+        if (! $this->shouldQueue() || ! in_array($audit->event, ['created', 'updated', 'deleted', 'verified', 'rejected', 'archived'], true)) {
+            return;
+        }
         $this->queueEvent('audit_events', $audit->id, AuditLog::class, 'created', [
             'event' => $audit->event, 'auditable_type' => $audit->auditable_type, 'auditable_id' => $audit->auditable_id,
             'description' => $audit->description, 'old_values' => $audit->old_values, 'new_values' => $this->redact($audit->new_values ?? []),
@@ -139,7 +144,9 @@ class OfflineSyncService
 
     public function queueNotification(User $recipient, array $payload): void
     {
-        if (! $this->shouldQueue()) return;
+        if (! $this->shouldQueue()) {
+            return;
+        }
         $this->queueEvent('notification_requests', (string) Str::uuid(), User::class, 'created', [
             'recipient_uuid' => $recipient->id, 'notification_type' => 'in_app', 'payload' => $payload,
         ]);
@@ -147,7 +154,10 @@ class OfflineSyncService
 
     private function redact(array $values): array
     {
-        foreach (['password', 'password_confirmation', 'remember_token', 'token'] as $key) unset($values[$key]);
+        foreach (['password', 'password_confirmation', 'remember_token', 'token'] as $key) {
+            unset($values[$key]);
+        }
+
         return $values;
     }
 
@@ -249,7 +259,7 @@ class OfflineSyncService
         } catch (\Throwable $exception) {
             report($exception);
 
-            if ($exception instanceof \Illuminate\Http\Client\RequestException
+            if ($exception instanceof RequestException
                 && in_array($exception->response?->status(), [401, 403], true)
                 && config('system.instance_type') === 'facility') {
                 app(FacilityActivationService::class)->localInstallation()->update(['status' => 'suspended']);
