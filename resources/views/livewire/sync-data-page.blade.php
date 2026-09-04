@@ -23,7 +23,7 @@
             @endif
         </div>
 
-        @if (auth()->user()->isBarangayAdmin() && (!$installation || $installation->status === 'active'))
+        @if (config('system.instance_type') === 'facility' && auth()->user()->isBarangayAdmin() && (!$installation || $installation->status === 'active'))
             <form method="POST" action="{{ route('sync.manual') }}">
                 @csrf
             <button class="app-button-primary inline-flex items-center gap-2" aria-label="Sync data now">
