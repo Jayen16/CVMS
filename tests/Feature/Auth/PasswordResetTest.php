@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use App\Notifications\AccountAccessNotification;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 
@@ -62,4 +63,27 @@ test('password can be reset with valid token', function () {
 
         return true;
     });
+});
+
+test('changing the email in a reset link cannot reset the password', function () {
+    Notification::fake();
+
+    $user = User::factory()->create(['email' => 'mackulangkaya@example.com', 'password' => 'original-password']);
+
+    $this->post(route('password.request'), ['email' => $user->email]);
+
+    Notification::assertSentTo($user, AccountAccessNotification::class, function ($notification) use ($user) {
+        $response = $this->post(route('password.update'), [
+            'token' => $notification->token,
+            'email' => 'mackulangkaya123@example.com',
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ]);
+
+        $response->assertSessionHasErrors('email');
+
+        return true;
+    });
+
+    expect(Hash::check('original-password', $user->fresh()->password))->toBeTrue();
 });
