@@ -109,7 +109,7 @@
                                     <flux:input name="password" :label="__('Password')" type="password" required
                                         autocomplete="current-password" :placeholder="__('Password')" viewable />
 
-                                    @if (Route::has('password.request'))
+                                    @if (Route::has('password.request') && !(config('system.instance_type') === 'facility' && config('offline.enabled')))
                                     <div class="absolute top-0 end-0 flex items-center gap-2 text-sm">
                                         <flux:link class="text-slate-700 dark:text-zinc-300" :href="route('password.request')" wire:navigate>
                                             {{ __('Forgot your password?') }}

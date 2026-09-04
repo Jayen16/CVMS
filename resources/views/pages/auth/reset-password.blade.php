@@ -1,4 +1,6 @@
-@php($isSetup = $isSetup ?? false)
+@php
+    $isSetup = $isSetup ?? false;
+@endphp
 
 <x-layouts::auth :title="$isSetup ? __('Create password') : __('Reset password')">
     <div class="flex flex-col gap-6">

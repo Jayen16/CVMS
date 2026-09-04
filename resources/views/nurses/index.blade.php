@@ -124,10 +124,7 @@
                                                 </form>
                                             @elseif ($member->invitation_accepted_at)
                                                 @if ($member->email)
-                                                    <form method="POST" action="{{ route('users.password-link', $member) }}">@csrf<input type="hidden" name="channel" value="email"><button type="submit" class="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-zinc-800" role="menuitem">Reset by email</button></form>
-                                                @endif
-                                                @if ($member->phone)
-                                                    <form method="POST" action="{{ route('users.password-link', $member) }}">@csrf<input type="hidden" name="channel" value="sms"><button type="submit" class="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-zinc-800" role="menuitem">Reset by text</button></form>
+                                                    <form method="POST" action="{{ route('users.password-link', $member) }}">@csrf<input type="hidden" name="channel" value="email"><button type="submit" class="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-zinc-800" role="menuitem">Reset Password link</button></form>
                                                 @endif
                                                 <form method="POST" action="{{ route('nurses.toggle', $member) }}">
                                                     @csrf

@@ -14,7 +14,9 @@
             </div>
 
             <div class="flex flex-wrap gap-2">
-                <a href="{{ route('children.index') }}" class="app-button-secondary">Children</a>
+                @if (auth()->user()->isNurse())
+                    <a href="{{ route('children.index') }}" class="app-button-secondary">Children</a>
+                @endif
                 @if (auth()->user()->isNurse())
                     <a href="{{ route('children.create') }}" class="app-button-primary">New child</a>
                 @elseif (auth()->user()->isAdmin())

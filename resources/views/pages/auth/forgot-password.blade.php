@@ -1,7 +1,16 @@
+@php
+    $recoveryUnavailableOffline = config('system.instance_type') === 'facility' && config('offline.enabled');
+@endphp
+
 <x-layouts::auth :title="__('Reset password')">
     <div class="flex flex-col gap-6" x-data="{ otpSent: @js(session('otp_sent', false)), editing: @js(session('otp_locked', false)), locked: @js(session('otp_locked', false)), availableAt: @js(session('otp_available_at')), remaining: 0, timer: null, start() { this.tick(); this.timer = setInterval(() => this.tick(), 1000); }, tick() { this.remaining = Math.max(0, Math.ceil((new Date(this.availableAt) - new Date()) / 1000)); if (!this.remaining && this.timer) clearInterval(this.timer); } }" x-init="if (otpSent) start()">
         <x-auth-header :title="__('Forgot password')" :description="__('Enter your registered email address or contact number to receive a password reset code.')" />
         <x-auth-session-status class="text-center" :status="session('status')" />
+        @if ($recoveryUnavailableOffline)
+            <div class="rounded-lg bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                {{ __('Password recovery is unavailable while this facility is offline. Please contact the RHU administrator.') }}
+            </div>
+        @else
         @if (session('toast_error'))
             <div class="text-red-600 dark:text-red-400">{{ session('toast_error') }}</div>
         @endif
@@ -30,6 +39,7 @@
         </form>
         <form id="resend-otp" method="POST" action="{{ route('password.otp.send') }}" class="hidden">@csrf<input type="hidden" name="identifier" value="{{ session('otp_identifier') }}"></form>
         <div class="text-center text-sm"><a class="text-teal-700 hover:underline" href="{{ route('account.activation') }}">{{ __('Activate my account') }}</a></div>
+        @endif
         <div class="text-center text-sm"><a class="text-teal-700 hover:underline" href="{{ route('login') }}">{{ __('Return to log in') }}</a></div>
     </div>
 </x-layouts::auth>
