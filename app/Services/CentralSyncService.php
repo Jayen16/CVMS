@@ -30,6 +30,7 @@ class CentralSyncService
                 'uuid' => (string) $staff->staff_uuid, 'name' => $staff->name, 'role' => $staff->role, 'active' => $staff->active,
                 'last_seen_at' => $staff->last_seen_at?->toIso8601String(), 'updated_at' => $staff->updated_at?->toIso8601String(),
             ]),
+            /*
             'child_transfers' => $this->serializeModels(ChildTransferHistory::query()->where('facility_uuid', $connection->facility_id)->when($after, fn (Builder $query) => $query->where('updated_at', '>', $after))->orderBy('updated_at')->get(), fn (ChildTransferHistory $transfer): array => [
                 'uuid' => (string) $transfer->id, 'child_uuid' => $transfer->child_sync_uuid, 'facility_uuid' => $transfer->facility_uuid,
                 'from_barangay_name' => $transfer->from_barangay_name, 'to_barangay_name' => $transfer->to_barangay_name,
@@ -38,6 +39,7 @@ class CentralSyncService
                 'transferred_at' => $transfer->transferred_at?->toIso8601String(), 'reason' => $transfer->reason,
                 'version' => $transfer->sync_version, 'updated_at' => $transfer->updated_at?->toIso8601String(),
             ]),
+            */
             'vaccines' => $this->serializeModels(VaccineType::query()->when($after, fn (Builder $query) => $query->where('updated_at', '>', $after))->orderBy('updated_at')->get(), fn (VaccineType $vaccine): array => [
                 'uuid' => (string) $vaccine->getKey(),
                 'code' => $vaccine->code,
@@ -61,6 +63,7 @@ class CentralSyncService
                 'created_at' => $schedule->created_at?->toIso8601String(),
                 'updated_at' => $schedule->updated_at?->toIso8601String(),
             ]),
+            /*
             'announcements' => $this->serializeModels(ClinicAnnouncement::query()->with(['region', 'province', 'municipality', 'barangay'])->when($after, fn (Builder $query) => $query->where('updated_at', '>', $after))->orderBy('updated_at')->get(), fn (ClinicAnnouncement $announcement): array => [
                 'uuid' => (string) ($announcement->sync_uuid ?: $announcement->getKey()),
                 'title' => $announcement->title,
@@ -77,6 +80,7 @@ class CentralSyncService
                 'barangay_name' => $announcement->barangay?->name,
                 'updated_at' => $announcement->updated_at?->toIso8601String(),
             ]),
+            */
             'parent_change_requests' => $this->serializeModels(ParentChangeRequest::query()->where('facility_id', $connection->facility_id)->when($after, fn (Builder $query) => $query->where('updated_at', '>', $after))->orderBy('updated_at')->get(), fn (ParentChangeRequest $request): array => [
                 'uuid' => (string) $request->request_uuid, 'child_uuid' => (string) $request->child_uuid, 'parent_uuid' => $request->parent_uuid,
                 'request_type' => $request->request_type, 'requested_data' => $request->requested_data, 'status' => $request->status,

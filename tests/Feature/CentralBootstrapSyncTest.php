@@ -40,9 +40,11 @@ class CentralBootstrapSyncTest extends TestCase
 
         $this->assertTrue(collect($result['data']['vaccines'])->contains('uuid', $vaccine->id));
         $this->assertTrue(collect($result['data']['schedule_rules'])->contains('vaccine_uuid', $vaccine->id));
-        $this->assertSame('Sync notice', $result['data']['announcements'][0]['title']);
+        // Announcement synchronization is temporarily disabled; retain this assertion for future reactivation.
+        // $this->assertSame('Sync notice', $result['data']['announcements'][0]['title']);
         $this->assertSame('Origin Nurse', $result['data']['facility_staff'][0]['name']);
-        $this->assertSame('Old Barangay', $result['data']['child_transfers'][0]['from_barangay_name']);
+        // Child-transfer synchronization is temporarily disabled; retain this assertion for future reactivation.
+        // $this->assertSame('Old Barangay', $result['data']['child_transfers'][0]['from_barangay_name']);
         $this->assertNotEmpty($result['cursor']);
     }
 
@@ -73,7 +75,8 @@ class CentralBootstrapSyncTest extends TestCase
         $this->assertSame(3, $result['processed']);
         $this->assertDatabaseHas('vaccine_types', ['id' => $localVaccine->id, 'code' => 'SYNC-PENTA', 'name' => 'Sync Penta']);
         $this->assertDatabaseHas('vaccine_schedules', ['id' => $scheduleUuid, 'vaccine_type_id' => $localVaccine->id]);
-        $this->assertDatabaseHas('clinic_announcements', ['sync_uuid' => $announcementUuid, 'created_by' => null]);
+        // Announcement synchronization is temporarily disabled; retain this assertion for future reactivation.
+        // $this->assertDatabaseHas('clinic_announcements', ['sync_uuid' => $announcementUuid, 'created_by' => null]);
         $this->assertSame('2026-09-02T12:00:00+00:00', $installation->fresh()->pull_cursor);
     }
 }

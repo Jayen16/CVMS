@@ -31,12 +31,17 @@ class OfflineSyncService
             return;
         }
 
+        // Temporarily disabled; retain child-transfer synchronization for future use.
+        if ($model instanceof ChildTransferHistory) {
+            return;
+        }
+
         $entity = match ($model::class) {
             ChildProfile::class => 'children',
             VaccinationRecord::class => 'immunization_records',
             VaccineInventoryTransaction::class => 'inventory_transactions',
             ChildAppointment::class => 'appointments',
-            ChildTransferHistory::class => 'child_transfers',
+            // ChildTransferHistory::class => 'child_transfers',
             AuditLog::class => 'audit_events',
             default => 'unsupported',
         };
@@ -60,12 +65,17 @@ class OfflineSyncService
             return;
         }
 
+        // Temporarily disabled; retain child-transfer synchronization for future use.
+        if ($model instanceof ChildTransferHistory) {
+            return;
+        }
+
         $entity = match ($model::class) {
             ChildProfile::class => 'children',
             VaccinationRecord::class => 'immunization_records',
             VaccineInventoryTransaction::class => 'inventory_transactions',
             ChildAppointment::class => 'appointments',
-            ChildTransferHistory::class => 'child_transfers',
+            // ChildTransferHistory::class => 'child_transfers',
             default => 'unsupported',
         };
 
