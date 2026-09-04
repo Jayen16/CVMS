@@ -71,6 +71,14 @@ test('manual sync records the latest sync timestamp', function () {
     $outbox->refresh();
 });
 
+test('unauthenticated users cannot run manual sync', function () {
+    $sync = $this->mock(OfflineSyncService::class);
+    $sync->shouldNotReceive('syncPending');
+
+    $this->post(route('sync.manual'))
+        ->assertRedirect(route('login', absolute: false));
+});
+
 test('parents cannot access the sync data page', function () {
     $parent = User::factory()->create(['role' => 'parent']);
 
