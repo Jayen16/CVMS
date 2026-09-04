@@ -401,35 +401,35 @@
                         <section class="app-panel flex flex-col {{ $activeTab === 'parents' ? '' : 'hidden' }}" data-tab-panel="parents">
                             <h2 class="app-card-title">Linked parents</h2>
                             <div class="order-2 mt-4 overflow-x-auto rounded-lg border border-slate-200 dark:border-zinc-800">
-                                <table class="app-table w-full min-w-[800px]">
+                                <table class="app-table w-full table-fixed">
                                     <thead>
                                         <tr>
-                                            <th class="px-4 py-3 font-medium">Parent</th>
-                                            <th class="px-4 py-3 font-medium">Contact</th>
-                                            <th class="px-4 py-3 font-medium">Relationship</th>
-                                            <th class="px-4 py-3 font-medium">Status</th>
-                                            <th class="px-4 py-3 font-medium">Actions</th>
+                                            <th class="w-[19%] px-2 py-3 font-medium sm:px-4">Parent</th>
+                                            <th class="w-[25%] px-2 py-3 font-medium sm:px-4">Contact</th>
+                                            <th class="w-[18%] px-2 py-3 font-medium sm:px-4">Relationship</th>
+                                            <th class="w-[26%] px-2 py-3 font-medium sm:px-4">Status</th>
+                                            <th class="w-[12%] px-2 py-3 font-medium sm:px-4">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                 @forelse ($child->parents as $parent)
                                     <tr class="app-table-row align-top">
-                                        <td class="font-medium text-slate-950 dark:text-white">{{ $parent->name }}</td>
-                                        <td>
+                                        <td class="break-words px-2 font-medium text-slate-950 dark:text-white sm:px-4">{{ $parent->name }}</td>
+                                        <td class="break-words px-2 sm:px-4">
                                             {{ $parent->email ?: 'No email' }}
                                             @if ($parent->phone)
                                                 <div class="text-zinc-500">{{ $parent->phone }}</div>
                                             @endif
                                         </td>
-                                        <td class="capitalize">{{ $parent->pivot->relationship }}</td>
-                                        <td>
+                                        <td class="break-words px-2 capitalize sm:px-4">{{ $parent->pivot->relationship }}</td>
+                                        <td class="break-words px-2 sm:px-4">
                                             @if ($parent->invitation_accepted_at)
                                                 <span class="status-pill status-verified">Configured</span>
                                             @else
                                                 <span class="status-pill status-pending">Pending password setup</span>
                                             @endif
                                         </td>
-                                        <td>
+                                        <td class="px-2 sm:px-4">
                                             <div
                                                 class="relative"
                                                 x-data="{
