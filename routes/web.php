@@ -96,6 +96,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('children/{child}/card', [VaccineCardController::class, 'show'])->name('children.card');
     Route::get('children/{child}/card/pdf', [VaccineCardController::class, 'pdf'])->name('children.card.pdf');
     Route::post('children/{child}/parents', [ChildParentController::class, 'store'])->name('children.parents.store');
+    Route::put('children/{child}/parents/{parent}', [ChildParentController::class, 'update'])->name('children.parents.update');
     Route::post('children/{child}/parents/{parent}/setup-link', [ChildParentController::class, 'resendSetupLink'])->name('children.parents.setup-link');
     Route::post('children/{child}/parents/{parent}/password-link', [ChildParentController::class, 'sendPasswordLink'])->name('children.parents.password-link');
     Route::delete('children/{child}/parents/{parent}', [ChildParentController::class, 'destroy'])->name('children.parents.destroy');
