@@ -23,7 +23,7 @@
             @endif
         </div>
 
-        @if (auth()->user()->isBarangayAdmin() && (!$installation || $installation->status === 'active'))
+        @if (config('system.instance_type') === 'facility' && auth()->user()->isBarangayAdmin() && (!$installation || $installation->status === 'active'))
             <form method="POST" action="{{ route('sync.manual') }}">
                 @csrf
             <button class="app-button-primary inline-flex items-center gap-2" aria-label="Sync data now">
@@ -34,19 +34,19 @@
         @endif
     </div>
 
-    @unless ($viewAll)
+    @if (! $viewAll && ! $viewProcessedAll)
         <div class="grid gap-4 md:grid-cols-3">
             <x-stat-card label="Pending sync" :value="$pendingCount" />
             <x-stat-card label="Last processed" :value="$latestStatus?->last_processed ?? 0" />
             <x-stat-card label="Failed sync" :value="$failedCount" />
         </div>
-    @endunless
+    @endif
 
     @if (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin())
         <x-location-filters mode="wire" :regions="$regions" :provinces="$provinces" :municipalities="$municipalities" :barangays="$barangays" :region-value="$regionFilter" :province-value="$provinceFilter" :municipality-value="$municipalityFilter" :barangay-value="$barangayFilter" />
     @endif
 
-    @unless ($viewAll)
+    @if (! $viewAll && ! $viewProcessedAll)
         <section class="app-card">
             <div class="app-card-header">
                 <h2 class="app-card-title">Latest sync status</h2>
@@ -66,8 +66,62 @@
                 </div>
             </dl>
         </section>
-    @endunless
 
+        <section class="app-card">
+            <div class="app-card-header">
+                <div class="flex items-center justify-between gap-3">
+                    <h2 class="app-card-title">Processed in latest sync</h2>
+                    <a href="{{ route('sync.processed', ['region_id' => $regionFilter, 'province_id' => $provinceFilter, 'municipality_id' => $municipalityFilter, 'barangay_id' => $barangayFilter]) }}" class="app-button-secondary !px-3 !py-1.5 !text-xs">View all</a>
+                </div>
+            </div>
+            <div class="overflow-x-auto"><table class="app-table"><thead><tr><th class="px-4 py-3 font-medium">Model</th><th class="px-4 py-3 font-medium">Operation</th><th class="px-4 py-3 font-medium">Record</th><th class="px-4 py-3 font-medium">Processed at</th><th class="px-4 py-3 font-medium">Status</th></tr></thead><tbody>
+                @forelse ($lastProcessedRows as $row)
+                    @php($payload = is_array($row->payload) ? $row->payload : [])
+                    <tr class="app-table-row"><td class="font-medium">{{ class_basename($row->model_type) }}</td><td class="capitalize">{{ $row->operation }}</td><td>{{ $payload['name'] ?? ($payload['first_name'] ?? ($payload['email'] ?? 'Record '.$row->model_sync_uuid)) }}@if (isset($payload['last_name'])) {{ $payload['last_name'] }}@endif</td><td>{{ $row->synced_at?->format('M d, Y h:i A') }}</td><td><span class="status-pill status-verified">Synced</span></td></tr>
+                @empty
+                    <tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500">No records were processed in the latest sync.</td></tr>
+                @endforelse
+            </tbody></table></div>
+        </section>
+    @endif
+
+    @if ($viewProcessedAll)
+        <section class="app-card">
+            <div class="app-card-header">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="app-card-title">All processed sync records</h2>
+                        <p class="mt-1 text-sm text-zinc-500">Review records successfully sent to Central.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <label class="flex items-center gap-2 text-sm text-zinc-500">
+                            <span>Date</span>
+                            <input type="date" wire:model.live.debounce.400ms="dateFilter" class="app-input !w-auto !py-1.5">
+                        </label>
+                        <label class="flex items-center gap-2 text-sm text-zinc-500">
+                            <span>Rows per page</span>
+                            <select wire:model.live.debounce.400ms="perPage" class="app-input !w-auto !py-1.5">
+                                @foreach ([10, 15, 25, 50] as $option)
+                                    <option value="{{ $option }}">{{ $option }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="overflow-x-auto"><table class="app-table"><thead><tr><th class="px-4 py-3 font-medium">#</th><th class="px-4 py-3 font-medium">Model</th><th class="px-4 py-3 font-medium">Operation</th><th class="px-4 py-3 font-medium">Record</th><th class="px-4 py-3 font-medium">Processed at</th><th class="px-4 py-3 font-medium">Status</th></tr></thead><tbody>
+                @forelse ($processedRows as $row)
+                    @php($payload = is_array($row->payload) ? $row->payload : [])
+                    <tr class="app-table-row"><td>{{ $processedRows->firstItem() + $loop->index }}</td><td class="font-medium">{{ class_basename($row->model_type) }}</td><td class="capitalize">{{ $row->operation }}</td><td>{{ $payload['name'] ?? ($payload['first_name'] ?? ($payload['email'] ?? 'Record '.$row->model_sync_uuid)) }}@if (isset($payload['last_name'])) {{ $payload['last_name'] }}@endif</td><td>{{ $row->synced_at?->format('M d, Y h:i A') }}</td><td><span class="status-pill status-verified">Synced</span></td></tr>
+                @empty
+                    <tr><td colspan="6" class="px-4 py-8 text-center text-zinc-500">No processed records found for this date.</td></tr>
+                @endforelse
+            </tbody></table></div>
+            <div class="p-4">{{ $processedRows->links() }}</div>
+        </section>
+    @endif
+
+    @unless ($viewProcessedAll)
     <section class="app-card">
         <div class="app-card-header">
             <div class="flex items-center justify-between gap-3">
@@ -144,4 +198,5 @@
             <div class="p-4">{{ $recentRows->links() }}</div>
         @endif
     </section>
+    @endunless
 </div>

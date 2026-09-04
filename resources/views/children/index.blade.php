@@ -14,6 +14,10 @@
         @if (! auth()->user()->isParent())
             <form method="GET" action="{{ route('children.index') }}" class="app-panel flex flex-col gap-3 md:flex-row md:items-end md:justify-between" x-data="{ loading: false }" @submit="loading = true">
                 <label class="grid flex-1 gap-2 text-sm">
+                    <span class="font-medium text-slate-800 dark:text-zinc-100">Search child name</span>
+                    <input type="search" name="name" value="{{ $nameSearch }}" class="app-input" placeholder="Search first, middle, or last name..." @input.debounce.500ms="loading = true; $el.form.requestSubmit()">
+                </label>
+                <label class="grid flex-1 gap-2 text-sm">
                     <span class="font-medium text-slate-800 dark:text-zinc-100">Filter by vaccination taken</span>
                     <select name="vaccine_type_id" class="app-input">
                         <option value="">All vaccinations</option>
@@ -70,7 +74,7 @@
                             @endif
                         </tr>
                     @empty
-                        <tr><td colspan="{{ auth()->user()->canArchiveChildren() ? 6 : 5 }}" class="px-4 py-8 text-center text-zinc-500">No child profiles found.</td></tr>
+                        <tr><td colspan="{{ auth()->user()->canArchiveChildren() ? 6 : 5 }}" class="px-4 py-8 text-center text-zinc-500">{{ $nameSearch !== '' ? 'No child profiles match your search.' : ($selectedVaccineTypeId ? 'No child profiles match the selected vaccination filter.' : 'No child profiles found.') }}</td></tr>
                     @endforelse
                 </tbody>
             </table>

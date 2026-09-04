@@ -16,7 +16,7 @@ class FacilityPushSyncService
         abort_unless($installation->status === 'active', 422, 'This facility is not activated.');
 
         $queue = app(OfflineSyncService::class);
-        User::query()->whereIn('role', ['barangay_admin', 'nurse', 'midwife', 'inventory_staff', 'bhw'])->get()->each($queue->queueStaff(...));
+        User::query()->whereIn('role', ['barangay_admin', 'nurse'])->get()->each($queue->queueStaff(...));
 
         $rows = OfflineSyncOutbox::query()
             ->whereIn('status', ['pending', 'failed'])

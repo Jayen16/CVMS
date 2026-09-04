@@ -26,7 +26,8 @@ class ChildProfileController extends Controller
         'birthdate' => ['required', 'date', 'before_or_equal:today'],
         'sex' => ['required', 'in:female,male'],
         'guardian_name' => ['required', 'string', 'max:255'],
-        'guardian_contact' => ['nullable', 'string', 'max:255'],
+        'guardian_contact' => ['nullable', 'string', 'max:255', 'required_without:guardian_email'],
+        'guardian_email' => ['nullable', 'email', 'max:255', 'required_without:guardian_contact'],
         'address' => ['nullable', 'string', 'max:1000'],
     ];
 
@@ -137,12 +138,14 @@ class ChildProfileController extends Controller
 
     private function linkGuardianAsParent(ChildProfile $child, array $validated, OfflineSyncService $offlineSync): void
     {
-        $contact = trim((string) ($validated['guardian_contact'] ?? ''));
-        $email = str_contains($contact, '@') ? strtolower($contact) : null;
-        $phone = $email === null ? User::normalizePhone($contact) : null;
+        $email = filled($validated['guardian_email'] ?? null) ? strtolower(trim($validated['guardian_email'])) : null;
+        $phone = filled($validated['guardian_contact'] ?? null) ? User::normalizePhone($validated['guardian_contact']) : null;
         $parent = User::query()
-            ->when($email !== null, fn ($query) => $query->where('email', $email))
-            ->when($phone !== null, fn ($query) => $query->where('phone', $phone))
+            ->where(function ($query) use ($email, $phone): void {
+                $query->when($email !== null, fn ($match) => $match->where('email', $email))
+                    ->when($email !== null && $phone !== null, fn ($match) => $match->orWhere('phone', $phone))
+                    ->when($email === null && $phone !== null, fn ($match) => $match->where('phone', $phone));
+            })
             ->first();
 
         if ($parent === null) {

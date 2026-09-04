@@ -101,7 +101,8 @@ class LocationController extends Controller
     private function addUser(Request $request, string $municipalityId, ?string $barangayId, string $locationId): RedirectResponse
     {
         $this->authorizeAdmin();
-        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'email' => ['required', 'email', 'max:255'], 'role' => ['required', 'in:barangay_admin,nurse,midwife,bhw,inventory_staff,municipal_admin']]);
+        $allowedRoles = $barangayId === null ? ['municipal_admin'] : ['barangay_admin', 'nurse'];
+        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'email' => ['required', 'email', 'max:255'], 'role' => ['required', 'in:'.implode(',', $allowedRoles)]]);
         $user = User::firstOrNew(['email' => $data['email']]);
         $user->fill(['name' => $data['name'], 'password' => $user->exists ? $user->password : Str::password(32), 'role' => $data['role'], 'roles' => [$data['role']], 'municipality_id' => $municipalityId, 'barangay_id' => $barangayId, 'is_active' => $user->exists ? $user->is_active : false]);
         $user->save();

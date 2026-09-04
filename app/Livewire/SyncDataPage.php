@@ -24,6 +24,8 @@ class SyncDataPage extends Component
 
     public bool $viewAll = false;
 
+    public bool $viewProcessedAll = false;
+
     public int $perPage = 15;
 
     public string $dateFilter = '';
@@ -39,6 +41,7 @@ class SyncDataPage extends Component
     public function mount(): void
     {
         $this->viewAll = request()->routeIs('sync.all');
+        $this->viewProcessedAll = request()->routeIs('sync.processed');
         foreach (['regionId' => 'region_id', 'provinceId' => 'province_id', 'municipalityId' => 'municipality_id', 'barangayId' => 'barangay_id'] as $property => $queryKey) {
             $this->{$property} = (string) request()->query($queryKey, $this->{$property});
         }
@@ -98,10 +101,31 @@ class SyncDataPage extends Component
         $rowsQuery = $this->locationScopedQuery(OfflineSyncOutbox::query(), $locationData['barangayIds'], $locationData['syncUuids'])
             ->when($this->viewAll && filled($this->dateFilter), fn ($query) => $query->whereDate('queued_at', $this->dateFilter));
 
-        $recentRows = $this->viewAll
+        $recentRows = $this->viewProcessedAll
+            ? collect()
+            : ($this->viewAll
             ? $rowsQuery->latest('queued_at')->paginate($this->perPage)
-            : $rowsQuery->latest('queued_at')->take(10)->get();
+            : $rowsQuery->latest('queued_at')->take(10)->get());
         $recentRows = $this->attachLocations($recentRows);
+        $processedQuery = $this->locationScopedQuery(
+            OfflineSyncOutbox::query(),
+            $locationData['barangayIds'],
+            $locationData['syncUuids'],
+        )->where('status', 'synced');
+        if ($this->viewProcessedAll && filled($this->dateFilter)) {
+            $processedQuery->whereDate('synced_at', $this->dateFilter);
+        }
+
+        $lastProcessedRows = collect();
+        if ($latestStatus?->last_attempted_at && $latestStatus->last_synced_at) {
+            $lastProcessedRows = (clone $processedQuery)
+                ->whereBetween('synced_at', [$latestStatus->last_attempted_at, $latestStatus->last_synced_at])
+                ->latest('synced_at')
+                ->get();
+        }
+        $processedRows = $this->viewProcessedAll
+            ? $processedQuery->latest('synced_at')->paginate($this->perPage)
+            : collect();
 
         return view('livewire.sync-data-page', [
             'latestStatus' => $latestStatus,
@@ -113,6 +137,8 @@ class SyncDataPage extends Component
                 ? (clone $rowsQuery)->where('status', 'failed')->count()
                 : 0,
             'recentRows' => $recentRows,
+            'lastProcessedRows' => $lastProcessedRows,
+            'processedRows' => $processedRows,
             ...$locationData,
         ])->layout('layouts.app', [
             'title' => 'Sync Data',

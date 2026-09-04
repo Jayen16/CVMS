@@ -16,6 +16,7 @@ class ChildrenIndexPage extends Component
         abort_unless(auth()->user()->canViewChildrenRegistry(), 403);
 
         $vaccineTypeId = request()->string('vaccine_type_id')->toString() ?: null;
+        $nameSearch = trim(request()->string('name')->toString());
         $children = $this->visibleChildren()
             ->with(['barangay', 'vaccinations.vaccineType', 'seriesVersions.scheduleVersion'])
             ->withCount([
@@ -29,6 +30,11 @@ class ChildrenIndexPage extends Component
                     ->where('vaccine_type_id', $vaccineTypeId)
                     ->where('verification_status', 'verified'))
             )
+            ->when($nameSearch !== '', fn (Builder $query) => $query->where(function (Builder $names) use ($nameSearch): void {
+                $names->where('first_name', 'like', '%'.$nameSearch.'%')
+                    ->orWhere('middle_name', 'like', '%'.$nameSearch.'%')
+                    ->orWhere('last_name', 'like', '%'.$nameSearch.'%');
+            }))
             ->latest()
             ->paginate(12)
             ->withQueryString();
@@ -52,6 +58,7 @@ class ChildrenIndexPage extends Component
             'children' => $children,
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
             'selectedVaccineTypeId' => $vaccineTypeId,
+            'nameSearch' => $nameSearch,
         ])->layout('layouts.app', [
             'title' => 'Children',
         ]);

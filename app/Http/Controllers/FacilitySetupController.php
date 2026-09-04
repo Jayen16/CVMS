@@ -6,6 +6,7 @@ use App\Models\Barangay;
 use App\Models\User;
 use App\Services\FacilityActivationService;
 use App\Services\OfflineSyncService;
+use App\Services\FacilityPushSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -62,6 +63,15 @@ class FacilitySetupController extends Controller
             ]);
             app(OfflineSyncService::class)->queueStaff(User::query()->where('email', $installation->setup_user_email)->firstOrFail());
         });
+
+        // Try to update Central immediately when the connection is available.
+        // The account is already saved locally, so an offline failure must not
+        // prevent the user from signing in; the queued event can be synced later.
+        try {
+            app(FacilityPushSyncService::class)->synchronize();
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
 
         return to_route('home')->with('status', 'Barangay administrator account created. You can now sign in.');
     }

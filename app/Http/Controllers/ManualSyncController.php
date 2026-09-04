@@ -10,7 +10,7 @@ class ManualSyncController extends Controller
 {
     public function store(OfflineSyncService $offlineSync): RedirectResponse
     {
-        abort_unless(auth()->user()->isBarangayAdmin(), 403);
+        abort_unless(config('system.instance_type') === 'facility' && auth()->user()->isBarangayAdmin(), 403);
 
         $status = SyncStatus::firstOrCreate(['scope' => 'global']);
         $status->update(['state' => 'running', 'last_attempted_at' => now(), 'last_error' => null]);

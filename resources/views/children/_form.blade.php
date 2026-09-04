@@ -40,8 +40,10 @@
         </div>
     <div class="grid gap-4 md:grid-cols-2">
         <x-form-field label="Parent name" name="guardian_name" :value="$child->guardian_name" />
-        <x-form-field label="Parent contact" name="guardian_contact" :value="$child->guardian_contact" />
+        <x-form-field label="Parent phone number (optional)" name="guardian_contact" :value="$child->guardian_contact" type="tel" />
+        <x-form-field label="Parent email address (optional)" name="guardian_email" type="email" />
     </div>
+    <p class="text-xs text-slate-500 dark:text-zinc-400">Provide at least one parent contact method. You may provide both phone and email.</p>
 
     <x-form-field label="Address" name="address" type="textarea" :value="$child->address" />
     </div>

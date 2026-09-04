@@ -56,7 +56,12 @@ class GroupController extends Controller
                 return $region;
             })->filter(fn (Region $region) => $region->provinces->contains(fn ($province) => $province->municipalities->contains(fn ($municipality) => $municipality->barangays->isNotEmpty())))->values();
         }
-        $users = User::notArchived()->with(['barangay', 'municipality'])->orderBy('name')->get();
+        $users = User::notArchived()->where(function ($query): void {
+            $query->whereIn('role', ['municipal_admin', 'barangay_admin', 'nurse'])
+                ->orWhereJsonContains('roles', 'municipal_admin')
+                ->orWhereJsonContains('roles', 'barangay_admin')
+                ->orWhereJsonContains('roles', 'nurse');
+        })->with(['barangay', 'municipality'])->orderBy('name')->get();
         $municipalityOptions = Municipality::orderBy('name')->pluck('name', 'id');
         $barangayOptions = Barangay::orderBy('name')->pluck('name', 'id');
 
