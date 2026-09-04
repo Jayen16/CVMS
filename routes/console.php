@@ -9,4 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('vaccinations:send-reminders')->dailyAt('08:00');
-Schedule::command('sync:central')->everyFiveMinutes();
+Schedule::command('sync:central')->everyFiveMinutes()->withoutOverlapping();
