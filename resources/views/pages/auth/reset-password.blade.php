@@ -1,6 +1,11 @@
-<x-layouts::auth :title="__('Reset password')">
+@php($isSetup = $isSetup ?? false)
+
+<x-layouts::auth :title="$isSetup ? __('Create password') : __('Reset password')">
     <div class="flex flex-col gap-6">
-        <x-auth-header :title="__('Reset password')" :description="__('Please enter your new password below')" />
+        <x-auth-header
+            :title="$isSetup ? __('Create password') : __('Reset password')"
+            :description="$isSetup ? __('Create a password to finish setting up your account.') : __('Please enter your new password below')"
+        />
 
         <!-- Session Status -->
         <x-auth-session-status class="text-center" :status="session('status')" />
@@ -46,7 +51,7 @@
 
             <div class="flex items-center justify-end">
                 <flux:button type="submit" variant="primary" class="w-full" data-test="reset-password-button">
-                    {{ __('Reset password') }}
+                    {{ $isSetup ? __('Create password') : __('Reset password') }}
                 </flux:button>
             </div>
         </form>

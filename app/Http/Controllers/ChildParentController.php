@@ -4,17 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\ChildProfile;
 use App\Models\User;
+use App\Services\AccountRecoveryService;
+use App\Services\OfflineSyncService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use App\Services\AccountRecoveryService;
+use Throwable;
 
 class ChildParentController extends Controller
 {
-    public function store(Request $request, ChildProfile $child): RedirectResponse
+    public function store(Request $request, ChildProfile $child, AccountRecoveryService $recovery): RedirectResponse
     {
         $this->authorizeChildAccess($child);
 
@@ -44,7 +47,7 @@ class ChildParentController extends Controller
                 fn ($query) => $query->orWhere('phone', $validated['phone'])
             )
             ->first();
-        $shouldSendSetupLink = false;
+        $setupChannel = null;
         $status = 'Parent account linked to child profile.';
 
         if ($parent === null) {
@@ -73,10 +76,9 @@ class ChildParentController extends Controller
             ]);
 
             if (filled($parent->email)) {
-                $shouldSendSetupLink = true;
-                $status = 'Parent account linked to child profile. A password setup link was sent by email.';
+                $setupChannel = 'email';
             } else {
-                $status = 'Parent account linked to child profile. The parent can finish sign up using this phone number and a password.';
+                $setupChannel = 'sms';
             }
         } else {
             abort_unless($parent->isParent(), 422, 'This contact already belongs to a non-parent account.');
@@ -92,27 +94,45 @@ class ChildParentController extends Controller
             }
 
             if ($parent->invitation_accepted_at === null && filled($parent->email)) {
-                $shouldSendSetupLink = true;
-                $status = 'Parent account linked to child profile. A password setup link was sent again.';
+                $setupChannel = 'email';
             } elseif ($parent->invitation_accepted_at === null && filled($parent->phone)) {
-                $status = 'Parent account linked to child profile. The parent can finish sign up using this phone number and a password.';
+                $setupChannel = 'sms';
             }
         }
 
-        $child->parents()->syncWithoutDetaching([
-            $parent->id => ['relationship' => $validated['relationship']],
-        ]);
-        app(\App\Services\OfflineSyncService::class)->queueGuardian($parent);
-        app(\App\Services\OfflineSyncService::class)->queueRelationship($child, $parent, $validated['relationship']);
+        // Keep every existing parent link. `sync()` replaces the current set of
+        // pivot rows, so only touch this parent's row when linking an account.
+        if ($child->parents()->whereKey($parent->id)->exists()) {
+            $child->parents()->updateExistingPivot($parent->id, [
+                'relationship' => $validated['relationship'],
+            ]);
+        } else {
+            $child->parents()->attach($parent->id, [
+                'relationship' => $validated['relationship'],
+            ]);
+        }
+        app(OfflineSyncService::class)->queueGuardian($parent);
+        app(OfflineSyncService::class)->queueRelationship($child, $parent, $validated['relationship']);
 
-        if ($shouldSendSetupLink) {
-            Password::sendResetLink(['email' => $parent->email]);
+        if ($setupChannel !== null) {
+            try {
+                $recovery->send($parent, $setupChannel);
+            } catch (Throwable $exception) {
+                report($exception);
+
+                return to_route('children.show', $child)
+                    ->with('toast_error', 'Parent account linked, but the password setup link could not be sent by '.strtoupper($setupChannel).'. '.$exception->getMessage());
+            }
+
+            $status = $setupChannel === 'email'
+                ? 'Parent account linked to child profile. A password setup link was sent by email.'
+                : 'Parent account linked to child profile. A password setup link was sent successfully by SMS.';
         }
 
         return to_route('children.show', $child)->with('status', $status);
     }
 
-    public function resendSetupLink(ChildProfile $child, User $parent): RedirectResponse
+    public function resendSetupLink(Request $request, ChildProfile $child, User $parent): RedirectResponse|JsonResponse
     {
         $this->authorizeChildAccess($child);
 
@@ -170,18 +190,29 @@ class ChildParentController extends Controller
         ]);
         $child->parents()->updateExistingPivot($parent->id, ['relationship' => $validated['edit_relationship']]);
 
-        app(\App\Services\OfflineSyncService::class)->queueGuardian($parent->fresh());
-        app(\App\Services\OfflineSyncService::class)->queueRelationship($child, $parent, $validated['edit_relationship']);
+        app(OfflineSyncService::class)->queueGuardian($parent->fresh());
+        app(OfflineSyncService::class)->queueRelationship($child, $parent, $validated['edit_relationship']);
 
         return to_route('children.show', [$child, 'tab' => 'parents'])->with('status', 'Parent information updated.');
     }
 
-    public function sendPasswordLink(Request $request, ChildProfile $child, User $parent, AccountRecoveryService $recovery): RedirectResponse
+    public function sendPasswordLink(Request $request, ChildProfile $child, User $parent, AccountRecoveryService $recovery): RedirectResponse|JsonResponse
     {
         $this->authorizeChildAccess($child);
         abort_unless($parent->isParent() && $child->parents()->whereKey($parent->id)->exists(), 404);
         $channel = $request->validate(['channel' => ['required', 'in:email,sms']])['channel'];
-        $recovery->send($parent, $channel);
+        try {
+            $recovery->send($parent, $channel);
+        } catch (Throwable $exception) {
+            report($exception);
+            $message = 'The password link could not be sent by '.strtoupper($channel).'. '.$exception->getMessage();
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $message], 422);
+            }
+
+            return to_route('children.show', $child)->with('toast_error', $message);
+        }
 
         if ($request->expectsJson()) {
             return response()->json(['message' => 'Parent password reset link sent by '.strtoupper($channel).'.']);
@@ -194,9 +225,10 @@ class ChildParentController extends Controller
     {
         $this->authorizeUnlink($child, $parent);
 
-        $relationship = (string) ($child->parents()->whereKey($parent->id)->first()?->pivot?->relationship ?? 'guardian');
+        $linkedParent = $child->parents()->whereKey($parent->id)->first();
+        $relationship = (string) ($linkedParent?->pivot?->getAttribute('relationship') ?? 'guardian');
         $child->parents()->detach($parent->id);
-        app(\App\Services\OfflineSyncService::class)->queueRelationship($child, $parent, $relationship, 'deleted');
+        app(OfflineSyncService::class)->queueRelationship($child, $parent, $relationship, 'deleted');
 
         if (auth()->user()->isParent()) {
             return to_route('children.index')->with('status', 'Child profile unlinked from your parent account.');

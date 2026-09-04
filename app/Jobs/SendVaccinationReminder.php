@@ -105,11 +105,11 @@ class SendVaccinationReminder implements ShouldBeUnique, ShouldQueue
     private function smsRecipient(ChildProfile $child, User $parent): string
     {
         if (filled($parent->phone)) {
-            return $parent->phone;
+            return User::smsRecipient($parent->phone);
         }
 
         if (filled($child->guardian_contact)) {
-            return $child->guardian_contact;
+            return User::smsRecipient($child->guardian_contact);
         }
 
         throw new \RuntimeException("No SMS recipient phone number found for parent {$parent->id}.");

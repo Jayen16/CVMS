@@ -270,7 +270,9 @@ class NurseController extends Controller
 
         $token = Password::broker()->createToken($user);
 
-        return $response->with('setup_link', route('password.reset', [
+        $route = $user->invitation_accepted_at === null ? 'password.create' : 'password.reset';
+
+        return $response->with('setup_link', route($route, [
             'token' => $token,
             'email' => $user->email,
         ]));

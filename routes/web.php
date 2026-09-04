@@ -70,6 +70,12 @@ Route::get('/', function () {
 })->name('home');
 Route::get('vaccine-cards/{token}', [VaccineCardController::class, 'validateToken'])->name('vaccine-cards.validate');
 Route::get('forgot-password/phone', [PhonePasswordResetController::class, 'create'])->name('password.phone.request');
+Route::get('activate-account', [PhonePasswordResetController::class, 'activation'])->name('account.activation');
+Route::get('create-password/{token}', [PhonePasswordResetController::class, 'showCreatePassword'])->name('password.create');
+Route::post('activate-account/otp', [PhonePasswordResetController::class, 'sendOtp'])->name('account.activation.otp.send');
+Route::post('activate-account/otp/verify', [PhonePasswordResetController::class, 'verifyOtp'])->name('account.activation.otp.verify');
+Route::post('forgot-password/otp', [PhonePasswordResetController::class, 'sendOtp'])->name('password.otp.send');
+Route::post('forgot-password/otp/verify', [PhonePasswordResetController::class, 'verifyOtp'])->name('password.otp.verify');
 Route::post('forgot-password/phone', [PhonePasswordResetController::class, 'sendCode'])->middleware('throttle:5,1')->name('password.phone.send');
 Route::post('forgot-password/phone/reset', [PhonePasswordResetController::class, 'reset'])->middleware('throttle:10,1')->name('password.phone.reset');
 Route::get('reset-password/phone/{token}', [PhonePasswordResetController::class, 'showLink'])->name('password.phone.link');

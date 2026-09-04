@@ -72,6 +72,17 @@ class User extends Authenticatable implements PasskeyUser
         return blank($phone) ? null : $phone;
     }
 
+    public static function smsRecipient(?string $phone): ?string
+    {
+        $phone = self::normalizePhone($phone);
+
+        if (blank($phone)) return null;
+        if (str_starts_with($phone, '09')) return '+63'.substr($phone, 1);
+        if (str_starts_with($phone, '639')) return '+'.$phone;
+
+        return $phone;
+    }
+
     public static function findByLogin(string $login): ?self
     {
         $login = trim($login);

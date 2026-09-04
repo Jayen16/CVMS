@@ -42,6 +42,28 @@ test('reset password screen can be rendered', function () {
     });
 });
 
+test('pending account setup link uses create password copy', function () {
+    Notification::fake();
+
+    $user = User::factory()->create([
+        'invitation_accepted_at' => null,
+    ]);
+
+    $this->post(route('password.request'), ['email' => $user->email]);
+
+    Notification::assertSentTo($user, AccountAccessNotification::class, function ($notification) use ($user) {
+        $this->get(route('password.reset', [
+            'token' => $notification->token,
+            'email' => $user->email,
+        ]))
+            ->assertOk()
+            ->assertSee('Create password')
+            ->assertDontSee('Reset password');
+
+        return true;
+    });
+});
+
 test('password can be reset with valid token', function () {
     Notification::fake();
 
@@ -72,7 +94,7 @@ test('changing the email in a reset link cannot reset the password', function ()
 
     $this->post(route('password.request'), ['email' => $user->email]);
 
-    Notification::assertSentTo($user, AccountAccessNotification::class, function ($notification) use ($user) {
+    Notification::assertSentTo($user, AccountAccessNotification::class, function ($notification) {
         $response = $this->post(route('password.update'), [
             'token' => $notification->token,
             'email' => 'mackulangkaya123@example.com',
