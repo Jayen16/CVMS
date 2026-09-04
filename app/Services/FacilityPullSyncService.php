@@ -33,8 +33,8 @@ class FacilityPullSyncService
         DB::transaction(function () use ($payload, $installation): void {
             $this->applyStaff($payload['data']['facility_staff'] ?? [], $installation->facility_id);
             $this->applyChildTransfers($payload['data']['child_transfers'] ?? [], $installation->facility_id);
-            $this->applyVaccines($payload['data']['vaccines'] ?? []);
-            $this->applySchedules($payload['data']['schedule_rules'] ?? []);
+            $vaccineIds = $this->applyVaccines($payload['data']['vaccines'] ?? []);
+            $this->applySchedules($payload['data']['schedule_rules'] ?? [], $vaccineIds);
             $this->applyAnnouncements($payload['data']['announcements'] ?? []);
             $this->applyParentChangeRequests($payload['data']['parent_change_requests'] ?? []);
             $installation->update([
@@ -49,15 +49,33 @@ class FacilityPullSyncService
         ];
     }
 
-    /** @param array<int, array<string, mixed>> $records */
-    private function applyVaccines(array $records): void
+    /**
+     * @param array<int, array<string, mixed>> $records
+     * @return array<string, string> Central vaccine UUID to local vaccine ID.
+     */
+    private function applyVaccines(array $records): array
     {
+        $vaccineIds = [];
+
         foreach ($records as $record) {
-            DB::table('vaccine_types')->updateOrInsert(['id' => $record['uuid']], [
-                'code' => $record['code'], 'name' => $record['name'], 'active' => $record['active'],
-                'created_at' => $record['created_at'], 'updated_at' => $record['updated_at'],
-            ]);
+            $existing = DB::table('vaccine_types')->where('code', $record['code'])->first();
+            $localId = $existing?->id ?? $record['uuid'];
+
+            if ($existing) {
+                DB::table('vaccine_types')->where('id', $localId)->update([
+                    'name' => $record['name'], 'active' => $record['active'], 'updated_at' => $record['updated_at'],
+                ]);
+            } else {
+                DB::table('vaccine_types')->insert([
+                    'id' => $localId, 'code' => $record['code'], 'name' => $record['name'], 'active' => $record['active'],
+                    'created_at' => $record['created_at'], 'updated_at' => $record['updated_at'],
+                ]);
+            }
+
+            $vaccineIds[$record['uuid']] = $localId;
         }
+
+        return $vaccineIds;
     }
 
     private function applyStaff(array $records, ?string $facilityId): void
@@ -83,12 +101,21 @@ class FacilityPullSyncService
         }
     }
 
-    /** @param array<int, array<string, mixed>> $records */
-    private function applySchedules(array $records): void
+    /**
+     * @param array<int, array<string, mixed>> $records
+     * @param array<string, string> $vaccineIds Central vaccine UUID to local vaccine ID.
+     */
+    private function applySchedules(array $records, array $vaccineIds): void
     {
         foreach ($records as $record) {
+            $localVaccineId = $vaccineIds[$record['vaccine_uuid']] ?? null;
+
+            if ($localVaccineId === null) {
+                continue;
+            }
+
             DB::table('vaccine_schedules')->updateOrInsert(['id' => $record['uuid']], [
-                'vaccine_type_id' => $record['vaccine_uuid'], 'dose_number' => $record['dose_number'],
+                'vaccine_type_id' => $localVaccineId, 'dose_number' => $record['dose_number'],
                 'age_days' => $record['age_days'], 'age_weeks' => $record['age_weeks'], 'age_months' => $record['age_months'], 'age_years' => $record['age_years'],
                 'label' => $record['label'], 'indication' => $record['indication'] ?? 'routine_vaccination', 'notes' => $record['notes'], 'active' => $record['active'],
                 'created_at' => $record['created_at'], 'updated_at' => $record['updated_at'],
