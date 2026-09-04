@@ -52,7 +52,7 @@ class PsgcSeeder extends Seeder
         $regionIds = [];
         $regionNames = [];
         foreach ($regions as $row) {
-            $region = Region::updateOrCreate(['code' => $row['code']], ['name' => $row['name']]);
+            $region = Region::updateOrCreate(['code' => $row['code']], ['name' => $this->repairEncoding($row['name'])]);
             $regionIds[$row['code']] = $region->id;
             $regionNames[$row['name']] = $row['code'];
         }
@@ -66,7 +66,7 @@ class PsgcSeeder extends Seeder
                 continue;
             }
             $province = Province::updateOrCreate(['code' => $row['code']], [
-                'region_id' => $regionIds[$regionCode], 'name' => $row['name'],
+                'region_id' => $regionIds[$regionCode], 'name' => $this->repairEncoding($row['name']),
             ]);
             $provinceIds[$row['code']] = $province->id;
             $provinceNames[$this->parentName($row, 'region').'|'.$row['name']] = $row['code'];
@@ -84,7 +84,7 @@ class PsgcSeeder extends Seeder
                 continue;
             }
             $municipality = Municipality::updateOrCreate(['code' => $row['code']], [
-                'province_id' => $provinceId, 'name' => $row['name'],
+                'province_id' => $provinceId, 'name' => $this->repairEncoding($row['name']),
             ]);
             $municipalityIds[$row['code']] = $municipality->id;
             $municipalityNames[$this->parentName($row, 'region').'|'.$this->parentName($row, 'province').'|'.$row['name']] = $row['code'];
@@ -100,7 +100,7 @@ class PsgcSeeder extends Seeder
                 continue;
             }
             $barangayRows[] = [
-                'id' => (string) Str::uuid(), 'municipality_id' => $municipalityId, 'name' => $row['name'],
+                'id' => (string) Str::uuid(), 'municipality_id' => $municipalityId, 'name' => $this->repairEncoding($row['name']),
                 'municipality' => $this->parentName($row, 'city_municipality'), 'created_at' => $now, 'updated_at' => $now,
             ];
         }
@@ -177,5 +177,16 @@ class PsgcSeeder extends Seeder
         }
 
         return is_string($value) ? $value : null;
+    }
+
+    private function repairEncoding(?string $value): ?string
+    {
+        if ($value === null || ! preg_match('/[ÃÂ]/u', $value)) {
+            return $value;
+        }
+
+        $latin = iconv('UTF-8', 'ISO-8859-1//IGNORE', $value);
+
+        return $latin === false ? $value : (iconv('ISO-8859-1', 'UTF-8//IGNORE', $latin) ?: $value);
     }
 }

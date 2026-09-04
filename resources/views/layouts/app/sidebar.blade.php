@@ -117,9 +117,11 @@
                                 {{ __('Archived Children') }}
                             </flux:sidebar.item>
                         @endif
-                        <flux:sidebar.item icon="archive-box" :href="route('archives.index')" :current="request()->routeIs('archives.*')" wire:navigate>
-                            {{ __('Archive Center') }}
-                        </flux:sidebar.item>
+                        @if (auth()->user()->canArchiveReports())
+                            <flux:sidebar.item icon="archive-box" :href="route('archives.index')" :current="request()->routeIs('archives.*')" wire:navigate>
+                                {{ __('Archive Center') }}
+                            </flux:sidebar.item>
+                        @endif
                     </flux:sidebar.group>
                 @endif
 

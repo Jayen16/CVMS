@@ -11,9 +11,9 @@ use App\Models\OfflineSyncOutbox;
 use App\Models\Province;
 use App\Models\Region;
 use App\Models\SyncStatus;
-use App\Models\VaccinationRecord;
-use App\Models\User;
 use App\Models\SystemInstallation;
+use App\Models\User;
+use App\Models\VaccinationRecord;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -107,7 +107,10 @@ class SyncDataPage extends Component
             'latestStatus' => $latestStatus,
             'installation' => $installation,
             'pendingCount' => config('offline.enabled')
-                ? (clone $rowsQuery)->whereNull('synced_at')->count()
+                ? (clone $rowsQuery)->whereIn('status', ['pending', 'processing'])->count()
+                : 0,
+            'failedCount' => config('offline.enabled')
+                ? (clone $rowsQuery)->where('status', 'failed')->count()
                 : 0,
             'recentRows' => $recentRows,
             ...$locationData,

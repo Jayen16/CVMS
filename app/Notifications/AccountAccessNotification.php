@@ -38,7 +38,8 @@ class AccountAccessNotification extends Notification
             ? config('app.url')
             : config('app.public_url');
 
-        $actionUrl = rtrim($publicUrl, '/').route('password.reset', [
+        $actionRoute = $isSetup ? 'password.create' : 'password.reset';
+        $actionUrl = rtrim($publicUrl, '/').route($actionRoute, [
             'token' => $this->token,
             'email' => $notifiable->getEmailForPasswordReset(),
         ], false);

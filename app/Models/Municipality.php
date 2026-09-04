@@ -6,6 +6,7 @@ use App\Models\Concerns\UsesUuidPrimaryKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Municipality extends Model
 {
@@ -26,5 +27,10 @@ class Municipality extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function facilities(): HasManyThrough
+    {
+        return $this->hasManyThrough(Facility::class, Barangay::class, 'municipality_id', 'barangay_id');
     }
 }

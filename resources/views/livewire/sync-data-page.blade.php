@@ -12,7 +12,7 @@
         <div>
             <p class="eyebrow">SYNC</p>
             <h1 class="page-title">Sync data</h1>
-            <p class="page-subtitle">Review pending sync items, last completed sync, and run a manual sync when needed.</p>
+            <p class="page-subtitle">Send local facility changes to Central, review sync results, and retry failed items when needed.</p>
             @if ($installation)
                 <p class="mt-2 text-sm text-zinc-500">Connection:
                     <span class="font-medium {{ $installation->status === 'active' ? 'text-emerald-600' : 'text-rose-600' }}">{{ ucfirst($installation->status) }}</span>
@@ -38,7 +38,7 @@
         <div class="grid gap-4 md:grid-cols-3">
             <x-stat-card label="Pending sync" :value="$pendingCount" />
             <x-stat-card label="Last processed" :value="$latestStatus?->last_processed ?? 0" />
-            <x-stat-card label="Last failed" :value="$latestStatus?->last_failed ?? 0" />
+            <x-stat-card label="Failed sync" :value="$failedCount" />
         </div>
     @endunless
 

@@ -28,7 +28,8 @@ class AccountRecoveryService
             ? config('app.url')
             : config('app.public_url');
         $url = rtrim((string) $baseUrl, '/').route('password.phone.link', ['token' => $token], false);
-        app(SmsGatewayFactory::class)->make()->send($user->phone, "CVMS password reset link: {$url} This link expires in 1 hour.");
+        $label = $user->invitation_accepted_at === null ? 'password setup' : 'password reset';
+        app(SmsGatewayFactory::class)->make()->send(User::smsRecipient($user->phone), "CVMS {$label} link: {$url} This link expires in 1 hour.");
         return 'sms';
     }
 }

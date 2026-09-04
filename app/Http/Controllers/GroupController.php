@@ -20,7 +20,7 @@ class GroupController extends Controller
             'municipality' => ['nullable', 'exists:municipalities,id'],
             'barangay' => ['nullable', 'exists:barangays,id'],
         ]);
-        $allRegions = Region::with(['provinces.municipalities.barangays'])->orderBy('name')->get();
+        $allRegions = Region::with(['provinces.municipalities.facilities', 'provinces.municipalities.barangays.facilities'])->orderBy('name')->get();
         $locationTree = $allRegions->map(fn ($region) => [
             'id' => $region->id, 'name' => $region->name,
             'provinces' => $region->provinces->map(fn ($province) => [

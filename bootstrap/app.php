@@ -33,7 +33,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
-                    'message' => 'The request could not be completed. Please try again.',
+                    'message' => $exception instanceof HttpExceptionInterface
+                        && $exception->getStatusCode() === 422
+                        && filled($exception->getMessage())
+                        ? $exception->getMessage()
+                        : 'The request could not be completed. Please try again.',
                 ], $exception instanceof HttpExceptionInterface ? $exception->getStatusCode() : 500);
             }
 

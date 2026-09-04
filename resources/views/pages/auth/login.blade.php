@@ -31,13 +31,18 @@
                     required
                     autocomplete="current-password"
                     :placeholder="__('Password')"
-                    viewable
                 />
 
-                @if (Route::has('password.request'))
-                    <flux:link class="absolute top-0 text-sm end-0" :href="route('password.request')" wire:navigate>
-                        {{ __('Forgot your password?') }}
-                    </flux:link>
+                @if (Route::has('password.request') && !(config('system.instance_type') === 'facility' && config('offline.enabled')))
+                    <div class="absolute top-0 end-0 flex items-center gap-2 text-sm">
+                        <flux:link :href="route('password.request')" wire:navigate>
+                            {{ __('Forgot your password?') }}
+                        </flux:link>
+                        <span class="text-zinc-400">|</span>
+                        <flux:link :href="route('account.activation')" wire:navigate>
+                            {{ __('Activate my account') }}
+                        </flux:link>
+                    </div>
                 @endif
             </div>
 

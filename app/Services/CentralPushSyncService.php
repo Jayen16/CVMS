@@ -226,9 +226,21 @@ class CentralPushSyncService
     /** @param array<string, mixed> $data */
     private function barangayId(array $data): string
     {
-        $id = Barangay::query()->where('name', $data['barangay_name'])->whereHas('municipalityRelation', fn ($query) => $query->where('code', $data['municipality_code']))->value('id');
+        $query = Barangay::query()->where('name', $data['barangay_name']);
 
-        abort_unless($id, 422, 'Child facility location is missing on the central server.');
+        if (filled($data['municipality_code'] ?? null)) {
+            $query->whereHas('municipalityRelation', fn ($municipality) => $municipality->where('code', $data['municipality_code']));
+        }
+
+        $matches = $query->pluck('id');
+
+        if ($matches->count() > 1) {
+            abort(422, 'Child facility location is ambiguous. Configure the facility municipality before syncing.');
+        }
+
+        $id = $matches->first();
+
+        abort_unless($id, 422, 'Child facility location is missing on the central server. Check that the facility location name matches a central barangay.');
 
         return (string) $id;
     }

@@ -61,6 +61,12 @@ class AppServiceProvider extends ServiceProvider
             $model::observe(AuditObserver::class);
         }
 
+        if (! $this->app->runningInConsole()) {
+            // Use the address the browser used to reach this local server. This
+            // keeps generated links reachable from phones on the same network.
+            URL::forceRootUrl(request()->getSchemeAndHttpHost());
+        }
+
         if (request()->header('x-forwarded-proto') === 'https') {
             URL::forceScheme('https');
         }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\OfflineSyncOutbox;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class FacilityPushSyncService
 {
@@ -34,6 +35,15 @@ class FacilityPushSyncService
         if ($rows->isEmpty()) {
             return ['processed' => 0, 'failed' => 0];
         }
+
+        // Relationship events created by older builds used a composite key
+        // (child UUID|guardian UUID). Central requires every record_uuid to be
+        // a UUID, so repair those pending rows before retrying the batch.
+        $rows->each(function (OfflineSyncOutbox $row): void {
+            if (! Str::isUuid((string) $row->model_sync_uuid)) {
+                $row->update(['model_sync_uuid' => (string) Str::uuid()]);
+            }
+        });
 
         $rows->each(fn (OfflineSyncOutbox $row) => $row->update([
             'status' => 'processing', 'attempts' => $row->attempts + 1, 'last_attempted_at' => now(),

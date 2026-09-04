@@ -13,7 +13,7 @@
         </div>
 
         <div class="flex flex-wrap gap-2">
-            @if (auth()->user()->canViewChildrenRegistry())
+            @if (auth()->user()->isNurse())
                 <a href="{{ route('children.index') }}" class="app-button-secondary" wire:navigate>Children</a>
             @endif
             @if (auth()->user()->isAdmin())
@@ -22,7 +22,7 @@
                     <span>Sync data</span>
                 </a>
             @endif
-            @if (auth()->user()->canManageChildren())
+            @if (auth()->user()->isNurse())
                 <a href="{{ route('children.create') }}" class="app-button-primary" wire:navigate>New child</a>
             @elseif (auth()->user()->canManageBarangayStaff())
                 <a href="{{ route(auth()->user()->canManageBarangayAdmins() ? 'municipal-admins.index' : 'nurses.index') }}" class="app-button-primary" wire:navigate>{{ auth()->user()->canManageBarangayAdmins() ? 'Manage barangay admins' : 'Manage nurses' }}</a>

@@ -69,7 +69,7 @@ test('authorized staff can archive matching AEFI reports by date range', functio
     expect(AdverseEventReport::find($report->id)->isArchived())->toBeFalse();
 });
 
-test('nurse report archiving is controlled by archive_reports permission', function () {
+test('nurses cannot access the report archive center', function () {
     $barangay = Barangay::create(['name' => 'Nurse Report Archive Barangay']);
     $nurse = User::factory()->create([
         'role' => 'nurse',
@@ -82,10 +82,7 @@ test('nurse report archiving is controlled by archive_reports permission', funct
         ->get(route('archives.index'))
         ->assertForbidden();
 
-    $nurse->update(['permissions' => ['view_children', 'archive_reports']]);
-
     $this->actingAs($nurse)
         ->get(route('archives.index'))
-        ->assertOk()
-        ->assertSee('Archive Center');
+        ->assertForbidden();
 });

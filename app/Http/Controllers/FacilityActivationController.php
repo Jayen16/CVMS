@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Facility;
+use App\Models\Barangay;
+use App\Models\Municipality;
+use App\Models\Province;
+use App\Models\Region;
 use App\Services\FacilityActivationService;
 use App\Services\FacilitySyncService;
 use Illuminate\Http\JsonResponse;
@@ -44,18 +48,67 @@ class FacilityActivationController extends Controller
     {
         abort_unless($request->user()->isSuperAdmin(), 403);
 
-        return view('central.facilities', ['facilities' => Facility::query()->withCount([
+        $filters = $request->validate([
+            'region' => ['nullable', 'exists:regions,id'],
+            'province' => ['nullable', 'exists:provinces,id'],
+            'municipality' => ['nullable', 'exists:municipalities,id'],
+            'barangay' => ['nullable', 'exists:barangays,id'],
+        ]);
+        $facilities = Facility::query()->with(['barangay.municipalityRelation.province.region'])->withCount([
             'connections as active_connections_count' => fn ($query) => $query->where('status', 'active'),
             'activationCodes',
-        ])->latest()->get()]);
+        ])->when($filters['region'] ?? null, fn ($query, $id) => $query->whereHas('barangay.municipalityRelation.province', fn ($q) => $q->where('region_id', $id)))
+            ->when($filters['province'] ?? null, fn ($query, $id) => $query->whereHas('barangay.municipalityRelation', fn ($q) => $q->where('province_id', $id)))
+            ->when($filters['municipality'] ?? null, fn ($query, $id) => $query->whereHas('barangay', fn ($q) => $q->where('municipality_id', $id)))
+            ->when($filters['barangay'] ?? null, fn ($query, $id) => $query->where('barangay_id', $id))
+            ->latest()->get();
+        $provinces = Province::query()
+            ->when($filters['region'] ?? null, fn ($query, $id) => $query->where('region_id', $id))
+            ->orderBy('name')->get();
+        $municipalities = Municipality::query()
+            ->when($filters['region'] ?? null, fn ($query, $id) => $query->whereHas('province', fn ($province) => $province->where('region_id', $id)))
+            ->when($filters['province'] ?? null, fn ($query, $id) => $query->where('province_id', $id))
+            ->orderBy('name')->get();
+        $barangays = Barangay::query()
+            ->when($filters['region'] ?? null, fn ($query, $id) => $query->whereHas('municipalityRelation.province', fn ($province) => $province->where('region_id', $id)))
+            ->when($filters['province'] ?? null, fn ($query, $id) => $query->whereHas('municipalityRelation', fn ($municipality) => $municipality->where('province_id', $id)))
+            ->when($filters['municipality'] ?? null, fn ($query, $id) => $query->where('municipality_id', $id))
+            ->with('municipalityRelation')->orderBy('name')->get();
+        $facilityBarangays = filled($filters['municipality'] ?? null) ? $barangays : collect();
+
+        return view('central.facilities', [
+            'facilities' => $facilities,
+            'filters' => $filters,
+            'fromGroupManagement' => $request->string('source')->toString() === 'groups',
+            'regions' => Region::with('provinces.municipalities.barangays')->orderBy('name')->get(),
+            'provinces' => $provinces,
+            'municipalities' => $municipalities,
+            'barangays' => $barangays,
+            'facilityBarangays' => $facilityBarangays,
+        ]);
     }
 
     public function storeFacility(Request $request): RedirectResponse
     {
         abort_unless($request->user()->isSuperAdmin(), 403);
-        Facility::create($request->validate(['code' => ['required', 'string', 'max:50', 'unique:facilities,code'], 'name' => ['required', 'string', 'max:255']]) + ['active' => true]);
+        $data = $request->validate(['barangay_id' => ['required', 'exists:barangays,id'], 'code' => ['nullable', 'string', 'max:50'], 'name' => ['nullable', 'string', 'max:255']]);
+        $barangay = Barangay::with('municipalityRelation')->findOrFail($data['barangay_id']);
+        $name = filled($data['name'] ?? null) ? trim($data['name']) : $barangay->name.' Clinic';
+        $code = filled($data['code'] ?? null) ? strtoupper(trim($data['code'])) : 'RHU-'.strtoupper(str_replace(' ', '-', $barangay->name));
+        $code = substr($code, 0, 50);
+        abort_if(Facility::whereRaw('UPPER(code) = ?', [$code])->exists(), 422, 'That facility code already exists. Enter a different code.');
+        Facility::create(['barangay_id' => $barangay->id, 'code' => $code, 'name' => $name, 'active' => true]);
 
         return back()->with('status', 'Facility registered.');
+    }
+
+    public function updateFacility(Request $request, Facility $facility): RedirectResponse
+    {
+        abort_unless($request->user()->isSuperAdmin(), 403);
+        $data = $request->validate(['barangay_id' => ['required', 'exists:barangays,id']]);
+        $facility->update(['barangay_id' => $data['barangay_id']]);
+
+        return back()->with('status', 'Facility location assigned.');
     }
 
     public function issueCode(Facility $facility, FacilityActivationService $activation): RedirectResponse

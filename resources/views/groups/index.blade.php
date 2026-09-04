@@ -26,14 +26,14 @@
                             <details open><summary class="cursor-pointer px-5 py-3 font-medium">{{ $province->name }}</summary><div class="border-t border-slate-200 pl-5 dark:border-zinc-800">
                                 @foreach ($province->municipalities as $municipality)
                                     @php($municipalityUsers = $users->where('municipality_id', $municipality->id)->whereNull('barangay_id')->values())
-                                    <details><summary class="cursor-pointer px-5 py-3 font-medium">{{ $municipality->name }} <span class="text-xs text-zinc-500">({{ $municipalityUsers->count() }} users)</span></summary><div class="border-t border-slate-200 px-5 py-3 dark:border-zinc-800">
-                                        @if ($municipalityUsers->isNotEmpty())
-                                            <x-location-users-table :users="$municipalityUsers" :add-route="route('locations.municipalities.users.store', $municipality)" :location-tree="$locationTree" />
-                                        @endif
+                                    <details><summary class="flex cursor-pointer items-center gap-3 px-5 py-3 font-medium"><span>{{ $municipality->name }} <span class="text-xs text-zinc-500">({{ $municipalityUsers->count() }} users, {{ $municipality->facilities->count() }} facilities)</span></span><a class="app-button-secondary ml-auto inline-flex !px-3 !py-1.5 !text-xs" href="{{ route('central.facilities.index', ['source' => 'groups', 'region' => $region->id, 'province' => $province->id, 'municipality' => $municipality->id]) }}" onclick="event.stopPropagation()">Manage facilities</a></summary><div class="border-t border-slate-200 px-5 py-3 dark:border-zinc-800">
+                                        <x-location-users-table :users="$municipalityUsers" :add-route="route('locations.municipalities.users.store', $municipality)" :location-tree="$locationTree" heading="Municipality users" />
+                                        <div class="ml-5 border-l border-slate-200 pl-4 dark:border-zinc-800">
                                         @foreach ($municipality->barangays as $barangay)
                                             @php($barangayUsers = $users->where('barangay_id', $barangay->id)->values())
-                                            <details class="mt-2 border-t border-slate-100 pt-2 dark:border-zinc-800"><summary class="cursor-pointer text-sm">{{ $barangay->name }} <span class="text-xs text-zinc-500">({{ $barangayUsers->count() }} users)</span></summary><div class="pl-4 pt-2"><x-location-users-table :users="$barangayUsers" :add-route="route('locations.barangays.users.store', $barangay)" :location-tree="$locationTree" /></div></details>
+                                            <details class="mt-2 border-t border-slate-100 pt-2 first:mt-0 dark:border-zinc-800"><summary class="cursor-pointer text-sm">{{ $barangay->name }} <span class="text-xs text-zinc-500">({{ $barangayUsers->count() }} users, {{ $barangay->facilities->count() }} facilities)</span></summary><div class="pl-4 pt-2"><div class="mb-3"><a class="app-button-secondary inline-flex !px-3 !py-1.5 !text-xs" href="{{ route('central.facilities.index', ['source' => 'groups', 'region' => $region->id, 'province' => $province->id, 'municipality' => $municipality->id, 'barangay' => $barangay->id]) }}">Manage facilities</a></div><x-location-users-table :users="$barangayUsers" :add-route="route('locations.barangays.users.store', $barangay)" :location-tree="$locationTree" heading="Barangay users" /></div></details>
                                         @endforeach
+                                        </div>
                                     </div></details>
                                 @endforeach
                             </div></details>

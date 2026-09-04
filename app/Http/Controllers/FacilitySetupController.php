@@ -18,7 +18,7 @@ class FacilitySetupController extends Controller
         $installation = $activation->localInstallation();
         abort_unless($installation->status === 'active', 404);
 
-        $barangay = $this->barangayForInstallation($installation->facility_name);
+        $barangay = $this->barangayForInstallation($installation);
 
         if ($this->hasBarangayAdmin($barangay)) {
             return to_route('home');
@@ -32,7 +32,7 @@ class FacilitySetupController extends Controller
         $installation = $activation->localInstallation();
         abort_unless($installation->status === 'active', 404);
 
-        $barangay = $this->barangayForInstallation($installation->facility_name);
+        $barangay = $this->barangayForInstallation($installation);
 
         if ($this->hasBarangayAdmin($barangay)) {
             return to_route('home');
@@ -78,9 +78,13 @@ class FacilitySetupController extends Controller
             ->exists();
     }
 
-    private function barangayForInstallation(?string $facilityName): Barangay
+    private function barangayForInstallation(\App\Models\SystemInstallation $installation): Barangay
     {
-        $name = trim((string) $facilityName);
+        if ($installation->barangay_id && ($barangay = Barangay::find($installation->barangay_id))) {
+            return $barangay;
+        }
+
+        $name = trim((string) $installation->facility_name);
         $barangay = Barangay::query()->where('name', $name)->first();
 
         if ($barangay === null && str_starts_with(strtolower($name), 'barangay ')) {

@@ -1,8 +1,8 @@
-@props(['users', 'addRoute', 'locationTree' => []])
+@props(['users', 'addRoute', 'locationTree' => [], 'heading' => 'Assigned users'])
 
 <div class="mt-2 border-t border-slate-200 pt-3 dark:border-zinc-700">
     <div class="flex items-center justify-between">
-        <h4 class="text-sm font-semibold">Assigned users</h4>
+        <h4 class="text-sm font-semibold">{{ $heading }}</h4>
         <flux:modal.trigger name="add-user-{{ md5($addRoute) }}">
             <flux:button size="sm" icon="plus" aria-label="Add user" />
         </flux:modal.trigger>
