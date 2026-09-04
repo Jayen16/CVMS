@@ -16,11 +16,11 @@
             @if (auth()->user()->canViewChildrenRegistry())
                 <a href="{{ route('children.index') }}" class="app-button-secondary" wire:navigate>Children</a>
             @endif
-            @if (auth()->user()->isSuperAdmin() || auth()->user()->isBarangayAdmin() || auth()->user()->isNurse())
-                    <a href="{{ route('sync.index') }}" class="app-button-secondary inline-flex items-center gap-2" wire:navigate>
-                        <flux:icon.arrow-path class="size-4" />
-                        <span>Sync data</span>
-                    </a>
+            @if (auth()->user()->isAdmin())
+                <a href="{{ route('sync.index') }}" class="app-button-secondary inline-flex items-center gap-2" wire:navigate>
+                    <flux:icon.arrow-path class="size-4" />
+                    <span>Sync data</span>
+                </a>
             @endif
             @if (auth()->user()->canManageChildren())
                 <a href="{{ route('children.create') }}" class="app-button-primary" wire:navigate>New child</a>
@@ -37,7 +37,9 @@
             <x-stat-card label="Nurses" :value="$stats['nurses']" />
             <x-stat-card label="Children" :value="$stats['children']" />
             <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" />
-            <x-stat-card label="Pending sync" :value="$stats['pendingSync']" />
+            @if (auth()->user()->isAdmin())
+                <x-stat-card label="Pending sync" :value="$stats['pendingSync']" />
+            @endif
         </div>
 
         <div class="mt-4 grid gap-4 md:grid-cols-2">
@@ -174,7 +176,6 @@
         <div class="grid gap-4 md:grid-cols-3">
             <x-stat-card label="Linked children" :value="$stats['children']" />
             <x-stat-card label="Vaccination records" :value="$stats['vaccinations']" />
-            <x-stat-card label="Pending sync" :value="$stats['pendingSync']" />
         </div>
 
         <section class="app-card">
@@ -223,7 +224,6 @@
             <x-stat-card label="Children" :value="$stats['children']" />
             <x-stat-card label="Vaccination records" :value="$stats['vaccinations']" />
             <x-stat-card label="Pending verification" :value="$stats['pending']" />
-            <x-stat-card label="Pending sync" :value="$stats['pendingSync']" />
         </div>
 
         <div class="mt-4 flex flex-wrap gap-2">

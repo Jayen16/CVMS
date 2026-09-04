@@ -1,4 +1,8 @@
-    <div
+@php
+    $editParent = $child->parents->firstWhere('id', session('edit_parent_id'));
+@endphp
+
+<div
         class="app-page"
         x-data="{
             openVerificationModal: false,
@@ -9,6 +13,21 @@
             confirmActionLabel: 'Confirm',
             confirmMessage: '',
             confirmForm: null,
+            actionStatus: '',
+            editParentOpen: @js(session('edit_parent_id') !== null && $editParent !== null),
+            editParentAction: @js($editParent ? route('children.parents.update', ['child' => $child, 'parent' => $editParent]) : ''),
+            editParentName: @js(old('edit_name', $editParent?->name ?? '')),
+            editParentEmail: @js(old('edit_email', $editParent?->email ?? '')),
+            editParentPhone: @js(old('edit_phone', $editParent?->phone ?? '')),
+            editParentRelationship: @js(old('edit_relationship', $editParent?->pivot?->relationship ?? 'guardian')),
+            openParentEditor(action, name, email, phone, relationship) {
+                this.editParentAction = action;
+                this.editParentName = name;
+                this.editParentEmail = email;
+                this.editParentPhone = phone;
+                this.editParentRelationship = relationship;
+                this.editParentOpen = true;
+            },
             archiveOpen: false,
             archiveAction: '',
             archiveName: @js($child->full_name),
@@ -37,6 +56,23 @@
                 {{ session('status') }}
             </div>
         @endif
+        <div x-show="actionStatus" x-cloak x-text="actionStatus" class="app-alert-success" @parent-action-status.window="actionStatus = $event.detail"></div>
+
+        <div x-show="editParentOpen" x-cloak x-on:keydown.escape.window="editParentOpen = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="edit-parent-title">
+            <form method="POST" x-bind:action="editParentAction" class="app-panel w-full max-w-2xl" @click.stop>
+                @csrf
+                @method('PUT')
+                <h2 id="edit-parent-title" class="app-card-title">Edit parent information</h2>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                    <label class="grid gap-1.5 text-sm"><span class="font-medium">Parent name</span><input class="app-input" type="text" name="edit_name" x-model="editParentName" required>@error('edit_name', 'editParent')<span class="text-xs text-red-600">{{ $message }}</span>@enderror</label>
+                    <label class="grid gap-1.5 text-sm"><span class="font-medium">Parent email</span><input class="app-input" type="email" name="edit_email" x-model="editParentEmail">@error('edit_email', 'editParent')<span class="text-xs text-red-600">{{ $message }}</span>@enderror</label>
+                    <label class="grid gap-1.5 text-sm"><span class="font-medium">Parent cellphone</span><input class="app-input" type="text" name="edit_phone" x-model="editParentPhone">@error('edit_phone', 'editParent')<span class="text-xs text-red-600">{{ $message }}</span>@enderror</label>
+                    <label class="grid gap-1.5 text-sm"><span class="font-medium">Relationship</span><select class="app-input" name="edit_relationship" x-model="editParentRelationship" required><option value="mother">Mother</option><option value="father">Father</option><option value="guardian">Guardian</option><option value="aunt">Aunt</option><option value="uncle">Uncle</option><option value="grandmother">Grandmother</option><option value="grandfather">Grandfather</option><option value="other">Other</option></select>@error('edit_relationship', 'editParent')<span class="text-xs text-red-600">{{ $message }}</span>@enderror</label>
+                </div>
+                <p class="mt-3 text-xs text-slate-500 dark:text-zinc-400">Provide at least an email address or cellphone number so the parent can recover access.</p>
+                <div class="mt-5 flex justify-end gap-2"><button type="button" class="app-button-secondary" @click="editParentOpen = false">Cancel</button><button type="submit" class="app-button-primary">Save parent</button></div>
+            </form>
+        </div>
 
         <div class="page-heading">
             <div>
@@ -161,6 +197,10 @@
                     $activeTab = 'parents';
                 } elseif ($errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'vaccine_inventory_item_id', 'remarks'])) {
                     $activeTab = 'vaccination';
+                }
+
+                if (request()->string('tab')->toString() === 'parents') {
+                    $activeTab = 'parents';
                 }
             @endphp
         @endif
@@ -401,35 +441,35 @@
                         <section class="app-panel flex flex-col {{ $activeTab === 'parents' ? '' : 'hidden' }}" data-tab-panel="parents">
                             <h2 class="app-card-title">Linked parents</h2>
                             <div class="order-2 mt-4 overflow-x-auto rounded-lg border border-slate-200 dark:border-zinc-800">
-                                <table class="app-table w-full min-w-[800px]">
+                                <table class="app-table w-full table-fixed">
                                     <thead>
                                         <tr>
-                                            <th class="px-4 py-3 font-medium">Parent</th>
-                                            <th class="px-4 py-3 font-medium">Contact</th>
-                                            <th class="px-4 py-3 font-medium">Relationship</th>
-                                            <th class="px-4 py-3 font-medium">Status</th>
-                                            <th class="px-4 py-3 font-medium">Actions</th>
+                                            <th class="w-[19%] px-2 py-3 font-medium sm:px-4">Parent</th>
+                                            <th class="w-[25%] px-2 py-3 font-medium sm:px-4">Contact</th>
+                                            <th class="w-[18%] px-2 py-3 font-medium sm:px-4">Relationship</th>
+                                            <th class="w-[26%] px-2 py-3 font-medium sm:px-4">Status</th>
+                                            <th class="w-[12%] px-2 py-3 font-medium sm:px-4">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                 @forelse ($child->parents as $parent)
                                     <tr class="app-table-row align-top">
-                                        <td class="font-medium text-slate-950 dark:text-white">{{ $parent->name }}</td>
-                                        <td>
+                                        <td class="break-words px-2 font-medium text-slate-950 dark:text-white sm:px-4">{{ $parent->name }}</td>
+                                        <td class="break-words px-2 sm:px-4">
                                             {{ $parent->email ?: 'No email' }}
                                             @if ($parent->phone)
                                                 <div class="text-zinc-500">{{ $parent->phone }}</div>
                                             @endif
                                         </td>
-                                        <td class="capitalize">{{ $parent->pivot->relationship }}</td>
-                                        <td>
+                                        <td class="break-words px-2 capitalize sm:px-4">{{ $parent->pivot->relationship }}</td>
+                                        <td class="break-words px-2 sm:px-4">
                                             @if ($parent->invitation_accepted_at)
                                                 <span class="status-pill status-verified">Configured</span>
                                             @else
                                                 <span class="status-pill status-pending">Pending password setup</span>
                                             @endif
                                         </td>
-                                        <td>
+                                        <td class="px-2 sm:px-4">
                                             <div
                                                 class="relative"
                                                 x-data="{
@@ -475,17 +515,18 @@
                                                         :style="`top: ${menuTop}px; left: ${menuLeft}px;`"
                                                         class="fixed z-[100] grid min-w-44 gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
                                                     >
-                                                    @if (! $parent->invitation_accepted_at)
-                                                        <form method="POST" action="{{ route('children.parents.setup-link', ['child' => $child, 'parent' => $parent]) }}">
+                                                    <button type="button" class="w-full cursor-pointer rounded px-3 py-2 text-left text-sm font-medium text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-zinc-800" @click="openParentEditor(@js(route('children.parents.update', ['child' => $child, 'parent' => $parent])), @js($parent->name), @js($parent->email), @js($parent->phone), @js($parent->pivot->relationship)); open = false">Edit parent</button>
+                                                    @if (! $parent->invitation_accepted_at && $parent->email)
+                                                        <form method="POST" action="{{ route('children.parents.setup-link', ['child' => $child, 'parent' => $parent]) }}" @submit.prevent="fetch($event.currentTarget.action, { method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: new FormData($event.currentTarget) }).then(response => response.json().then(data => { if (! response.ok) throw new Error(data.message || 'Unable to send the setup link.'); window.dispatchEvent(new CustomEvent('parent-action-status', { detail: data.message })); })).catch(error => window.dispatchEvent(new CustomEvent('parent-action-status', { detail: error.message })))">
                                                             @csrf
-                                                            <button class="w-full rounded px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-zinc-800">Resend link</button>
+                                                            <button type="submit" class="w-full cursor-pointer rounded px-3 py-2 text-left text-sm font-medium text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-zinc-800">Resend setup link</button>
                                                         </form>
                                                     @endif
                                                     @if ($parent->email)
-                                                        <form method="POST" action="{{ route('children.parents.password-link', [$child, $parent]) }}">@csrf<input type="hidden" name="channel" value="email"><button class="w-full rounded px-3 py-2 text-left text-sm text-teal-700 hover:bg-slate-100 dark:text-teal-300 dark:hover:bg-zinc-800">Reset by email</button></form>
+                                                        <form method="POST" action="{{ route('children.parents.password-link', [$child, $parent]) }}" @submit.prevent="fetch($event.currentTarget.action, { method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: new FormData($event.currentTarget) }).then(response => response.json().then(data => { if (! response.ok) throw new Error(data.message || 'Unable to send the reset link.'); window.dispatchEvent(new CustomEvent('parent-action-status', { detail: data.message })); })).catch(error => window.dispatchEvent(new CustomEvent('parent-action-status', { detail: error.message })))">@csrf<input type="hidden" name="channel" value="email"><button type="submit" class="w-full cursor-pointer rounded px-3 py-2 text-left text-sm font-medium text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-zinc-800">Reset by email</button></form>
                                                     @endif
                                                     @if ($parent->phone)
-                                                        <form method="POST" action="{{ route('children.parents.password-link', [$child, $parent]) }}">@csrf<input type="hidden" name="channel" value="sms"><button class="w-full rounded px-3 py-2 text-left text-sm text-teal-700 hover:bg-slate-100 dark:text-teal-300 dark:hover:bg-zinc-800">Reset by text</button></form>
+                                                        <form method="POST" action="{{ route('children.parents.password-link', [$child, $parent]) }}" @submit.prevent="fetch($event.currentTarget.action, { method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: new FormData($event.currentTarget) }).then(response => response.json().then(data => { if (! response.ok) throw new Error(data.message || 'Unable to send the reset link.'); window.dispatchEvent(new CustomEvent('parent-action-status', { detail: data.message })); })).catch(error => window.dispatchEvent(new CustomEvent('parent-action-status', { detail: error.message })))">@csrf<input type="hidden" name="channel" value="sms"><button type="submit" class="w-full cursor-pointer rounded px-3 py-2 text-left text-sm font-medium text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-zinc-800">Reset by text</button></form>
                                                     @endif
                                                     <form
                                                         method="POST"

@@ -33,10 +33,10 @@ class AccountAccessNotification extends Notification
         $rhuName = (string) config('rhu.name');
         $shortName = (string) config('rhu.short_name');
         $systemName = (string) config('rhu.system_name');
-        $actionUrl = route('password.reset', [
+        $actionUrl = rtrim((string) config('app.public_url'), '/').route('password.reset', [
             'token' => $this->token,
             'email' => $notifiable->getEmailForPasswordReset(),
-        ]);
+        ], false);
 
         return (new MailMessage)
             ->subject($isSetup ? "Set up your {$shortName} account" : "Reset your {$shortName} password")

@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use App\Services\AccountRecoveryService;
@@ -47,10 +48,19 @@ class ChildParentController extends Controller
         $status = 'Parent account linked to child profile.';
 
         if ($parent === null) {
-            $request->validate([
-                'email' => [Rule::unique('users', 'email')],
-                'phone' => [Rule::unique('users', 'phone')],
-            ]);
+            $uniqueRules = [];
+
+            if (filled($validated['email'])) {
+                $uniqueRules['email'] = [Rule::unique('users', 'email')];
+            }
+
+            if (filled($validated['phone'])) {
+                $uniqueRules['phone'] = [Rule::unique('users', 'phone')];
+            }
+
+            if ($uniqueRules !== []) {
+                $request->validate($uniqueRules);
+            }
 
             $parent = User::create([
                 'name' => $validated['name'],
@@ -113,7 +123,57 @@ class ChildParentController extends Controller
 
         Password::sendResetLink(['email' => $parent->email]);
 
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Password setup link sent again.']);
+        }
+
         return to_route('children.show', $child)->with('status', 'Password setup link sent again.');
+    }
+
+    public function update(Request $request, ChildProfile $child, User $parent): RedirectResponse
+    {
+        $this->authorizeChildAccess($child);
+        abort_unless($parent->isParent() && $child->parents()->whereKey($parent->id)->exists(), 404);
+
+        $validator = Validator::make($request->all(), [
+            'edit_name' => ['required', 'string', 'max:255'],
+            'edit_email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($parent->id)],
+            'edit_phone' => ['nullable', 'string', 'max:32', Rule::unique('users', 'phone')->ignore($parent->id)],
+            'edit_relationship' => ['required', 'string', 'max:255', Rule::in([
+                'mother', 'father', 'guardian', 'aunt', 'uncle', 'grandmother', 'grandfather', 'other',
+            ])],
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->to(route('children.show', ['child' => $child, 'tab' => 'parents']))
+                ->withErrors($validator, 'editParent')
+                ->withInput()
+                ->with('edit_parent_id', $parent->id);
+        }
+
+        $validated = $validator->validated();
+
+        $validated['email'] = filled($validated['edit_email'] ?? null) ? strtolower(trim($validated['edit_email'])) : null;
+        $validated['phone'] = User::normalizePhone($validated['edit_phone'] ?? null);
+
+        if (blank($validated['email']) && blank($validated['phone'])) {
+            return redirect()->to(route('children.show', ['child' => $child, 'tab' => 'parents']))
+                ->withErrors(['edit_phone' => 'Add an email address or phone number for this parent.'], 'editParent')
+                ->withInput()
+                ->with('edit_parent_id', $parent->id);
+        }
+
+        $parent->update([
+            'name' => $validated['edit_name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+        ]);
+        $child->parents()->updateExistingPivot($parent->id, ['relationship' => $validated['edit_relationship']]);
+
+        app(\App\Services\OfflineSyncService::class)->queueGuardian($parent->fresh());
+        app(\App\Services\OfflineSyncService::class)->queueRelationship($child, $parent, $validated['edit_relationship']);
+
+        return to_route('children.show', [$child, 'tab' => 'parents'])->with('status', 'Parent information updated.');
     }
 
     public function sendPasswordLink(Request $request, ChildProfile $child, User $parent, AccountRecoveryService $recovery): RedirectResponse
@@ -122,6 +182,11 @@ class ChildParentController extends Controller
         abort_unless($parent->isParent() && $child->parents()->whereKey($parent->id)->exists(), 404);
         $channel = $request->validate(['channel' => ['required', 'in:email,sms']])['channel'];
         $recovery->send($parent, $channel);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Parent password reset link sent by '.strtoupper($channel).'.']);
+        }
+
         return to_route('children.show', $child)->with('status', 'Parent password reset link sent by '.strtoupper($channel).'.');
     }
 
