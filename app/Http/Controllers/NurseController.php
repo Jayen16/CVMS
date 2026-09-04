@@ -155,7 +155,12 @@ class NurseController extends Controller
         ]);
 
         $oldPermissions = $nurse->nursePermissions();
-        $newPermissions = array_values($validated['permissions'] ?? []);
+        // Hidden capabilities remain stored and enabled so they can be restored
+        // in the nurse access UI without changing the permission model.
+        $newPermissions = array_merge(
+            $validated['permissions'] ?? [],
+            array_intersect($oldPermissions, User::hiddenNursePermissionKeys()),
+        );
         sort($oldPermissions);
         sort($newPermissions);
 

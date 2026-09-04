@@ -151,16 +151,25 @@
                                                     <p class="text-sm font-semibold text-slate-950 dark:text-white">Nurse access</p>
                                                     <p class="text-xs text-slate-500 dark:text-zinc-400">Choose the capabilities available to {{ $member->name }}.</p>
                                                 </div>
-                                                <span class="text-xs text-slate-500 dark:text-zinc-400">{{ count($member->nursePermissions()) }} of {{ count(\App\Models\User::nursePermissionDefinitions()) }} enabled</span>
+                                                @php
+                                                    $hiddenPermissions = \App\Models\User::hiddenNursePermissionKeys();
+                                                    $visiblePermissionKeys = array_values(array_diff(
+                                                        array_keys(\App\Models\User::nursePermissionDefinitions()),
+                                                        $hiddenPermissions,
+                                                    ));
+                                                @endphp
+                                                <span class="text-xs text-slate-500 dark:text-zinc-400">{{ collect($visiblePermissionKeys)->filter(fn ($permission) => $member->hasNursePermission($permission))->count() }} of {{ count($visiblePermissionKeys) }} enabled</span>
                                             </div>
                                             <form method="POST" action="{{ route('nurses.permissions.update', $member) }}" class="grid gap-5 lg:grid-cols-3">
                                                 @csrf
                                                 @method('PUT')
                                                 @foreach (\App\Models\User::nursePermissionGroups() as $module => $permissions)
+                                                    @continue(collect(array_keys($permissions))->diff($hiddenPermissions)->isEmpty())
                                                     <fieldset class="rounded-xl border border-slate-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
                                                         <legend class="px-1 text-sm font-semibold text-slate-950 dark:text-white">{{ $module }}</legend>
                                                         <div class="mt-2 grid gap-2">
                                                             @foreach ($permissions as $permission => $label)
+                                                                @continue(in_array($permission, $hiddenPermissions, true))
                                                                 <label class="flex items-start gap-2 rounded-lg border border-slate-200 p-3 text-sm dark:border-zinc-700">
                                                                     <input type="checkbox" name="permissions[]" value="{{ $permission }}" @checked($member->hasNursePermission($permission))>
                                                                     <span>{{ $label }}</span>

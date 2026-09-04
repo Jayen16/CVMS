@@ -111,7 +111,16 @@ test('barangay admins can customize a same-barangay nurse permissions and change
         ->assertRedirect(route('nurses.index'));
 
     $nurse->refresh();
-    expect($nurse->nursePermissions())->toBe(['view_children', 'view_inventory'])
+    expect($nurse->nursePermissions())->toBe([
+        'view_children',
+        'view_inventory',
+        'submit_aefi_reports',
+        'view_aefi_reports',
+        'view_duplicates',
+        'merge_duplicates',
+        'view_defaulters',
+        'manage_announcements',
+    ])
         ->and($nurse->canViewChildrenRegistry())->toBeTrue()
         ->and($nurse->canManageChildren())->toBeFalse()
         ->and($nurse->canViewInventory())->toBeTrue()
