@@ -33,7 +33,12 @@ class AccountAccessNotification extends Notification
         $rhuName = (string) config('rhu.name');
         $shortName = (string) config('rhu.short_name');
         $systemName = (string) config('rhu.system_name');
-        $actionUrl = rtrim((string) config('app.public_url'), '/').route('password.reset', [
+        $publicUrl = app()->environment('local')
+            || (config('system.instance_type') === 'facility' && config('offline.enabled'))
+            ? config('app.url')
+            : config('app.public_url');
+
+        $actionUrl = rtrim($publicUrl, '/').route('password.reset', [
             'token' => $this->token,
             'email' => $notifiable->getEmailForPasswordReset(),
         ], false);

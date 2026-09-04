@@ -10,6 +10,7 @@ use App\Http\Controllers\ChildProfileController;
 use App\Http\Controllers\ChildTimelinePdfController;
 // use App\Http\Controllers\ClinicAnnouncementController;
 use App\Http\Controllers\FacilityActivationController;
+use App\Http\Controllers\FacilitySetupController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\ManualSyncController;
@@ -49,6 +50,8 @@ if (config('system.instance_type') === 'facility') {
         Route::get('activate', [FacilityActivationController::class, 'show'])->name('facility.activate');
         Route::post('activate', [FacilityActivationController::class, 'activate'])->name('facility.activate.store');
     });
+    Route::get('setup', [FacilitySetupController::class, 'show'])->name('facility.setup');
+    Route::post('setup', [FacilitySetupController::class, 'store'])->name('facility.setup.store');
 } else {
     Route::middleware(['auth', 'verified'])->group(function (): void {
         Route::get('central/facilities', [FacilityActivationController::class, 'facilities'])->name('central.facilities.index');

@@ -34,10 +34,10 @@ class FacilityActivationController extends Controller
         } catch (\Throwable $exception) {
             report($exception);
 
-            return to_route('home')->with('status', 'Facility connected. Initial synchronization is pending; use Sync now when Central is reachable.');
+            return to_route('facility.setup')->with('status', 'Facility connected. Initial synchronization is pending; complete account setup, then use Sync now when Central is reachable.');
         }
 
-        return to_route('home')->with('status', 'Facility connected and initial data synchronized.');
+        return to_route('facility.setup')->with('status', 'Facility connected and initial data synchronized.');
     }
 
     public function facilities(Request $request): View

@@ -387,6 +387,19 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /** @return array<int, string> */
+    public static function hiddenNursePermissionKeys(): array
+    {
+        return [
+            'submit_aefi_reports',
+            'view_aefi_reports',
+            'view_duplicates',
+            'merge_duplicates',
+            'view_defaulters',
+            'manage_announcements',
+        ];
+    }
+
+    /** @return array<int, string> */
     public static function defaultNursePermissions(): array
     {
         return array_keys(self::nursePermissionDefinitions());
