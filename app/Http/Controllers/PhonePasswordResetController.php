@@ -94,7 +94,10 @@ class PhonePasswordResetController extends Controller
             if ($email !== null) {
                 $user->notify(new PasswordOtpNotification($code, $activation));
             } else {
-                $sms->make()->send(User::smsRecipient($lookup), ($activation ? 'Your CVMS account activation' : 'Your CVMS password reset')." code is {$code}. It expires in 10 minutes.");
+                $message = $activation
+                    ? "CVMS: Your account activation code is {$code} for login verification. It expires in 10 minutes. Ignore if unauthorized."
+                    : "CVMS: Your password reset code is {$code} for login verification. It expires in 10 minutes. Ignore if unauthorized.";
+                $sms->make()->send(User::smsRecipient($lookup), $message);
             }
             Cache::put($cooldownKey, true, now()->addMinutes(5));
         } catch (\Throwable $exception) {
@@ -239,8 +242,8 @@ class PhonePasswordResetController extends Controller
             ], now()->addMinutes(10));
 
             $message = $purpose === 'activation'
-                ? "Your CVMS account activation code is {$code}. It expires in 10 minutes."
-                : "Your CVMS password reset code is {$code}. It expires in 10 minutes.";
+                ? "CVMS: Your account activation code is {$code} for login verification. It expires in 10 minutes. Ignore if unauthorized."
+                : "CVMS: Your password reset code is {$code} for login verification. It expires in 10 minutes. Ignore if unauthorized.";
 
             try {
                 $sms->make()->send(User::smsRecipient($phone), $message);
