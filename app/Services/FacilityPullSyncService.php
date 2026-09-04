@@ -32,10 +32,16 @@ class FacilityPullSyncService
 
         DB::transaction(function () use ($payload, $installation): void {
             $this->applyStaff($payload['data']['facility_staff'] ?? [], $installation->facility_id);
-            $this->applyChildTransfers($payload['data']['child_transfers'] ?? [], $installation->facility_id);
+            /*
+             * Temporarily disabled; retain for future reactivation.
+             * $this->applyChildTransfers($payload['data']['child_transfers'] ?? [], $installation->facility_id);
+             */
             $vaccineIds = $this->applyVaccines($payload['data']['vaccines'] ?? []);
             $this->applySchedules($payload['data']['schedule_rules'] ?? [], $vaccineIds);
-            $this->applyAnnouncements($payload['data']['announcements'] ?? []);
+            /*
+             * Temporarily disabled; retain for future reactivation.
+             * $this->applyAnnouncements($payload['data']['announcements'] ?? []);
+             */
             $this->applyParentChangeRequests($payload['data']['parent_change_requests'] ?? []);
             $installation->update([
                 'pull_cursor' => $payload['cursor'],

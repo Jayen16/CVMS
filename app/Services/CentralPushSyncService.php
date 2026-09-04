@@ -24,7 +24,7 @@ class CentralPushSyncService
         $accepted = [];
         DB::transaction(function () use ($events, $connection, &$accepted): void {
             foreach ($events as $event) {
-                if (! in_array($event['entity'], ['facility_staff', 'children', 'child_transfers', 'immunization_records', 'guardians', 'child_guardian_relationships', 'inventory_transactions', 'appointments', 'audit_events', 'notification_requests'], true)) {
+                if (! in_array($event['entity'], ['facility_staff', 'children', /* 'child_transfers', */ 'immunization_records', 'guardians', 'child_guardian_relationships', 'inventory_transactions', 'appointments', 'audit_events', 'notification_requests'], true)) {
                     abort(422, 'Unsupported synchronization entity.');
                 }
 
@@ -37,7 +37,7 @@ class CentralPushSyncService
                 $applied = match ($event['entity']) {
                     'facility_staff' => $this->applyStaff($connection->facility_id, $event),
                     'children' => $this->applyChild($connection->facility_id, $event),
-                    'child_transfers' => $this->applyChildTransfer($connection->facility_id, $event),
+                    /* 'child_transfers' => $this->applyChildTransfer($connection->facility_id, $event), */
                     'immunization_records' => $this->applyImmunization($connection->facility_id, $event),
                     'guardians' => $this->applyGuardian($connection->facility_id, $event),
                     'child_guardian_relationships' => $this->applyRelationship($connection->facility_id, $event),

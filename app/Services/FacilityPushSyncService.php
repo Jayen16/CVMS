@@ -19,7 +19,7 @@ class FacilityPushSyncService
 
         $rows = OfflineSyncOutbox::query()
             ->whereIn('status', ['pending', 'failed'])
-            ->whereIn('entity', ['facility_staff', 'children', 'child_transfers', 'immunization_records', 'guardians', 'child_guardian_relationships', 'inventory_transactions', 'appointments', 'audit_events', 'notification_requests'])
+            ->whereIn('entity', ['facility_staff', 'children', /* 'child_transfers', */ 'immunization_records', 'guardians', 'child_guardian_relationships', 'inventory_transactions', 'appointments', 'audit_events', 'notification_requests'])
             ->where(function ($query): void {
                 $query->where('status', 'pending')->orWhere(function ($failed): void {
                     $failed->where('status', 'failed')->where(function ($retry): void {
