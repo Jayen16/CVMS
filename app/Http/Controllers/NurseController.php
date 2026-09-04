@@ -47,7 +47,7 @@ class NurseController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-            'phone' => ['required', 'string', 'max:32', Rule::unique('users', 'phone')],
+            'phone' => [$this->usesOfflineFacilitySetup() ? 'nullable' : 'required', 'string', 'max:32', Rule::unique('users', 'phone')],
             'barangay_id' => [$managesBarangayAdmins ? 'required' : 'nullable', 'exists:barangays,id'],
             'municipality_id' => ['nullable', 'exists:municipalities,id'],
             'barangay_name' => ['nullable', 'string', 'max:255'],
