@@ -62,17 +62,44 @@ class ImmunizationSchedulePage extends Component
 
     public function render(ImmunizationSuggestionService $suggestions, PredictiveAnalyticsService $analytics): View
     {
-        abort_unless(auth()->user()->canViewDefaulters(), 403);
+        $user = auth()->user();
+        abort_unless($user->canViewDefaulters(), 403);
 
-        $barangayIds = $this->filteredBarangayIds(auth()->user());
-        $children = ChildProfile::query()->visibleTo(auth()->user())
+        $requiresLocationSelection = $user->isSuperAdmin() && $this->regionId === 'all';
+        $regions = $user->isSuperAdmin() ? Region::query()->orderBy('name')->get() : collect();
+        $provinces = $user->isSuperAdmin() ? Province::query()
+            ->when($this->regionId !== 'all', fn ($query) => $query->where('region_id', $this->regionId))
+            ->orderBy('name')->get() : collect();
+        $municipalities = $user->isSuperAdmin() ? Municipality::query()
+            ->when($this->regionId !== 'all', fn ($query) => $query->whereHas('province', fn ($province) => $province->where('region_id', $this->regionId)))
+            ->when($this->provinceId !== 'all', fn ($query) => $query->where('province_id', $this->provinceId))
+            ->orderBy('name')->get() : collect();
+        $availableBarangays = Barangay::query()->whereIn('id', $user->accessibleBarangayIds())
+            ->when($user->isSuperAdmin() && $this->municipalityId !== 'all', fn ($query) => $query->where('municipality_id', $this->municipalityId))
+            ->orderBy('name')->get();
+
+        if ($requiresLocationSelection) {
+            return view('livewire.immunization-schedule-page', [
+                'rows' => new LengthAwarePaginator(collect(), 0, $this->perPage, 1, ['path' => request()->url(), 'pageName' => 'page']),
+                'totalChildren' => 0,
+                'totalMatching' => 0,
+                'regions' => $regions,
+                'provinces' => $provinces,
+                'municipalities' => $municipalities,
+                'barangays' => $availableBarangays,
+                'requiresLocationSelection' => true,
+            ])->layout('layouts.app', ['title' => 'Schedule monitoring']);
+        }
+
+        $barangayIds = $this->filteredBarangayIds($user);
+        $children = ChildProfile::query()->visibleTo($user)
             ->whereIn('barangay_id', $barangayIds)
             ->with(['barangay', 'parents', 'vaccinations'])->withCount('vaccinations')
             ->when(trim($this->search) !== '', function ($query): void {
                 $term = '%'.trim($this->search).'%';
                 $query->where(fn ($child) => $child->where('first_name', 'like', $term)->orWhere('last_name', 'like', $term));
             })->get();
-        $risks = $analytics->missedDoseRisk(auth()->user(), $this->regionId, $this->provinceId, $this->municipalityId, $this->barangayId)->keyBy(fn (array $row) => $row['child']->id);
+        $risks = $analytics->missedDoseRisk($user, $this->regionId, $this->provinceId, $this->municipalityId, $this->barangayId)->keyBy(fn (array $row) => $row['child']->id);
         $rows = $children->map(function (ChildProfile $child) use ($suggestions, $risks): array {
             $suggestion = $suggestions->suggestNextDose($child);
             $risk = $risks->get($child->id);
@@ -99,15 +126,11 @@ class ImmunizationSchedulePage extends Component
             'rows' => $rows,
             'totalChildren' => $children->count(),
             'totalMatching' => $totalMatching,
-            'regions' => auth()->user()->isSuperAdmin() ? Region::query()->orderBy('name')->get() : collect(),
-            'provinces' => auth()->user()->isSuperAdmin() ? Province::query()->when($this->regionId !== 'all', fn ($query) => $query->where('region_id', $this->regionId))->orderBy('name')->get() : collect(),
-            'municipalities' => auth()->user()->isSuperAdmin() ? Municipality::query()
-                ->when($this->regionId !== 'all', fn ($query) => $query->whereHas('province', fn ($province) => $province->where('region_id', $this->regionId)))
-                ->when($this->provinceId !== 'all', fn ($query) => $query->where('province_id', $this->provinceId))
-                ->orderBy('name')->get() : collect(),
-            'barangays' => Barangay::query()->whereIn('id', auth()->user()->accessibleBarangayIds())
-                ->when(auth()->user()->isSuperAdmin() && $this->municipalityId !== 'all', fn ($query) => $query->where('municipality_id', $this->municipalityId))
-                ->orderBy('name')->get(),
+            'regions' => $regions,
+            'provinces' => $provinces,
+            'municipalities' => $municipalities,
+            'barangays' => $availableBarangays,
+            'requiresLocationSelection' => false,
         ])->layout('layouts.app', ['title' => 'Schedule monitoring']);
     }
 

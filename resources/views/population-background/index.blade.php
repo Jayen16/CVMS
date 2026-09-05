@@ -1,5 +1,8 @@
 <x-layouts::app :title="__('Population Background')">
-<div class="app-page">
+<div class="app-page" x-data="{ locationLoading: false }">
+    <div x-show="locationLoading" x-cloak class="fixed inset-x-0 top-0 z-[60] flex items-center justify-center gap-2 bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite">
+        <span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span> Filtering data…
+    </div>
     <div class="page-heading">
         <div>
             <p class="eyebrow">CHILD POPULATION BACKGROUND</p>
@@ -64,7 +67,7 @@
 
     @if (! $isManagePage)
     <section class="app-card p-5">
-        <form method="GET" class="flex flex-wrap items-end gap-3">
+        <form method="GET" class="flex flex-wrap items-end gap-3" @submit="locationLoading = true">
             @if(auth()->user()->isSuperAdmin())
                 <label class="min-w-52 flex-1 space-y-1.5"><span class="text-sm font-medium">Region</span><select name="region_id" class="app-input"><option value="">All regions</option>@foreach($regions as $region)<option value="{{ $region->id }}" @selected($selectedRegion === (string) $region->id)>{{ $region->name }}</option>@endforeach</select></label>
                 <label class="min-w-52 flex-1 space-y-1.5"><span class="text-sm font-medium">Province</span><select name="province_id" class="app-input"><option value="">All provinces</option>@foreach($provinces as $province)<option value="{{ $province->id }}" @selected($selectedProvince === (string) $province->id)>{{ $province->name }}</option>@endforeach</select></label>
@@ -77,6 +80,12 @@
         <p class="mt-3 text-xs text-zinc-500">When All locations is selected, targets are summed by sex, age group, and reference year.</p>
     </section>
 
+    @if ($requiresLocationSelection)
+    <section class="app-card p-8 text-center">
+        <h2 class="app-card-title">Select a region to view population background</h2>
+        <p class="mt-2 text-sm text-zinc-500">Choose a location above to load authorized population targets.</p>
+    </section>
+    @else
     <section class="app-card overflow-hidden">
         <div class="app-card-header"><div><h2 class="app-card-title">Authorized population matrix</h2><p class="text-sm text-zinc-500">Targets are grouped by location, sex, and age group. Only the latest applicable reference year is used in coverage calculations.</p></div></div>
         @forelse($matrix->groupBy('location') as $location => $locationRows)
@@ -98,6 +107,7 @@
             <div class="px-5 py-8 text-center text-zinc-500">No authorized population targets yet.</div>
         @endforelse
     </section>
+    @endif
     @endif
 
     @if ($canManage && $isManagePage)

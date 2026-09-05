@@ -45,26 +45,29 @@ class PredictiveAnalyticsPage extends Component
 
     public function render(PredictiveAnalyticsService $analytics): View
     {
-        abort_unless(auth()->user()->canViewDefaulters(), 403);
+        $user = auth()->user();
+        abort_unless($user->canViewDefaulters(), 403);
 
         $months = in_array($this->months, [1, 3, 6, 12], true) ? $this->months : 3;
         $versions = VaccineScheduleVersion::query()->orderByDesc('effective_date')->orderByDesc('id')->get();
         $selectedVersion = $versions->firstWhere('id', $this->scheduleVersion)
             ?? $versions->firstWhere('status', 'active');
 
-        $regions = auth()->user()->isSuperAdmin() ? Region::query()->orderBy('name')->get() : collect();
-        $provinces = auth()->user()->isSuperAdmin() ? Province::query()->when($this->regionId !== 'all', fn ($query) => $query->where('region_id', $this->regionId))->orderBy('name')->get() : collect();
-        $municipalities = auth()->user()->isSuperAdmin() ? Municipality::query()
+        $regions = $user->isSuperAdmin() ? Region::query()->orderBy('name')->get() : collect();
+        $provinces = $user->isSuperAdmin() ? Province::query()->when($this->regionId !== 'all', fn ($query) => $query->where('region_id', $this->regionId))->orderBy('name')->get() : collect();
+        $municipalities = $user->isSuperAdmin() ? Municipality::query()
             ->when($this->regionId !== 'all', fn ($query) => $query->whereHas('province', fn ($province) => $province->where('region_id', $this->regionId)))
             ->when($this->provinceId !== 'all', fn ($query) => $query->where('province_id', $this->provinceId))
             ->orderBy('name')->get() : collect();
         $barangays = Barangay::query()
-            ->whereIn('id', auth()->user()->accessibleBarangayIds())
-            ->when(auth()->user()->isSuperAdmin() && $this->municipalityId !== 'all', fn ($query) => $query->where('municipality_id', $this->municipalityId))
+            ->whereIn('id', $user->accessibleBarangayIds())
+            ->when($user->isSuperAdmin() && $this->municipalityId !== 'all', fn ($query) => $query->where('municipality_id', $this->municipalityId))
             ->orderBy('name')->get();
 
+        $requiresLocationSelection = $user->isSuperAdmin() && $this->regionId === 'all';
+
         return view('livewire.predictive-analytics-page', [
-            'demand' => $analytics->vaccineDemand(auth()->user(), $months, $selectedVersion, $this->regionId, $this->provinceId, $this->municipalityId, $this->barangayId),
+            'demand' => $requiresLocationSelection ? collect() : $analytics->vaccineDemand($user, $months, $selectedVersion, $this->regionId, $this->provinceId, $this->municipalityId, $this->barangayId),
             'forecastMonths' => $months,
             'scheduleVersions' => $versions,
             'selectedVersion' => $selectedVersion,
@@ -72,6 +75,7 @@ class PredictiveAnalyticsPage extends Component
             'provinces' => $provinces,
             'municipalities' => $municipalities,
             'barangays' => $barangays,
+            'requiresLocationSelection' => $requiresLocationSelection,
         ])->layout('layouts.app', ['title' => 'Vaccine demand forecast']);
     }
 }

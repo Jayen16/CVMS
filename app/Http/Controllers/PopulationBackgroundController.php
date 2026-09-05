@@ -24,12 +24,37 @@ class PopulationBackgroundController extends Controller
         $selectedProvince = request()->string('province_id')->toString();
         $selectedMunicipality = request()->string('municipality_id')->toString();
         $selectedBarangay = request()->string('barangay_id')->toString();
+        $isManagePage = request()->routeIs('population-background.manage');
         $allowedMunicipalities = $user->isSuperAdmin()
             ? Municipality::query()->pluck('id')->map(fn ($id) => (string) $id)
             : collect([$user->municipality_id])->filter();
         $allowedBarangays = $user->accessibleBarangayIds()->map(fn ($id) => (string) $id);
         abort_unless($user->isSuperAdmin() || ($selectedMunicipality === '' && $selectedBarangay === '' && $selectedRegion === '' && $selectedProvince === ''), 403);
         abort_unless(($selectedMunicipality === '' || $allowedMunicipalities->contains($selectedMunicipality)) && ($selectedBarangay === '' || $allowedBarangays->contains($selectedBarangay)), 403);
+
+        $perPage = in_array((int) request('per_page', 25), [10, 25, 50, 100], true) ? (int) request('per_page', 25) : 25;
+        $requiresLocationSelection = $user->isSuperAdmin() && $selectedRegion === '' && ! $isManagePage;
+
+        if ($requiresLocationSelection) {
+            return view('population-background.index', [
+                'isManagePage' => false,
+                'records' => collect(),
+                'manageRecords' => PopulationBackground::query()->whereRaw('1 = 0')->paginate($perPage),
+                'perPage' => $perPage,
+                'matrix' => collect(),
+                'years' => collect(),
+                'selectedMunicipality' => $selectedMunicipality,
+                'selectedBarangay' => $selectedBarangay,
+                'selectedRegion' => $selectedRegion,
+                'selectedProvince' => $selectedProvince,
+                'regions' => Region::query()->orderBy('name')->get(),
+                'provinces' => collect(),
+                'municipalities' => collect(),
+                'barangays' => collect(),
+                'canManage' => $user->canManagePopulationBackground(),
+                'requiresLocationSelection' => true,
+            ]);
+        }
 
         $records = PopulationBackground::query()->visibleTo($user)->with(['municipality', 'barangay'])
             ->when($selectedRegion !== '', fn ($query) => $query->where(function ($location) use ($selectedRegion) {
@@ -42,7 +67,6 @@ class PopulationBackgroundController extends Controller
             ->when($selectedBarangay === '' && $selectedMunicipality !== '', fn ($query) => $query->where(function ($location) use ($selectedMunicipality) {
                 $location->where('municipality_id', $selectedMunicipality)->orWhereHas('barangay', fn ($barangay) => $barangay->where('municipality_id', $selectedMunicipality));
             }))->get();
-        $perPage = in_array((int) request('per_page', 25), [10, 25, 50, 100], true) ? (int) request('per_page', 25) : 25;
         $manageRecords = PopulationBackground::query()->visibleTo($user)->with(['municipality', 'barangay'])->latest('reference_year')->latest()->paginate($perPage)->withQueryString();
         $years = $records->pluck('reference_year')->unique()->sort()->values();
         $matrix = $records->groupBy(fn (PopulationBackground $record) => implode('|', [$record->sex, $record->age_group]))->map(function (Collection $rows): array {
@@ -70,7 +94,7 @@ class PopulationBackgroundController extends Controller
         $matrix = $matrix->map(fn (array $row) => [...$row, 'location' => $locationLabel]);
 
         return view('population-background.index', [
-            'isManagePage' => request()->routeIs('population-background.manage'),
+            'isManagePage' => $isManagePage,
             'records' => $records->sortByDesc('reference_year')->values(),
             'manageRecords' => $manageRecords,
             'perPage' => $perPage,
@@ -85,6 +109,7 @@ class PopulationBackgroundController extends Controller
             'municipalities' => $user->isSuperAdmin() ? Municipality::when($selectedProvince !== '', fn ($query) => $query->where('province_id', $selectedProvince))->orderBy('name')->get() : Municipality::whereKey($user->municipality_id)->get(),
             'barangays' => $user->isSuperAdmin() ? Barangay::with('municipalityRelation')->when($selectedMunicipality !== '', fn ($query) => $query->where('municipality_id', $selectedMunicipality))->orderBy('name')->get() : Barangay::where('municipality_id', $user->municipality_id)->orderBy('name')->get(),
             'canManage' => $user->canManagePopulationBackground(),
+            'requiresLocationSelection' => false,
         ]);
     }
 

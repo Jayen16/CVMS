@@ -1,4 +1,7 @@
-    <div class="app-page">
+    <div class="app-page" x-data="{ locationLoading: false }">
+        <div x-show="locationLoading" x-cloak class="fixed inset-x-0 top-0 z-[60] flex items-center justify-center gap-2 bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite">
+            <span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span> Filtering data…
+        </div>
         <div class="page-heading">
             <div>
                 <p class="eyebrow">ADMIN REPORTS</p>
@@ -51,7 +54,7 @@
             </button>
 
             <div id="report-period-options" x-show="optionsOpen" role="region" aria-label="Report Filter" class="border-t border-slate-200 p-5 dark:border-zinc-800">
-            <form method="GET" action="{{ route('reports.index') }}" class="flex flex-wrap items-end gap-3" x-data="{loading:false}" @submit="loading=true">
+            <form method="GET" action="{{ route('reports.index') }}" class="flex flex-wrap items-end gap-3" x-data="{loading:false}" @submit="loading=true; locationLoading=true">
                 <div class="flex basis-full flex-wrap items-end gap-3">
                     <label class="space-y-1.5">
                         <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Start date</span>
@@ -113,6 +116,12 @@
             </div>
         </section>
 
+        @if ($requiresLocationSelection)
+        <section class="app-card p-8 text-center">
+            <h2 class="app-card-title">Select a region to generate reports</h2>
+            <p class="mt-2 text-sm text-zinc-500">Choose a location above to load vaccination, population, and coverage statistics.</p>
+        </section>
+        @else
         <div class="grid gap-4 md:grid-cols-7">
             <x-stat-card label="Barangays" :value="$stats['barangays']" />
             <x-stat-card label="Barangay admins" :value="$stats['barangayAdmins']" />
@@ -365,4 +374,5 @@
             </section>
         @endif
         --}}
+        @endif
     </div>

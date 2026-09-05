@@ -34,6 +34,27 @@ class VaccineInventoryController extends Controller
             ? request()->string('barangay')->toString()
             : (string) $user->barangay_id;
 
+        $requiresLocationSelection = $user->isSuperAdmin() && $regionFilter === '';
+
+        if ($requiresLocationSelection) {
+            return view('vaccine-inventory.index', [
+                'transactions' => VaccineInventoryTransaction::query()->whereRaw('1 = 0')->paginate(25),
+                'balances' => collect(),
+                'regions' => Region::query()->orderBy('name')->get(),
+                'provinces' => collect(),
+                'municipalities' => collect(),
+                'barangays' => collect(),
+                'regionFilter' => 'all',
+                'provinceFilter' => 'all',
+                'municipalityFilter' => 'all',
+                'selectedBarangay' => '',
+                'types' => VaccineInventoryTransaction::typeOptions(),
+                'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
+                'inventoryItems' => collect(),
+                'requiresLocationSelection' => true,
+            ]);
+        }
+
         $transactions = VaccineInventoryTransaction::query()
             ->forUser($user)
             ->when($selectedBarangay !== '', fn ($query) => $query->where('barangay_id', $selectedBarangay))
@@ -78,6 +99,7 @@ class VaccineInventoryController extends Controller
             'types' => VaccineInventoryTransaction::typeOptions(),
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
             'inventoryItems' => $this->inventoryItems($selectedBarangay),
+            'requiresLocationSelection' => false,
         ]);
     }
 

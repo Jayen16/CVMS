@@ -39,12 +39,6 @@
             class="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
             @if (! $isLivewire) x-data="{ submitTimer: null, filtering: false, scheduleSubmit() { this.filtering = true; clearTimeout(this.submitTimer); this.submitTimer = setTimeout(() => this.$el.closest('form')?.requestSubmit(), 400); } }" @change="if ($event.target.name === '{{ $regionName }}') { $event.target.form.elements['{{ $provinceName }}'].value = 'all'; $event.target.form.elements['{{ $municipalityName }}'].value = 'all'; $event.target.form.elements['{{ $barangayName }}'].value = 'all'; scheduleSubmit(); } else if ($event.target.name === '{{ $provinceName }}') { $event.target.form.elements['{{ $municipalityName }}'].value = 'all'; $event.target.form.elements['{{ $barangayName }}'].value = 'all'; scheduleSubmit(); } else if ($event.target.name === '{{ $municipalityName }}') { $event.target.form.elements['{{ $barangayName }}'].value = 'all'; scheduleSubmit(); }" @endif
         >
-        @if (! $isLivewire)
-            <div x-show="filtering" x-cloak class="col-span-full flex items-center gap-2 text-xs text-teal-700 dark:text-teal-300" role="status" aria-live="polite">
-                <span class="size-3.5 animate-spin rounded-full border-2 border-teal-200 border-t-teal-700"></span>
-                <span>Filtering data…</span>
-            </div>
-        @endif
         @if ($isSuperAdmin)
             <label class="space-y-1.5">
                 <span class="text-sm font-medium text-slate-700 dark:text-zinc-200">Region</span>
