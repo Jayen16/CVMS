@@ -1,6 +1,6 @@
 <div class="app-page">
     <div wire:loading.flex class="fixed inset-x-0 top-0 z-[60] items-center justify-center gap-2 bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite">
-        <span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span> Updating forecast…
+        <span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span> Filtering data…
     </div>
     <div class="page-heading">
         <div>

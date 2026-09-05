@@ -1,5 +1,8 @@
 <x-layouts::app :title="__('Vaccine Inventory')">
-<div class="app-page">
+<div class="app-page" x-data="{ locationLoading: false }">
+    <div x-show="locationLoading" x-cloak class="fixed inset-x-0 top-0 z-[60] flex items-center justify-center gap-2 bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite">
+        <span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span> Filtering data…
+    </div>
     @if (session('status'))
         <div class="app-alert-success">{{ session('status') }}</div>
     @endif
@@ -34,7 +37,7 @@
     </div>
 
     @if (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin())
-        <form method="GET" class="flex flex-wrap items-end gap-3">
+        <form method="GET" class="flex flex-wrap items-end gap-3" @submit="locationLoading = true">
             <div class="basis-full">
                 <x-location-filters mode="query" :regions="$regions" :provinces="$provinces" :municipalities="$municipalities" :barangays="$barangays" :region-value="$regionFilter" :province-value="$provinceFilter" :municipality-value="$municipalityFilter" :barangay-value="$selectedBarangay ?: 'all'" region-name="region" province-name="province" municipality-name="municipality" barangay-name="barangay" />
             </div>

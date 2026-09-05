@@ -1,5 +1,8 @@
 <x-layouts::app :title="__('Population Background')">
-<div class="app-page">
+<div class="app-page" x-data="{ locationLoading: false }">
+    <div x-show="locationLoading" x-cloak class="fixed inset-x-0 top-0 z-[60] flex items-center justify-center gap-2 bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite">
+        <span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span> Filtering data…
+    </div>
     <div class="page-heading">
         <div>
             <p class="eyebrow">CHILD POPULATION BACKGROUND</p>
@@ -64,7 +67,7 @@
 
     @if (! $isManagePage)
     <section class="app-card p-5">
-        <form method="GET" class="flex flex-wrap items-end gap-3">
+        <form method="GET" class="flex flex-wrap items-end gap-3" @submit="locationLoading = true">
             @if(auth()->user()->isSuperAdmin())
                 <label class="min-w-52 flex-1 space-y-1.5"><span class="text-sm font-medium">Region</span><select name="region_id" class="app-input"><option value="">All regions</option>@foreach($regions as $region)<option value="{{ $region->id }}" @selected($selectedRegion === (string) $region->id)>{{ $region->name }}</option>@endforeach</select></label>
                 <label class="min-w-52 flex-1 space-y-1.5"><span class="text-sm font-medium">Province</span><select name="province_id" class="app-input"><option value="">All provinces</option>@foreach($provinces as $province)<option value="{{ $province->id }}" @selected($selectedProvince === (string) $province->id)>{{ $province->name }}</option>@endforeach</select></label>
