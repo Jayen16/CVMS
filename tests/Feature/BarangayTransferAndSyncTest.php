@@ -71,6 +71,31 @@ test('manual sync records the latest sync timestamp', function () {
     $outbox->refresh();
 });
 
+test('queueing the same child change twice reuses one outbox event', function () {
+    config(['offline.enabled' => true]);
+
+    $barangay = Barangay::create(['name' => 'Queue Barangay']);
+    $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
+    $child = ChildProfile::create([
+        'barangay_id' => $barangay->id,
+        'created_by' => $nurse->id,
+        'first_name' => 'Cute',
+        'last_name' => 'Sy',
+        'birthdate' => '2026-05-14',
+        'sex' => 'female',
+        'guardian_name' => 'Henry Sy',
+    ]);
+
+    $queue = app(OfflineSyncService::class);
+    $queue->queueUpsert($child->load(['barangay', 'creator']));
+    $queue->queueUpsert($child->load(['barangay', 'creator']));
+
+    expect(OfflineSyncOutbox::query()
+        ->where('entity', 'children')
+        ->where('model_sync_uuid', $child->sync_uuid)
+        ->count())->toBe(1);
+});
+
 test('unauthenticated users cannot run manual sync', function () {
     $sync = $this->mock(OfflineSyncService::class);
     $sync->shouldNotReceive('syncPending');
