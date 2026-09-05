@@ -13,6 +13,7 @@ test('due vaccination reminders are sent once to linked parents', function () {
     Mail::fake();
 
     config([
+        'system.instance_type' => 'central',
         'reminders.enabled' => true,
         'reminders.lookahead_days' => 7,
         'reminders.channels' => ['email', 'sms'],
@@ -60,6 +61,7 @@ test('email is used when a linked parent has no phone number', function () {
     Mail::fake();
 
     config([
+        'system.instance_type' => 'central',
         'reminders.enabled' => true,
         'reminders.lookahead_days' => 7,
         'reminders.channels' => ['email', 'sms'],
@@ -92,6 +94,7 @@ test('the reminder scheduler dispatches a queued delivery job', function () {
     Queue::fake();
 
     config([
+        'system.instance_type' => 'central',
         'reminders.enabled' => true,
         'reminders.lookahead_days' => 7,
         'reminders.channels' => ['sms'],
@@ -119,4 +122,39 @@ test('the reminder scheduler dispatches a queued delivery job', function () {
             && $job->channel === 'sms';
     });
     expect(VaccinationReminder::count())->toBe(0);
+});
+
+test('central reminders exclude facility-owned children', function () {
+    Queue::fake();
+
+    config([
+        'system.instance_type' => 'central',
+        'reminders.enabled' => true,
+        'reminders.lookahead_days' => 7,
+        'reminders.channels' => ['sms'],
+    ]);
+
+    $barangay = Barangay::create(['name' => 'Central Ownership Barangay']);
+    $parent = User::factory()->create(['role' => 'parent', 'phone' => '+639171234567']);
+    $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
+
+    foreach ([['name' => 'Central Child', 'facility_uuid' => null], ['name' => 'Facility Child', 'facility_uuid' => (string) \Illuminate\Support\Str::uuid()]] as $data) {
+        [$firstName, $lastName] = explode(' ', $data['name']);
+        $child = ChildProfile::create([
+            'barangay_id' => $barangay->id,
+            'facility_uuid' => $data['facility_uuid'],
+            'created_by' => $nurse->id,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'birthdate' => now()->subMonth()->toDateString(),
+            'sex' => 'female',
+            'guardian_name' => $parent->name,
+        ]);
+        $child->parents()->attach($parent->id, ['relationship' => 'mother']);
+    }
+
+    $this->artisan('vaccinations:send-reminders')->assertSuccessful();
+
+    Queue::assertPushed(\App\Jobs\SendVaccinationReminder::class, 1);
+    Queue::assertPushed(\App\Jobs\SendVaccinationReminder::class, fn ($job): bool => $job->childId === ChildProfile::where('first_name', 'Central')->value('id'));
 });
