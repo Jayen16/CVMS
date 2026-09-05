@@ -17,6 +17,7 @@ return [
             'base_url' => env('UNISMS_BASE_URL', 'https://unismsapi.com/api'),
             'secret_key' => env('UNISMS_API_SECRET_KEY'),
             'sender_id' => env('UNISMS_SENDER_ID'),
+            'webhook_secret_key' => env('UNISMS_WEBHOOK_SECRET_KEY'),
             'timeout' => (int) env('UNISMS_TIMEOUT', 15),
         ],
     ],
