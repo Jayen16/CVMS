@@ -5,26 +5,8 @@
             <h1 class="page-title">Reminder History</h1>
             <p class="page-subtitle">Review vaccination reminders sent to parents and investigate failed deliveries.</p>
         </div>
-        <a href="{{ route('schedule-monitoring.index') }}" class="app-button-secondary">Back to schedule monitoring</a>
+        <a href="{{ route('schedule-monitoring.index', ['regionId' => $regionId, 'provinceId' => $provinceId, 'municipalityId' => $municipalityId, 'barangayId' => $barangayId]) }}" class="app-button-secondary">Back to schedule monitoring</a>
     </div>
-
-    @if (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin())
-        <x-location-filters
-            mode="wire"
-            :regions="$regions"
-            :provinces="$provinces"
-            :municipalities="$municipalities"
-            :barangays="$barangays"
-            :region-value="$regionId"
-            :province-value="$provinceId"
-            :municipality-value="$municipalityId"
-            :barangay-value="$barangayId"
-            region-model="regionId"
-            province-model="provinceId"
-            municipality-model="municipalityId"
-            barangay-model="barangayId"
-        />
-    @endif
 
     <section class="app-card mb-6 p-4">
         <div class="grid gap-3 md:grid-cols-[1fr_150px_150px_150px_150px_auto] md:items-end">

@@ -3,9 +3,6 @@
 namespace App\Livewire;
 
 use App\Models\Barangay;
-use App\Models\Municipality;
-use App\Models\Province;
-use App\Models\Region;
 use App\Models\VaccinationReminder;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Title;
@@ -110,17 +107,6 @@ class ReminderHistoryPage extends Component
 
         return view('livewire.reminder-history-page', [
             'reminders' => $query->latest('created_at')->paginate($this->perPage),
-            'regions' => $user->isSuperAdmin() ? Region::query()->orderBy('name')->get() : collect(),
-            'provinces' => $user->isSuperAdmin() ? Province::query()
-                ->when($this->regionId !== 'all', fn ($builder) => $builder->where('region_id', $this->regionId))
-                ->orderBy('name')->get() : collect(),
-            'municipalities' => $user->isSuperAdmin() ? Municipality::query()
-                ->when($this->regionId !== 'all', fn ($builder) => $builder->whereHas('province', fn ($province) => $province->where('region_id', $this->regionId)))
-                ->when($this->provinceId !== 'all', fn ($builder) => $builder->where('province_id', $this->provinceId))
-                ->orderBy('name')->get() : collect(),
-            'barangays' => Barangay::query()->whereIn('id', $accessibleBarangays)
-                ->when($user->isSuperAdmin() && $this->municipalityId !== 'all', fn ($builder) => $builder->where('municipality_id', $this->municipalityId))
-                ->orderBy('name')->get(),
         ])->layout('layouts.app', ['title' => 'Reminder History']);
     }
 
