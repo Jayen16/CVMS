@@ -40,6 +40,7 @@ use App\Livewire\NotificationsPage;
 use App\Livewire\PredictiveAnalyticsPage;
 use App\Livewire\NursesPage;
 use App\Livewire\ReportsPage;
+use App\Livewire\ReminderHistoryPage;
 use App\Livewire\SyncDataPage;
 use App\Livewire\VaccineScheduleFormPage;
 use App\Livewire\VaccineSchedulesPage;
@@ -177,6 +178,7 @@ Route::middleware(['auth', 'verified', 'parent.privacy'])->group(function () {
     Route::get('verification-queue', VerificationQueuePage::class)->name('verification-queue.index');
     // Route::get('defaulters', DefaulterPage::class)->name('defaulters.index');
     Route::get('schedule-monitoring', ImmunizationSchedulePage::class)->name('schedule-monitoring.index');
+    Route::get('schedule-monitoring/reminder-history', ReminderHistoryPage::class)->name('reminder-history.index');
     Route::get('predictive-analytics', PredictiveAnalyticsPage::class)->name('predictive-analytics.index');
     // Duplicate Children detection disabled temporarily:
     // Route::get('duplicates', DuplicateChildrenPage::class)->name('duplicates.index');
