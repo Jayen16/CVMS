@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\SendVaccinationReminder;
 use App\Models\ChildProfile;
+use App\Models\SystemInstallation;
 use App\Models\User;
 use App\Models\VaccinationReminder;
 use App\Services\ImmunizationSuggestionService;
@@ -30,11 +31,31 @@ class SendVaccinationReminders extends Command
         $queuedCount = 0;
         $skippedCount = 0;
 
-        ChildProfile::query()
+        $children = ChildProfile::query()
             ->with('parents')
             ->whereHas('parents')
-            ->orderBy('id')
-            ->chunkById(100, function ($children) use ($suggestions, $channels, $latestDueDate, &$queuedCount, &$skippedCount): void {
+            ->orderBy('id');
+
+        if (config('system.instance_type') === 'central') {
+            // Facility-owned children are synchronized to central with the
+            // owning facility UUID. Central only reminds its own records.
+            $children->whereNull('facility_uuid');
+        } else {
+            $installation = SystemInstallation::query()->first();
+
+            if ($installation?->status !== 'active' || blank($installation->barangay_id)) {
+                $this->info('Vaccination reminders skipped: facility installation is not active or has no assigned barangay.');
+
+                return self::SUCCESS;
+            }
+
+            // A facility may remind only children registered in its assigned
+            // barangay. Facility-owned child rows are normally local and may
+            // not have facility_uuid populated yet.
+            $children->where('barangay_id', $installation->barangay_id);
+        }
+
+        $children->chunkById(100, function ($children) use ($suggestions, $channels, $latestDueDate, &$queuedCount, &$skippedCount): void {
                 foreach ($children as $child) {
                     $suggestion = $suggestions->suggestNextDose($child);
 
