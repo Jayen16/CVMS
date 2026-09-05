@@ -5,13 +5,14 @@ namespace App\Services;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\ChildTransferHistory;
-use App\Models\FacilityConnection;
 use App\Models\Facility;
+use App\Models\FacilityConnection;
 use App\Models\FacilityStaff;
 use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineType;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Laravel\Passport\Client;
 
@@ -172,11 +173,43 @@ class CentralPushSyncService
     private function applyGuardian(string $facilityId, array $event): bool
     {
         $data = $event['data'];
-        if ($event['operation'] === 'deleted') return false;
+        if ($event['operation'] === 'deleted') {
+            return false;
+        }
+
+        $guardian = DB::table('facility_guardians')
+            ->where('facility_id', $facilityId)
+            ->where('guardian_uuid', $event['record_uuid'])
+            ->first();
+        $user = $guardian?->user_id ? User::query()->find($guardian->user_id) : null;
+
+        if ($user === null && filled($data['email'] ?? null)) {
+            $user = User::query()
+                ->where('email', $data['email'])
+                ->where(function ($query): void {
+                    $query->where('role', 'parent')->orWhereJsonContains('roles', 'parent');
+                })
+                ->first();
+        }
+
+        if ($user === null && filled($data['email'] ?? null)) {
+            $user = User::create([
+                'name' => $data['name'], 'email' => $data['email'], 'phone' => $data['phone'] ?? null,
+                'password' => Str::password(32), 'role' => 'parent', 'roles' => ['parent'],
+                'is_active' => true, 'invitation_accepted_at' => null,
+            ]);
+        } elseif ($user !== null) {
+            $user->fill([
+                'name' => $data['name'], 'email' => $data['email'] ?? $user->email, 'phone' => $data['phone'] ?? $user->phone,
+            ])->saveQuietly();
+        }
+
         DB::table('facility_guardians')->updateOrInsert(['facility_id' => $facilityId, 'guardian_uuid' => $event['record_uuid']], [
-            'id' => (string) Str::uuid(), 'name' => $data['name'], 'email' => $data['email'] ?? null, 'phone' => $data['phone'] ?? null,
-            'active' => $data['active'] ?? true, 'sync_version' => $event['version'], 'created_at' => now(), 'updated_at' => now(),
+            'id' => $guardian?->id ?? (string) Str::uuid(), 'user_id' => $user?->id, 'name' => $data['name'],
+            'email' => $data['email'] ?? null, 'phone' => $data['phone'] ?? null, 'active' => $data['active'] ?? true,
+            'sync_version' => $event['version'], 'created_at' => $guardian?->created_at ?? now(), 'updated_at' => now(),
         ]);
+
         return true;
     }
 
@@ -184,14 +217,38 @@ class CentralPushSyncService
     {
         $data = $event['data'];
         $where = ['facility_id' => $facilityId, 'child_uuid' => $data['child_uuid'], 'guardian_uuid' => $data['guardian_uuid']];
-        if ($event['operation'] === 'deleted') return DB::table('facility_child_guardians')->where($where)->delete() > 0;
+        $guardian = DB::table('facility_guardians')->where('facility_id', $facilityId)->where('guardian_uuid', $data['guardian_uuid'])->first();
+        $child = ChildProfile::withoutGlobalScopes()->where('sync_uuid', $data['child_uuid'])->first();
+
+        abort_unless($child && $guardian, 422, 'Parent relationship dependencies are missing.');
+
+        if ($event['operation'] === 'deleted') {
+            $child->parents()->detach($guardian->user_id);
+
+            return DB::table('facility_child_guardians')->where($where)->delete() > 0;
+        }
+
+        abort_unless($guardian->user_id, 422, 'Parent account is missing.');
+        $child->parents()->syncWithoutDetaching([$guardian->user_id => ['relationship' => $data['relationship']]]);
         DB::table('facility_child_guardians')->updateOrInsert($where, ['id' => (string) Str::uuid(), 'relationship' => $data['relationship'], 'sync_version' => $event['version'], 'created_at' => now(), 'updated_at' => now()]);
+
+        if (filled($guardian->email) && blank($guardian->invitation_sent_at)) {
+            $user = User::query()->find($guardian->user_id);
+            if ($user && $user->invitation_accepted_at === null) {
+                $status = Password::sendResetLink(['email' => $user->email]);
+                abort_unless($status === Password::RESET_LINK_SENT, 422, __($status));
+                DB::table('facility_guardians')->where('id', $guardian->id)->update(['invitation_sent_at' => now()]);
+            }
+        }
+
         return true;
     }
 
     private function applyInventoryTransaction(string $facilityId, array $event): bool
     {
-        if ($event['operation'] === 'deleted') return false;
+        if ($event['operation'] === 'deleted') {
+            return false;
+        }
         $data = $event['data'];
         DB::table('facility_inventory_transactions')->updateOrInsert(['facility_id' => $facilityId, 'transaction_uuid' => $event['record_uuid']], [
             'id' => (string) Str::uuid(), 'barangay_name' => $data['barangay_name'] ?? null, 'vaccine_code' => $data['vaccine_code'] ?? null,
@@ -200,12 +257,15 @@ class CentralPushSyncService
             'reference_number' => $data['reference_number'] ?? null, 'recorded_by_uuid' => $data['recorded_by_uuid'] ?? null, 'recorded_by_name' => $data['recorded_by_name'] ?? null,
             'recorded_by_role' => $data['recorded_by_role'] ?? null, 'notes' => $data['notes'] ?? null, 'sync_version' => $event['version'], 'created_at' => now(), 'updated_at' => now(),
         ]);
+
         return true;
     }
 
     private function applyAppointment(string $facilityId, array $event): bool
     {
-        if ($event['operation'] === 'deleted') return false;
+        if ($event['operation'] === 'deleted') {
+            return false;
+        }
         $data = $event['data'];
         $childId = ChildProfile::withoutGlobalScopes()->where('sync_uuid', $data['child_uuid'])->value('id');
         $vaccineId = $data['vaccine_code'] ? VaccineType::where('code', $data['vaccine_code'])->value('id') : null;
@@ -215,6 +275,7 @@ class CentralPushSyncService
             'status' => $data['status'], 'notes' => $data['notes'] ?? null, 'created_by' => null, 'created_by_name' => $data['created_by_name'] ?? null,
             'created_by_role' => $data['created_by_role'] ?? null, 'sync_version' => $event['version'], 'created_at' => now(), 'updated_at' => now(),
         ]);
+
         return true;
     }
 
@@ -226,6 +287,7 @@ class CentralPushSyncService
             'description' => $data['description'], 'old_values' => json_encode($data['old_values'] ?? []), 'new_values' => json_encode($data['new_values'] ?? []),
             'actor_uuid' => $data['actor_uuid'] ?? null, 'actor_name' => $data['actor_name'] ?? null, 'created_at' => now(), 'updated_at' => now(),
         ]);
+
         return true;
     }
 
@@ -236,6 +298,7 @@ class CentralPushSyncService
             'id' => (string) Str::uuid(), 'recipient_uuid' => $data['recipient_uuid'], 'notification_type' => $data['notification_type'],
             'payload' => json_encode($data['payload'] ?? []), 'created_at' => now(), 'updated_at' => now(),
         ]);
+
         return true;
     }
 

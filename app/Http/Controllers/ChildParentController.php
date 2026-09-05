@@ -114,7 +114,7 @@ class ChildParentController extends Controller
         app(OfflineSyncService::class)->queueGuardian($parent);
         app(OfflineSyncService::class)->queueRelationship($child, $parent, $validated['relationship']);
 
-        if ($setupChannel !== null) {
+        if ($setupChannel !== null && ! $this->usesCentralParentActivation()) {
             try {
                 $recovery->send($parent, $setupChannel);
             } catch (Throwable $exception) {
@@ -127,6 +127,8 @@ class ChildParentController extends Controller
             $status = $setupChannel === 'email'
                 ? 'Parent account linked to child profile. A password setup link was sent by email.'
                 : 'Parent account linked to child profile. A password setup link was sent successfully by SMS.';
+        } elseif ($setupChannel !== null) {
+            $status = 'Parent account linked. The activation email will be sent after the child record is synchronized to the central system.';
         }
 
         return to_route('children.show', $child)->with('status', $status);
@@ -255,5 +257,10 @@ class ChildParentController extends Controller
         }
 
         $this->authorizeChildAccess($child);
+    }
+
+    private function usesCentralParentActivation(): bool
+    {
+        return config('system.instance_type') === 'facility' && (bool) config('offline.enabled');
     }
 }
