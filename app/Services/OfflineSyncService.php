@@ -45,17 +45,14 @@ class OfflineSyncService
             default => 'unsupported',
         };
 
-        OfflineSyncOutbox::create([
-            'event_uuid' => (string) Str::uuid(),
-            'entity' => $entity,
-            'model_type' => $model::class,
-            'model_sync_uuid' => $model->sync_uuid,
-            'operation' => $model->wasRecentlyCreated ? 'created' : 'updated',
-            'version' => (int) ($model->sync_version ?: 1),
-            'status' => 'pending',
-            'payload' => $this->payloadFor($model),
-            'queued_at' => now(),
-        ]);
+        $this->queueEvent(
+            $entity,
+            (string) $model->sync_uuid,
+            $model::class,
+            $model->wasRecentlyCreated ? 'created' : 'updated',
+            $this->payloadFor($model),
+            (int) ($model->sync_version ?: 1),
+        );
     }
 
     public function queueDelete(Model $model): void
@@ -78,17 +75,15 @@ class OfflineSyncService
             default => 'unsupported',
         };
 
-        OfflineSyncOutbox::create([
-            'event_uuid' => (string) Str::uuid(),
-            'entity' => $entity,
-            'model_type' => $model::class,
-            'model_sync_uuid' => $model->sync_uuid,
-            'operation' => 'deleted',
-            'version' => (int) ($model->sync_version ?: 1),
-            'status' => 'pending',
-            'payload' => ['sync_uuid' => $model->sync_uuid, 'version' => (int) ($model->sync_version ?: 1)],
-            'queued_at' => now(),
-        ]);
+        $version = (int) ($model->sync_version ?: 1);
+        $this->queueEvent(
+            $entity,
+            (string) $model->sync_uuid,
+            $model::class,
+            'deleted',
+            ['sync_uuid' => $model->sync_uuid, 'version' => $version],
+            $version,
+        );
     }
 
     public function queueStaff(User $user): void
@@ -167,11 +162,36 @@ class OfflineSyncService
         return $values;
     }
 
-    private function queueEvent(string $entity, string $recordUuid, string $modelType, string $operation, array $payload): void
+    private function queueEvent(string $entity, string $recordUuid, string $modelType, string $operation, array $payload, int $version = 1): void
     {
+        $existing = OfflineSyncOutbox::query()
+            ->where('entity', $entity)
+            ->where('model_type', $modelType)
+            ->where('model_sync_uuid', $recordUuid)
+            ->where('operation', $operation)
+            ->where('version', $version)
+            ->first();
+
+        if ($existing) {
+            // A model observer or a repeated sync preparation must not create
+            // another event for the same logical change. Failed events remain
+            // retryable, but keep their original event UUID for central-side
+            // idempotency.
+            if (in_array($existing->status, ['pending', 'failed'], true)) {
+                $existing->update([
+                    'payload' => $payload,
+                    'status' => 'pending',
+                    'last_error' => null,
+                    'queued_at' => now(),
+                ]);
+            }
+
+            return;
+        }
+
         OfflineSyncOutbox::create([
             'event_uuid' => (string) Str::uuid(), 'entity' => $entity, 'model_type' => $modelType,
-            'model_sync_uuid' => $recordUuid, 'operation' => $operation, 'version' => 1, 'status' => 'pending',
+            'model_sync_uuid' => $recordUuid, 'operation' => $operation, 'version' => $version, 'status' => 'pending',
             'payload' => $payload, 'queued_at' => now(),
         ]);
     }
