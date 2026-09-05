@@ -3,7 +3,7 @@
             <div class="mb-6">
                 <p class="eyebrow">Registry</p>
                 <h1 class="page-title">Edit child profile</h1>
-                <p class="page-subtitle">Update the child's demographic and guardian information.</p>
+                <p class="page-subtitle">Update the child's demographic information.</p>
             </div>
 
             @include('children._form', ['child' => $child, 'barangays' => $barangays])
