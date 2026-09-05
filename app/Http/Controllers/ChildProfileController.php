@@ -6,7 +6,6 @@ use App\Models\AuditLog;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\ChildTransferHistory;
-use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineType;
 use App\Services\ImmunizationSuggestionService;
@@ -25,9 +24,6 @@ class ChildProfileController extends Controller
         'last_name' => ['required', 'string', 'max:255'],
         'birthdate' => ['required', 'date', 'before_or_equal:today'],
         'sex' => ['required', 'in:female,male'],
-        'guardian_name' => ['required', 'string', 'max:255'],
-        'guardian_contact' => ['nullable', 'string', 'max:255', 'required_without:guardian_email'],
-        'guardian_email' => ['nullable', 'email', 'max:255', 'required_without:guardian_contact'],
         'address' => ['nullable', 'string', 'max:1000'],
     ];
 
@@ -130,43 +126,9 @@ class ChildProfileController extends Controller
         $this->ensureNoDuplicateChild($validated);
 
         $child = ChildProfile::create($validated);
-        $this->linkGuardianAsParent($child, $validated, $offlineSync);
         $offlineSync->queueUpsert($child->load(['barangay', 'creator']));
 
         return to_route('children.show', $child)->with('status', 'Child profile created.');
-    }
-
-    private function linkGuardianAsParent(ChildProfile $child, array $validated, OfflineSyncService $offlineSync): void
-    {
-        $email = filled($validated['guardian_email'] ?? null) ? strtolower(trim($validated['guardian_email'])) : null;
-        $phone = filled($validated['guardian_contact'] ?? null) ? User::normalizePhone($validated['guardian_contact']) : null;
-        $parent = User::query()
-            ->where(function ($query) use ($email, $phone): void {
-                $query->when($email !== null, fn ($match) => $match->where('email', $email))
-                    ->when($email !== null && $phone !== null, fn ($match) => $match->orWhere('phone', $phone))
-                    ->when($email === null && $phone !== null, fn ($match) => $match->where('phone', $phone));
-            })
-            ->first();
-
-        if ($parent === null) {
-            $parent = User::create([
-                'name' => $validated['guardian_name'],
-                'email' => $email,
-                'phone' => $phone,
-                'password' => \Illuminate\Support\Str::password(32),
-                'role' => 'parent',
-                'roles' => ['parent'],
-                'invitation_accepted_at' => null,
-            ]);
-        } else {
-            abort_unless($parent->isParent(), 422, 'This guardian contact already belongs to a non-parent account.');
-        }
-
-        $child->parents()->syncWithoutDetaching([
-            $parent->id => ['relationship' => 'guardian'],
-        ]);
-        $offlineSync->queueGuardian($parent);
-        $offlineSync->queueRelationship($child, $parent, 'guardian');
     }
 
     public function edit(ChildProfile $child): View
