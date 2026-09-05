@@ -14,6 +14,7 @@
             <span class="rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-sm font-medium text-teal-700 dark:text-teal-300">
                 {{ $barangays->firstWhere('id', $selectedBarangay)?->name ?? (auth()->user()->isMunicipalAdmin() ? 'Select barangay' : (auth()->user()->barangay?->name ?? 'Unassigned')) }}
             </span>
+            @if (! $requiresLocationSelection)
             <a href="{{ route('vaccine-inventory.csv', (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin()) && $selectedBarangay ? ['barangay' => $selectedBarangay] : []) }}" class="app-button-secondary inline-flex items-center gap-2" aria-label="Export inventory data for Excel as CSV">
                 <flux:icon.arrow-down-tray class="size-4" />
                 <span>Export Excel</span>
@@ -28,6 +29,7 @@
                 <span>Add stock</span>
             </a>
             @endif
+            @endif
         </div>
     </div>
 
@@ -40,6 +42,12 @@
         </form>
     @endif
 
+    @if ($requiresLocationSelection)
+        <section class="app-card p-8 text-center">
+            <h2 class="app-card-title">Select a region to view vaccine inventory</h2>
+            <p class="mt-2 text-sm text-zinc-500">Choose a location above to load stock balances and transaction history.</p>
+        </section>
+    @else
     <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         @forelse ($balances as $vaccine)
             <section class="app-card p-5">
@@ -89,6 +97,7 @@
         </tbody></table></div>
         <div class="p-5">{{ $transactions->links() }}</div>
     </section>
+    @endif
 </div>
 
 <script>

@@ -78,6 +78,7 @@ class AuditLogsPage extends Component
 
         $user = auth()->user();
         $accessibleBarangayIds = $user->accessibleBarangayIds();
+        $requiresLocationSelection = $user->isSuperAdmin() && $this->regionId === 'all';
         $reportBarangayIds = $accessibleBarangayIds;
         if ($user->isSuperAdmin() && $this->regionId !== 'all') {
             $reportBarangayIds = Barangay::whereIn('id', $reportBarangayIds)->whereHas('municipalityRelation.province', fn ($query) => $query->where('region_id', $this->regionId))->pluck('id');
@@ -94,6 +95,7 @@ class AuditLogsPage extends Component
 
         $logs = AuditLog::query()
             ->with('user')
+            ->when($requiresLocationSelection, fn ($query) => $query->whereRaw('1 = 0'))
             ->when(! $user->isSuperAdmin() || $this->regionId !== 'all' || $this->provinceId !== 'all' || $this->municipalityId !== 'all' || $this->barangayId !== 'all', fn ($query) => $query->whereHas('user', fn ($actor) => $actor->whereIn('barangay_id', $reportBarangayIds)))
             ->when($this->search !== '', function ($query): void {
                 $query->where(function ($query): void {
@@ -120,6 +122,7 @@ class AuditLogsPage extends Component
             'barangays' => ($user->isSuperAdmin() && $this->municipalityId !== 'all') || $user->isMunicipalAdmin()
                 ? Barangay::query()->whereIn('id', $accessibleBarangayIds)->when($this->municipalityId !== 'all', fn ($query) => $query->where('municipality_id', $this->municipalityId))->orderBy('name')->get()
                 : collect(),
+            'requiresLocationSelection' => $requiresLocationSelection,
         ])->layout('layouts.app', ['title' => 'Audit Logs']);
     }
 }

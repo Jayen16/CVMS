@@ -77,6 +77,12 @@
         <p class="mt-3 text-xs text-zinc-500">When All locations is selected, targets are summed by sex, age group, and reference year.</p>
     </section>
 
+    @if ($requiresLocationSelection)
+    <section class="app-card p-8 text-center">
+        <h2 class="app-card-title">Select a region to view population background</h2>
+        <p class="mt-2 text-sm text-zinc-500">Choose a location above to load authorized population targets.</p>
+    </section>
+    @else
     <section class="app-card overflow-hidden">
         <div class="app-card-header"><div><h2 class="app-card-title">Authorized population matrix</h2><p class="text-sm text-zinc-500">Targets are grouped by location, sex, and age group. Only the latest applicable reference year is used in coverage calculations.</p></div></div>
         @forelse($matrix->groupBy('location') as $location => $locationRows)
@@ -98,6 +104,7 @@
             <div class="px-5 py-8 text-center text-zinc-500">No authorized population targets yet.</div>
         @endforelse
     </section>
+    @endif
     @endif
 
     @if ($canManage && $isManagePage)

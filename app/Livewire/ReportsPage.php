@@ -67,6 +67,7 @@ class ReportsPage extends Component
             ? Carbon::parse($validated['end_date'])->endOfDay()
             : now()->endOfDay();
         $regionFilter = $user->isSuperAdmin() ? ($validated['region_id'] ?? 'all') : 'all';
+        $requiresLocationSelection = $user->isSuperAdmin() && $regionFilter === 'all';
         $provinceFilter = $user->isSuperAdmin() && $regionFilter !== 'all' ? ($validated['province_id'] ?? 'all') : 'all';
         $municipalityFilter = $user->isSuperAdmin() && $provinceFilter !== 'all' ? ($validated['municipality_id'] ?? 'all') : 'all';
         $barangayFilter = $user->isSuperAdmin() && $municipalityFilter === 'all'
@@ -85,6 +86,9 @@ class ReportsPage extends Component
         }
         if ($barangayFilter !== 'all') {
             $reportBarangayIds = $reportBarangayIds->intersect([$barangayFilter])->values();
+        }
+        if ($requiresLocationSelection) {
+            $reportBarangayIds = collect();
         }
         $scheduleVersionFilter = $validated['schedule_version'] ?? 'all';
         $includeAefi = (bool) ($validated['include_aefi'] ?? false);
@@ -114,8 +118,8 @@ class ReportsPage extends Component
             ->groupBy('child_profiles.barangay_id')
             ->pluck('total', 'barangay_id');
 
-        $populationYear = PopulationBackground::query()->visibleTo($user)->max('reference_year');
-        $population = PopulationBackground::query()->visibleTo($user)->when($populationYear, fn ($query) => $query->where('reference_year', $populationYear))->get();
+        $populationYear = $requiresLocationSelection ? null : PopulationBackground::query()->visibleTo($user)->max('reference_year');
+        $population = $requiresLocationSelection ? collect() : PopulationBackground::query()->visibleTo($user)->when($populationYear, fn ($query) => $query->where('reference_year', $populationYear))->get();
         $populationTargets = $reportBarangayIds->mapWithKeys(function ($barangayId) use ($population) {
             $barangay = Barangay::find($barangayId);
             $specific = $population->where('barangay_id', $barangayId);
@@ -234,6 +238,7 @@ class ReportsPage extends Component
                 : collect(),
             'scheduleVersionFilter' => $scheduleVersionFilter,
             'includeAefi' => $includeAefi,
+            'requiresLocationSelection' => $requiresLocationSelection,
             'scheduleVersionOptions' => $versionOptions,
             'selectedScheduleVersion' => $selectedVersion,
             'stats' => [

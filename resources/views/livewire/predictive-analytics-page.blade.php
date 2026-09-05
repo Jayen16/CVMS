@@ -11,10 +11,6 @@
     </div>
 
     <div class="space-y-4">
-        <section class="app-card border-l-4 border-teal-500 px-4 py-3">
-            <p class="text-sm text-zinc-600 dark:text-zinc-300"><span class="font-semibold text-teal-700 dark:text-teal-300">Planning note:</span> Estimated demand combines scheduled doses, catch-up backlog, and historical vaccination activity. Compare it with available stock; a negative projected balance indicates a possible shortage for staff review.</p>
-        </section>
-
         @if (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin())
             <x-location-filters
                 mode="wire"
@@ -32,6 +28,15 @@
                 barangay-model="barangayId"
             />
         @endif
+        @if ($requiresLocationSelection)
+            <section class="app-card p-8 text-center">
+                <h2 class="app-card-title">Select a region to view the vaccine demand forecast</h2>
+                <p class="mt-2 text-sm text-zinc-500">Choose a location above to calculate demand and inventory projections for that area.</p>
+            </section>
+        @else
+        <section class="app-card border-l-4 border-teal-500 px-4 py-3">
+            <p class="text-sm text-zinc-600 dark:text-zinc-300"><span class="font-semibold text-teal-700 dark:text-teal-300">Planning note:</span> Estimated demand combines scheduled doses, catch-up backlog, and historical vaccination activity. Compare it with available stock; a negative projected balance indicates a possible shortage for staff review.</p>
+        </section>
 
         <section class="app-card relative w-full overflow-hidden">
             <div class="app-card-header flex flex-wrap items-start justify-between gap-3">
@@ -55,6 +60,7 @@
                 </table>
             </div>
         </section>
+        @endif
 
     </div>
 </div>

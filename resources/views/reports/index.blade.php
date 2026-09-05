@@ -113,6 +113,12 @@
             </div>
         </section>
 
+        @if ($requiresLocationSelection)
+        <section class="app-card p-8 text-center">
+            <h2 class="app-card-title">Select a region to generate reports</h2>
+            <p class="mt-2 text-sm text-zinc-500">Choose a location above to load vaccination, population, and coverage statistics.</p>
+        </section>
+        @else
         <div class="grid gap-4 md:grid-cols-7">
             <x-stat-card label="Barangays" :value="$stats['barangays']" />
             <x-stat-card label="Barangay admins" :value="$stats['barangayAdmins']" />
@@ -365,4 +371,5 @@
             </section>
         @endif
         --}}
+        @endif
     </div>

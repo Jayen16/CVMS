@@ -20,6 +20,12 @@
             barangay-model="barangayId"
         />
     @endif
+    @if ($requiresLocationSelection)
+        <section class="app-card p-8 text-center">
+            <h2 class="app-card-title">Select a region to view schedule monitoring</h2>
+            <p class="mt-2 text-sm text-zinc-500">Choose a location above to load children, vaccination history, and missed-dose risk for that area.</p>
+        </section>
+    @else
     <section class="app-card mb-6 p-4"><div class="grid gap-3 md:grid-cols-[1fr_180px_180px_auto] md:items-end">
         <label class="space-y-1.5"><span class="text-sm font-medium">Search child</span><input wire:model.live.debounce.300ms="search" class="app-input w-full" placeholder="Name" /></label>
         <label class="space-y-1.5"><span class="text-sm font-medium">Schedule status</span><select wire:model.live="status" class="app-input w-full"><option value="all">All statuses</option><option value="overdue">Overdue</option><option value="delayed">Delayed</option><option value="due">Due today</option><option value="upcoming">Upcoming</option><option value="complete">Complete</option></select></label>
@@ -37,4 +43,5 @@
             <div class="border-t border-slate-200 px-5 py-3 dark:border-zinc-800">{{ $rows->links() }}</div>
         @endif
     </section>
+    @endif
 </div>

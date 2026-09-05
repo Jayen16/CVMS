@@ -48,6 +48,12 @@
         </div>
     </section>
 
+    @if ($requiresLocationSelection)
+        <section class="app-card p-8 text-center">
+            <h2 class="app-card-title">Select a region to view audit logs</h2>
+            <p class="mt-2 text-sm text-zinc-500">Choose a location above to load activity for that area.</p>
+        </section>
+    @else
     <section class="app-card overflow-hidden">
         <div class="overflow-x-auto" x-data="{ openDetails: null }"><table class="app-table min-w-[1200px]"><thead><tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">User</th><th class="px-4 py-3">Action</th><th class="px-4 py-3">Record</th><th class="w-[42%] px-4 py-3">Details</th></tr></thead>
         <tbody>
@@ -79,4 +85,5 @@
         </tbody></table></div>
         @if($logs->hasPages()) <div class="border-t border-slate-100 p-4 dark:border-zinc-800">{{ $logs->links() }}</div> @endif
     </section>
+    @endif
 </div>
