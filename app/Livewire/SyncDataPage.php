@@ -50,6 +50,7 @@ class SyncDataPage extends Component
         $this->viewAll = request()->routeIs('sync.all');
         $this->viewProcessedAll = request()->routeIs('sync.processed');
         $this->viewReceivedAll = request()->routeIs('sync.received');
+        abort_unless(! $this->viewReceivedAll || config('system.instance_type') === 'facility', 404);
         foreach (['regionId' => 'region_id', 'provinceId' => 'province_id', 'municipalityId' => 'municipality_id', 'barangayId' => 'barangay_id'] as $property => $queryKey) {
             $this->{$property} = (string) request()->query($queryKey, $this->{$property});
         }
