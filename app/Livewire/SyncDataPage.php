@@ -14,6 +14,9 @@ use App\Models\SyncStatus;
 use App\Models\SystemInstallation;
 use App\Models\User;
 use App\Models\VaccinationRecord;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -127,6 +130,38 @@ class SyncDataPage extends Component
             ? $processedQuery->latest('synced_at')->paginate($this->perPage)
             : collect();
 
+        if (config('system.instance_type') === 'central') {
+            $centralRows = DB::table('sync_processed_events')
+                ->when($latestStatus?->last_attempted_at && $latestStatus->last_synced_at, fn ($query) => $query->whereBetween('applied_at', [$latestStatus->last_attempted_at, $latestStatus->last_synced_at]))
+                ->when($this->viewProcessedAll && filled($this->dateFilter), fn ($query) => $query->whereDate('applied_at', $this->dateFilter))
+                ->latest('applied_at')
+                ->get()
+                ->map(fn ($row) => (object) [
+                    'model_type' => match ($row->entity) {
+                        'children' => ChildProfile::class,
+                        'immunization_records' => VaccinationRecord::class,
+                        'guardians' => User::class,
+                        default => $row->entity,
+                    },
+                    'operation' => $row->operation,
+                    'model_sync_uuid' => $row->record_uuid,
+                    'payload' => ['name' => $this->centralRecordLabel($row->entity, $row->record_uuid)],
+                    'synced_at' => Carbon::parse($row->applied_at),
+                ]);
+
+            $lastProcessedRows = $this->viewProcessedAll ? collect() : $centralRows;
+            if ($this->viewProcessedAll) {
+                $page = (int) $this->getPage();
+                $processedRows = new LengthAwarePaginator(
+                    $centralRows->forPage($page, $this->perPage)->values(),
+                    $centralRows->count(),
+                    $this->perPage,
+                    $page,
+                    ['path' => request()->url(), 'query' => request()->query()]
+                );
+            }
+        }
+
         return view('livewire.sync-data-page', [
             'latestStatus' => $latestStatus,
             'installation' => $installation,
@@ -143,6 +178,16 @@ class SyncDataPage extends Component
         ])->layout('layouts.app', [
             'title' => 'Sync Data',
         ]);
+    }
+
+    private function centralRecordLabel(string $entity, string $recordUuid): string
+    {
+        return match ($entity) {
+            'children' => ChildProfile::withoutGlobalScopes()->where('sync_uuid', $recordUuid)->get()->map(fn ($child) => trim($child->first_name.' '.$child->last_name))->first() ?? 'Child '.$recordUuid,
+            'guardians' => User::query()->whereKey($recordUuid)->value('name') ?? 'Parent '.$recordUuid,
+            'immunization_records' => 'Immunization '.$recordUuid,
+            default => str_replace('_', ' ', ucfirst($entity)).' '.$recordUuid,
+        };
     }
 
     /** @return array<string, mixed> */

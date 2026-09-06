@@ -11,6 +11,7 @@ use App\Models\FacilityStaff;
 use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineType;
+use App\Models\SyncStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -25,6 +26,7 @@ class CentralPushSyncService
         abort_unless($connection, 403, 'Facility connection is not active.');
 
         $accepted = [];
+        $attemptedAt = now();
         DB::transaction(function () use ($events, $connection, &$accepted): void {
             foreach ($events as $event) {
                 if (! in_array($event['entity'], ['facility_staff', 'children', /* 'child_transfers', */ 'immunization_records', 'guardians', 'child_guardian_relationships', 'inventory_transactions', 'appointments', 'audit_events', 'notification_requests'], true)) {
@@ -59,6 +61,17 @@ class CentralPushSyncService
                 $accepted[] = $event['event_uuid'];
             }
         });
+
+        $syncedAt = now();
+        SyncStatus::query()->updateOrCreate(['scope' => 'global'], [
+            'state' => 'healthy',
+            'last_attempted_at' => $attemptedAt,
+            'last_synced_at' => $syncedAt,
+            'last_processed' => count($accepted),
+            'last_failed' => 0,
+            'last_error' => null,
+            'last_synced_by' => null,
+        ]);
 
         return ['accepted' => $accepted];
     }

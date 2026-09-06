@@ -121,7 +121,7 @@
         </section>
     @endif
 
-    @unless ($viewProcessedAll)
+    @if (config('system.instance_type') === 'facility' && ! $viewProcessedAll)
     <section class="app-card">
         <div class="app-card-header">
             <div class="flex items-center justify-between gap-3">
@@ -198,5 +198,5 @@
             <div class="p-4">{{ $recentRows->links() }}</div>
         @endif
     </section>
-    @endunless
+    @endif
 </div>
