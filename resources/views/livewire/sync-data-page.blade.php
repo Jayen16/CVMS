@@ -34,10 +34,11 @@
         @endif
     </div>
 
-    @if (! $viewAll && ! $viewProcessedAll)
-        <div class="grid gap-4 md:grid-cols-3">
+    @if (! $viewAll && ! $viewProcessedAll && ! $viewReceivedAll)
+        <div class="grid gap-4 md:grid-cols-4">
             <x-stat-card label="Pending sync" :value="$pendingCount" />
-            <x-stat-card label="Sent in last sync" :value="$latestStatus?->last_processed ?? 0" />
+            <x-stat-card :label="config('system.instance_type') === 'central' ? 'Received in last sync' : 'Sent in last sync'" :value="$latestStatus?->last_processed ?? 0" />
+            <x-stat-card label="Received from Central" :value="$latestStatus?->last_pulled ?? 0" />
             <x-stat-card label="Failed sync" :value="$failedCount" />
         </div>
     @endif
@@ -46,7 +47,7 @@
         <x-location-filters mode="wire" :regions="$regions" :provinces="$provinces" :municipalities="$municipalities" :barangays="$barangays" :region-value="$regionFilter" :province-value="$provinceFilter" :municipality-value="$municipalityFilter" :barangay-value="$barangayFilter" />
     @endif
 
-    @if (! $viewAll && ! $viewProcessedAll)
+    @if (! $viewAll && ! $viewProcessedAll && ! $viewReceivedAll)
         <section class="app-card">
             <div class="app-card-header">
                 <h2 class="app-card-title">Latest sync status</h2>
@@ -71,8 +72,8 @@
             <div class="app-card-header">
                 <div class="flex items-center justify-between gap-3">
                     <div>
-                        <h2 class="app-card-title">Sent to Central in this sync</h2>
-                        <p class="mt-1 text-sm text-zinc-500">Items successfully received and acknowledged by Central during the latest Sync now.</p>
+                        <h2 class="app-card-title">{{ config('system.instance_type') === 'central' ? 'Received from facilities in this sync' : 'Sent to Central in this sync' }}</h2>
+                        <p class="mt-1 text-sm text-zinc-500">{{ config('system.instance_type') === 'central' ? 'Items received and acknowledged from connected facilities during the latest sync.' : 'Items successfully received and acknowledged by Central during the latest Sync now.' }}</p>
                     </div>
                     <a href="{{ route('sync.processed', ['region_id' => $regionFilter, 'province_id' => $provinceFilter, 'municipality_id' => $municipalityFilter, 'barangay_id' => $barangayFilter]) }}" class="app-button-secondary !px-3 !py-1.5 !text-xs">View all</a>
                 </div>
@@ -82,9 +83,53 @@
                     @php($payload = is_array($row->payload) ? $row->payload : [])
                     <tr class="app-table-row"><td class="font-medium">{{ class_basename($row->model_type) }}</td><td class="capitalize">{{ $row->operation }}</td><td>{{ $payload['name'] ?? ($payload['first_name'] ?? ($payload['email'] ?? 'Record '.$row->model_sync_uuid)) }}@if (isset($payload['last_name'])) {{ $payload['last_name'] }}@endif</td><td>{{ $row->synced_at?->format('M d, Y h:i A') }}</td><td><span class="status-pill status-verified">Synced</span></td></tr>
                 @empty
-                    <tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500">No items were acknowledged by Central in the latest sync.</td></tr>
+                    <tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500">{{ config('system.instance_type') === 'central' ? 'No facility items were received in the latest sync.' : 'No items were acknowledged by Central in the latest sync.' }}</td></tr>
                 @endforelse
             </tbody></table></div>
+        </section>
+    @endif
+
+    @if (config('system.instance_type') === 'facility' && ! $viewProcessedAll && ! $viewReceivedAll)
+        <section class="app-card">
+            <div class="app-card-header">
+                <div>
+                    <h2 class="app-card-title">Received from Central in this sync</h2>
+                    <p class="mt-1 text-sm text-zinc-500">The latest records and updates downloaded from Central to this facility.</p>
+                </div>
+                <a href="{{ route('sync.received') }}" class="app-button-secondary !px-3 !py-1.5 !text-xs">View all</a>
+            </div>
+            <div class="overflow-x-auto"><table class="app-table"><thead><tr><th class="px-4 py-3 font-medium">DATA TYPE</th><th class="px-4 py-3 font-medium">CHANGE</th><th class="px-4 py-3 font-medium">RECORD</th><th class="px-4 py-3 font-medium">RECEIVED AT</th><th class="px-4 py-3 font-medium">STATUS</th></tr></thead><tbody>
+                @forelse ($receivedRows as $row)
+                    <tr class="app-table-row"><td class="font-medium">{{ str_replace('_', ' ', ucfirst($row->entity)) }}</td><td class="capitalize">{{ $row->operation }}</td><td>{{ $row->record_label }}</td><td>{{ $row->received_at?->format('M d, Y h:i A') }}</td><td><span class="status-pill status-verified">Applied locally</span></td></tr>
+                @empty
+                    <tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500">No new data was received from Central in the latest sync.</td></tr>
+                @endforelse
+            </tbody></table></div>
+        </section>
+    @endif
+
+    @if (config('system.instance_type') === 'facility' && $viewReceivedAll)
+        <section class="app-card">
+            <div class="app-card-header">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="app-card-title">All data received from Central</h2>
+                        <p class="mt-1 text-sm text-zinc-500">Review every Central item downloaded to this facility.</p>
+                    </div>
+                    <label class="flex items-center gap-2 text-sm text-zinc-500">
+                        <span>Date</span>
+                        <input type="date" wire:model.live.debounce.400ms="dateFilter" class="app-input !w-auto !py-1.5">
+                    </label>
+                </div>
+            </div>
+            <div class="overflow-x-auto"><table class="app-table"><thead><tr><th class="px-4 py-3 font-medium">DATA TYPE</th><th class="px-4 py-3 font-medium">CHANGE</th><th class="px-4 py-3 font-medium">RECORD</th><th class="px-4 py-3 font-medium">RECEIVED AT</th><th class="px-4 py-3 font-medium">STATUS</th></tr></thead><tbody>
+                @forelse ($receivedRows as $row)
+                    <tr class="app-table-row"><td class="font-medium">{{ str_replace('_', ' ', ucfirst($row->entity)) }}</td><td class="capitalize">{{ $row->operation }}</td><td>{{ $row->record_label }}</td><td>{{ $row->received_at?->format('M d, Y h:i A') }}</td><td><span class="status-pill status-verified">Applied locally</span></td></tr>
+                @empty
+                    <tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500">No Central data has been received yet.</td></tr>
+                @endforelse
+            </tbody></table></div>
+            <div class="p-4">{{ $receivedRows->links() }}</div>
         </section>
     @endif
 
@@ -93,8 +138,8 @@
             <div class="app-card-header">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <h2 class="app-card-title">All items sent to Central</h2>
-                        <p class="mt-1 text-sm text-zinc-500">Review every item successfully acknowledged by Central.</p>
+                        <h2 class="app-card-title">{{ config('system.instance_type') === 'central' ? 'All items received from facilities' : 'All items sent to Central' }}</h2>
+                        <p class="mt-1 text-sm text-zinc-500">{{ config('system.instance_type') === 'central' ? 'Review every item received and acknowledged from connected facilities.' : 'Review every item successfully acknowledged by Central.' }}</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-3">
                         <label class="flex items-center gap-2 text-sm text-zinc-500">
@@ -124,7 +169,7 @@
         </section>
     @endif
 
-    @if (config('system.instance_type') === 'facility' && ! $viewProcessedAll)
+    @if (config('system.instance_type') === 'facility' && ! $viewProcessedAll && ! $viewReceivedAll)
     <section class="app-card">
         <div class="app-card-header">
             <div class="flex items-center justify-between gap-3">

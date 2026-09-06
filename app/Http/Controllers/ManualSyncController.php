@@ -17,13 +17,21 @@ class ManualSyncController extends Controller
 
         try {
             $result = $offlineSync->syncPending();
-            $status->update(['state' => $result['failed'] > 0 ? 'degraded' : 'healthy', 'last_synced_by' => auth()->id(), 'last_synced_at' => now(), 'last_processed' => $result['processed'], 'last_failed' => $result['failed']]);
+        $status->update([
+            'state' => $result['failed'] > 0 ? 'degraded' : 'healthy',
+            'last_synced_by' => auth()->id(),
+            'last_synced_at' => now(),
+            'last_processed' => $result['processed'],
+            'last_pulled' => $result['pulled'],
+            'last_pull_batch_uuid' => $result['pull_batch_uuid'] ?: null,
+            'last_failed' => $result['failed'],
+        ]);
         } catch (\Throwable $exception) {
             report($exception);
             $status->update(['state' => 'failed', 'last_failed' => $status->last_failed + 1, 'last_error' => $exception->getMessage()]);
             return to_route('sync.index')->withErrors(['sync' => 'Synchronization failed. Queued local data was preserved for retry.']);
         }
 
-        return to_route('sync.index')->with('status', 'Sync completed. Processed '.$result['processed'].' item(s) with '.$result['failed'].' failure(s).');
+        return to_route('sync.index')->with('status', 'Sync completed. Sent '.$result['processed'].' item(s) to Central and received '.$result['pulled'].' item(s) from Central with '.$result['failed'].' failure(s).');
     }
 }

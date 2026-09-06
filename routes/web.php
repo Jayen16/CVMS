@@ -165,6 +165,7 @@ Route::middleware(['auth', 'verified', 'parent.privacy'])->group(function () {
         Route::get('/', SyncDataPage::class)->name('index');
         Route::get('all', SyncDataPage::class)->name('all');
         Route::get('processed', SyncDataPage::class)->name('processed');
+        Route::get('received', SyncDataPage::class)->name('received');
         Route::post('manual', [ManualSyncController::class, 'store'])->name('manual');
     });
     // Announcement feature disabled temporarily:

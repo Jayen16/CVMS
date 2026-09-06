@@ -12,6 +12,7 @@ use App\Models\OfflineSyncOutbox;
 use App\Models\Province;
 use App\Models\Region;
 use App\Models\SyncStatus;
+use App\Models\SyncReceivedItem;
 use App\Models\SystemInstallation;
 use App\Models\User;
 use App\Models\VaccinationRecord;
@@ -30,6 +31,8 @@ class SyncDataPage extends Component
 
     public bool $viewProcessedAll = false;
 
+    public bool $viewReceivedAll = false;
+
     public int $perPage = 15;
 
     public string $dateFilter = '';
@@ -46,6 +49,8 @@ class SyncDataPage extends Component
     {
         $this->viewAll = request()->routeIs('sync.all');
         $this->viewProcessedAll = request()->routeIs('sync.processed');
+        $this->viewReceivedAll = request()->routeIs('sync.received');
+        abort_unless(! $this->viewReceivedAll || config('system.instance_type') === 'facility', 404);
         foreach (['regionId' => 'region_id', 'provinceId' => 'province_id', 'municipalityId' => 'municipality_id', 'barangayId' => 'barangay_id'] as $property => $queryKey) {
             $this->{$property} = (string) request()->query($queryKey, $this->{$property});
         }
@@ -132,6 +137,23 @@ class SyncDataPage extends Component
             ? $processedQuery->latest('synced_at')->paginate($this->perPage)
             : collect();
 
+        $receivedQuery = SyncReceivedItem::query();
+        if (! $this->viewReceivedAll) {
+            $receivedQuery->where('last_received_batch_uuid', $latestStatus?->last_pull_batch_uuid ?: 'none');
+        }
+        if ($this->viewReceivedAll && filled($this->dateFilter)) {
+            $receivedQuery->whereDate('last_received_at', $this->dateFilter);
+        }
+        $receivedRows = collect();
+        if (config('system.instance_type') === 'facility') {
+            if ($this->viewReceivedAll) {
+                $receivedRows = $receivedQuery->latest('last_received_at')->paginate($this->perPage);
+                $receivedRows->through(fn (SyncReceivedItem $row) => $this->formatReceivedRow($row));
+            } else {
+                $receivedRows = $receivedQuery->latest('last_received_at')->take(10)->get()->map(fn (SyncReceivedItem $row) => $this->formatReceivedRow($row));
+            }
+        }
+
         if (config('system.instance_type') === 'central') {
             $centralRows = DB::table('sync_processed_events')
                 ->when($latestStatus?->last_attempted_at && $latestStatus->last_synced_at, fn ($query) => $query->whereBetween('applied_at', [$latestStatus->last_attempted_at, $latestStatus->last_synced_at]))
@@ -177,6 +199,7 @@ class SyncDataPage extends Component
             'recentRows' => $recentRows,
             'lastProcessedRows' => $lastProcessedRows,
             'processedRows' => $processedRows,
+            'receivedRows' => $receivedRows,
             ...$locationData,
         ])->layout('layouts.app', [
             'title' => 'Sync Data',
@@ -192,6 +215,28 @@ class SyncDataPage extends Component
             'immunization_records' => 'Immunization '.$recordUuid,
             default => str_replace('_', ' ', ucfirst($entity)).' '.$recordUuid,
         };
+    }
+
+    private function receivedRecordLabel(string $entity, array $payload, string $recordUuid): string
+    {
+        return match ($entity) {
+            'parent_vaccination_records' => trim((string) (ChildProfile::where('sync_uuid', $payload['child_uuid'] ?? '')->value('first_name').' '.ChildProfile::where('sync_uuid', $payload['child_uuid'] ?? '')->value('last_name'))) ?: 'Child '.$recordUuid,
+            'parent_accounts' => User::query()->when(filled($payload['phone'] ?? null), fn ($query) => $query->where('phone', $payload['phone']))->when(filled($payload['email'] ?? null), fn ($query) => $query->orWhere('email', $payload['email']))->value('name') ?? 'Parent account '.$recordUuid,
+            'vaccines' => $payload['name'] ?? 'Vaccine '.$recordUuid,
+            'schedule_rules' => $payload['label'] ?? 'Schedule rule '.$recordUuid,
+            default => str_replace('_', ' ', ucfirst($entity)).' '.$recordUuid,
+        };
+    }
+
+    private function formatReceivedRow(SyncReceivedItem $row): object
+    {
+        return (object) [
+            'entity' => $row->entity,
+            'operation' => $row->operation,
+            'record_uuid' => $row->record_uuid,
+            'record_label' => $this->receivedRecordLabel($row->entity, $row->payload ?? [], $row->record_uuid),
+            'received_at' => $row->last_received_at,
+        ];
     }
 
     /** @return array<string, mixed> */

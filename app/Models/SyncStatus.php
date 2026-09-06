@@ -16,6 +16,8 @@ class SyncStatus extends Model
         'last_synced_by',
         'last_synced_at',
         'last_processed',
+        'last_pulled',
+        'last_pull_batch_uuid',
         'last_failed',
         'last_error',
         'last_attempted_at',

@@ -10,12 +10,14 @@ use App\Models\Province;
 use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\Region;
+use App\Models\SyncReceivedItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class FacilityPullSyncService
 {
-    /** @return array{processed: int, cursor: string} */
+    /** @return array{processed: int, cursor: string, batch_uuid: string, received: int} */
     public function synchronize(): array
     {
         $installation = app(FacilityActivationService::class)->localInstallation();
@@ -31,11 +33,13 @@ class FacilityPullSyncService
             'cursor' => $installation->pull_cursor,
         ])->throw();
         $payload = $response->json();
+        $batchUuid = (string) Str::uuid();
 
-        DB::transaction(function () use ($payload, $installation): void {
+        DB::transaction(function () use ($payload, $installation, $batchUuid): void {
             $this->applyStaff($payload['data']['facility_staff'] ?? [], $installation->facility_id);
             $this->applyParentAccounts($payload['data']['parent_accounts'] ?? []);
             $this->applyParentVaccinationRecords($payload['data']['parent_vaccination_records'] ?? []);
+            $this->recordReceivedItems($payload['data'] ?? [], $batchUuid);
             /*
              * Temporarily disabled; retain for future reactivation.
              * $this->applyChildTransfers($payload['data']['child_transfers'] ?? [], $installation->facility_id);
@@ -56,7 +60,43 @@ class FacilityPullSyncService
         return [
             'processed' => collect($payload['data'] ?? [])->flatten(1)->count(),
             'cursor' => $payload['cursor'],
+            'batch_uuid' => $batchUuid,
+            'received' => collect($payload['data'] ?? [])->flatten(1)->count(),
         ];
+    }
+
+    /** @param array<string, mixed> $data */
+    private function recordReceivedItems(array $data, string $batchUuid): void
+    {
+        $receivedAt = now();
+
+        foreach ($data as $entity => $records) {
+            if (! is_array($records)) {
+                continue;
+            }
+
+            foreach ($records as $record) {
+                if (! is_array($record) || blank($record['uuid'] ?? null)) {
+                    continue;
+                }
+
+                $existing = SyncReceivedItem::query()
+                    ->where('entity', $entity)
+                    ->where('record_uuid', $record['uuid'])
+                    ->first();
+
+                SyncReceivedItem::query()->updateOrCreate(
+                    ['entity' => $entity, 'record_uuid' => $record['uuid']],
+                    [
+                        'operation' => 'received',
+                        'payload' => $record,
+                        'last_received_batch_uuid' => $batchUuid,
+                        'first_received_at' => $existing?->first_received_at ?? $receivedAt,
+                        'last_received_at' => $receivedAt,
+                    ]
+                );
+            }
+        }
     }
 
     /**
