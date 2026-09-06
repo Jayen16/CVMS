@@ -20,7 +20,7 @@ class InAppNotificationService
         }
 
         $this->staffForBarangay($record->child->barangay_id)
-            ->each(fn (User $nurse) => $nurse->notify(new InAppNotification(
+            ->each(fn (User $nurse) => $this->notifyOnce($nurse, "vaccination-submitted:{$record->id}", new InAppNotification(
                 key: "vaccination-submitted:{$record->id}",
                 title: 'New vaccination submission',
                 body: "{$record->submitter?->name} submitted {$record->vaccineType?->name} for {$record->child->full_name}.",
@@ -142,7 +142,7 @@ class InAppNotificationService
 
         if (! $alreadyExists) {
             $user->notify($notification);
-            app(\App\Services\OfflineSyncService::class)->queueNotification($user, $notification->toArray($user));
+            app(OfflineSyncService::class)->queueNotification($user, $notification->toArray($user));
         }
     }
 }

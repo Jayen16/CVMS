@@ -15,6 +15,18 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
+    // Vaccination proof files may use a cloud disk independently of the
+    // application's general filesystem.
+    // Central follows FILESYSTEM_DISK (for example s3), while a facility
+    // always keeps its offline proof copy on the local public disk. PROOF_DISK
+    // can still override either default explicitly.
+    'proof_disk' => env(
+        'PROOF_DISK',
+        env('APP_INSTANCE_TYPE') === 'central'
+            ? env('FILESYSTEM_DISK', 'public')
+            : 'public'
+    ),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks

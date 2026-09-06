@@ -13,7 +13,9 @@ use App\Models\Region;
 use App\Models\SyncReceivedItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Str;
 
 class FacilityPullSyncService
@@ -39,7 +41,9 @@ class FacilityPullSyncService
             ->whereIn('sync_uuid', SyncReceivedItem::query()
                 ->where('entity', 'parent_vaccination_records')
                 ->pluck('record_uuid'))
-            ->whereNotNull('proof_path')
+            ->where(function ($query): void {
+                $query->whereNotNull('proof_path')->orWhereNotNull('proof_paths');
+            })
             ->get(['sync_uuid', 'proof_path', 'proof_paths'])
             ->map(fn (VaccinationRecord $record): array => [
                 'uuid' => $record->sync_uuid,
@@ -47,18 +51,25 @@ class FacilityPullSyncService
                 'proof_paths' => $record->proof_paths,
             ])
             ->all();
-        $this->downloadParentProofs(
-            array_merge($parentRecords, $previouslyReceivedRecords),
-            $centralUrl,
-            $token,
-        );
+        // The current pull can contain the same pending records as the
+        // retry list below. Keep one proof-download attempt per record per
+        // sync while retaining retries for records outside the current pull.
+        $proofRecords = collect(array_merge($parentRecords, $previouslyReceivedRecords))
+            ->filter(fn (mixed $record): bool => is_array($record) && filled($record['uuid'] ?? null))
+            ->keyBy('uuid')
+            ->values()
+            ->all();
+
+        $this->downloadParentProofs($proofRecords, $centralUrl, $token);
         $batchUuid = (string) Str::uuid();
 
-        DB::transaction(function () use ($payload, $installation, $batchUuid): void {
+        $received = 0;
+
+        DB::transaction(function () use ($payload, $installation, $batchUuid, &$received): void {
             $this->applyStaff($payload['data']['facility_staff'] ?? [], $installation->facility_id);
             $this->applyParentAccounts($payload['data']['parent_accounts'] ?? []);
             $this->applyParentVaccinationRecords($payload['data']['parent_vaccination_records'] ?? []);
-            $this->recordReceivedItems($payload['data'] ?? [], $batchUuid);
+            $received = $this->recordReceivedItems($payload['data'] ?? [], $batchUuid);
             /*
              * Temporarily disabled; retain for future reactivation.
              * $this->applyChildTransfers($payload['data']['child_transfers'] ?? [], $installation->facility_id);
@@ -77,18 +88,19 @@ class FacilityPullSyncService
         });
 
         return [
-            'processed' => collect($payload['data'] ?? [])->flatten(1)->count(),
+            'processed' => $received,
             'cursor' => $payload['cursor'],
             'batch_uuid' => $batchUuid,
-            'received' => collect($payload['data'] ?? [])->flatten(1)->count(),
+            'received' => $received,
         ];
     }
 
     /** @param array<int, array<string, mixed>> $records */
     private function downloadParentProofs(array $records, string $centralUrl, string $token): void
     {
-        $proofDiskName = config('filesystems.proof_disk', 'public');
-        $proofDisk = Storage::disk($proofDiskName);
+        // Central may use private S3, but the facility always keeps its own
+        // offline copy on the local public disk.
+        $proofDisk = Storage::disk('public');
         $proofDisk->makeDirectory('vaccination-proofs');
 
         foreach ($records as $record) {
@@ -107,11 +119,30 @@ class FacilityPullSyncService
                     continue;
                 }
 
-                $contents = Http::withToken($token)
-                    ->timeout(30)
-                    ->get($centralUrl.'/api/v1/sync/proofs/'.rawurlencode((string) ($record['uuid'] ?? '')).'/'.($index + 1))
-                    ->throw()
-                    ->body();
+                try {
+                    $contents = Http::withToken($token)
+                        ->withOptions(['allow_redirects' => true])
+                        ->timeout(30)
+                        ->get($centralUrl.'/api/v1/sync/proofs/'.rawurlencode((string) ($record['uuid'] ?? '')).'/'.($index + 1))
+                        ->throw()
+                        ->body();
+                } catch (RequestException $exception) {
+                    // A stale path or a proof removed from Central must not
+                    // prevent the rest of the pull batch from being applied.
+                    // Keep non-404 failures fatal so authentication and
+                    // connectivity problems remain visible to the operator.
+                    if ($exception->response?->status() !== 404) {
+                        throw $exception;
+                    }
+
+                    Log::warning('Central vaccination proof was not found; continuing sync.', [
+                        'record_uuid' => $record['uuid'] ?? null,
+                        'proof_index' => $index + 1,
+                        'proof_path' => $path,
+                    ]);
+
+                    continue;
+                }
 
                 abort_unless($proofDisk->put($path, $contents), 500, 'Unable to save synchronized vaccination proof.');
             }
@@ -119,9 +150,10 @@ class FacilityPullSyncService
     }
 
     /** @param array<string, mixed> $data */
-    private function recordReceivedItems(array $data, string $batchUuid): void
+    private function recordReceivedItems(array $data, string $batchUuid): int
     {
         $receivedAt = now();
+        $received = 0;
 
         foreach ($data as $entity => $records) {
             if (! is_array($records)) {
@@ -138,6 +170,10 @@ class FacilityPullSyncService
                     ->where('record_uuid', $record['uuid'])
                     ->first();
 
+                if ($existing && $existing->payload == $record) {
+                    continue;
+                }
+
                 SyncReceivedItem::query()->updateOrCreate(
                     ['entity' => $entity, 'record_uuid' => $record['uuid']],
                     [
@@ -148,8 +184,11 @@ class FacilityPullSyncService
                         'last_received_at' => $receivedAt,
                     ]
                 );
+                $received++;
             }
         }
+
+        return $received;
     }
 
     /**
@@ -240,6 +279,16 @@ class FacilityPullSyncService
             }
 
             $local = VaccinationRecord::withoutGlobalScopes()->where('sync_uuid', $record['uuid'])->first() ?? new VaccinationRecord;
+
+            // A nurse can verify a record locally while the original pending
+            // copy is still waiting to be pushed to Central. Do not let that
+            // older pending pull undo the local decision. The sync version is
+            // incremented whenever the local record is changed, including
+            // verification/rejection.
+            if ($local->exists && (int) ($local->sync_version ?: 1) >= (int) ($record['version'] ?? 1)) {
+                continue;
+            }
+
             $local->forceFill([
                 'id' => $local->id ?: $record['uuid'],
                 'sync_uuid' => $record['uuid'],

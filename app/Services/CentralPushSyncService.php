@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineType;
 use App\Models\SyncStatus;
+use App\Notifications\InAppNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -311,9 +312,39 @@ class CentralPushSyncService
     private function applyNotificationRequest(string $facilityId, array $event): bool
     {
         $data = $event['data'];
+        $payload = is_array($data['payload'] ?? null) ? $data['payload'] : [];
+
+        $recipient = User::query()
+            ->where(function ($query) use ($data): void {
+                $query->whereKey($data['recipient_uuid'] ?? null)
+                    ->when(filled($data['recipient_email'] ?? null), fn ($query) => $query->orWhere('email', $data['recipient_email']))
+                    ->when(filled($data['recipient_phone'] ?? null), fn ($query) => $query->orWhere('phone', $data['recipient_phone']));
+            })
+            ->where(function ($query): void {
+                $query->where('role', 'parent')->orWhereJsonContains('roles', 'parent');
+            })
+            ->first();
+
+        if ($recipient && filled($payload['key'] ?? null)) {
+            $alreadyExists = $recipient->notifications()
+                ->where('type', InAppNotification::class)
+                ->get()
+                ->contains(fn ($notification): bool => ($notification->data['key'] ?? null) === $payload['key']);
+
+            if (! $alreadyExists) {
+                $recipient->notify(new InAppNotification(
+                    key: (string) $payload['key'],
+                    title: (string) ($payload['title'] ?? 'Notification'),
+                    body: (string) ($payload['body'] ?? ''),
+                    actionUrl: (string) ($payload['action_url'] ?? route('notifications.index')),
+                    icon: (string) ($payload['icon'] ?? 'bell'),
+                ));
+            }
+        }
+
         DB::table('facility_notification_requests')->updateOrInsert(['facility_id' => $facilityId, 'notification_uuid' => $event['record_uuid']], [
             'id' => (string) Str::uuid(), 'recipient_uuid' => $data['recipient_uuid'], 'notification_type' => $data['notification_type'],
-            'payload' => json_encode($data['payload'] ?? []), 'created_at' => now(), 'updated_at' => now(),
+            'payload' => json_encode($payload), 'created_at' => now(), 'updated_at' => now(),
         ]);
 
         return true;

@@ -152,7 +152,8 @@ class OfflineSyncService
             return;
         }
         $this->queueEvent('notification_requests', (string) Str::uuid(), User::class, 'created', [
-            'recipient_uuid' => $recipient->id, 'notification_type' => 'in_app', 'payload' => $payload,
+            'recipient_uuid' => $recipient->id, 'recipient_email' => $recipient->email, 'recipient_phone' => $recipient->phone,
+            'notification_type' => 'in_app', 'payload' => $payload,
         ]);
     }
 

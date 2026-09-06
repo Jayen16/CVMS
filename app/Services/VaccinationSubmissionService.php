@@ -172,7 +172,7 @@ class VaccinationSubmissionService
                 continue;
             }
 
-            $stored[] = $proofFile->store('vaccination-proofs', 'public');
+            $stored[] = $proofFile->store('vaccination-proofs', config('filesystems.proof_disk', 'public'));
         }
 
         return $stored;
@@ -187,6 +187,6 @@ class VaccinationSubmissionService
             return;
         }
 
-        Storage::disk('public')->delete($proofPaths);
+        Storage::disk(config('filesystems.proof_disk', 'public'))->delete($proofPaths);
     }
 }

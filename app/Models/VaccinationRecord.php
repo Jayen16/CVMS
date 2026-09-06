@@ -170,7 +170,11 @@ class VaccinationRecord extends Model
         });
 
         static::updating(function (VaccinationRecord $record): void {
-            if ($record->isDirty(array_diff($record->getDirty(), ['sync_version']))) {
+            // getDirty() is keyed by attribute name. Using its values here
+            // meant verification/rejection changes did not increment the
+            // sync version, so the outbound event looked like an already
+            // synchronized version-1 event and was never queued.
+            if ($record->isDirty(array_diff(array_keys($record->getDirty()), ['sync_version']))) {
                 $record->sync_version = (int) ($record->getRawOriginal('sync_version') ?: 1) + 1;
             }
         });

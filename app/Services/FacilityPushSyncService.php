@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\OfflineSyncOutbox;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class FacilityPushSyncService
@@ -67,6 +68,7 @@ class FacilityPushSyncService
             ])->throw();
 
             $accepted = collect($response->json('accepted', []))->flip();
+            $this->uploadProofs($rows->filter(fn (OfflineSyncOutbox $row): bool => $accepted->has($row->event_uuid)), $installation->central_url, $token);
             $rows->each(function (OfflineSyncOutbox $row) use ($accepted): void {
                 if ($accepted->has($row->event_uuid)) {
                     $row->update(['status' => 'synced', 'synced_at' => now(), 'synchronized_at' => now(), 'last_error' => null]);
@@ -79,6 +81,40 @@ class FacilityPushSyncService
         } catch (\Throwable $exception) {
             $rows->each(fn (OfflineSyncOutbox $row) => $row->update(['status' => 'failed', 'last_error' => $exception->getMessage()]));
             throw $exception;
+        }
+    }
+
+    private function uploadProofs($rows, string $centralUrl, string $token): void
+    {
+        $proofDisk = Storage::disk(config('filesystems.proof_disk', 'public'));
+
+        foreach ($rows as $row) {
+            if ($row->entity !== 'immunization_records' || $row->operation === 'deleted') {
+                continue;
+            }
+
+            $paths = is_array($row->payload['proof_paths'] ?? null) ? $row->payload['proof_paths'] : [];
+            if (filled($row->payload['proof_path'] ?? null) && ! in_array($row->payload['proof_path'], $paths, true)) {
+                $paths[] = $row->payload['proof_path'];
+            }
+
+            foreach (array_values($paths) as $index => $path) {
+                if (! is_string($path) || ! Str::startsWith($path, 'vaccination-proofs/') || ! $proofDisk->exists($path)) {
+                    continue;
+                }
+
+                $handle = $proofDisk->readStream($path);
+                abort_unless(is_resource($handle), 500, 'Unable to read vaccination proof for synchronization.');
+
+                try {
+                    Http::withToken($token)->timeout(30)
+                        ->attach('file', $handle, basename($path))
+                        ->post(rtrim($centralUrl, '/').'/api/v1/sync/proofs/'.rawurlencode((string) $row->model_sync_uuid).'/'.($index + 1))
+                        ->throw();
+                } finally {
+                    fclose($handle);
+                }
+            }
         }
     }
 
