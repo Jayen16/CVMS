@@ -4,10 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Services\Sms\SmsGatewayFactory;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
 
 class AccountRecoveryService
 {
@@ -21,15 +18,10 @@ class AccountRecoveryService
         }
 
         abort_if(blank($user->phone), 422, 'This account has no registered phone number.');
-        $token = Str::random(64);
-        Cache::put('password-reset-link:'.hash('sha256', $token), ['user_id' => $user->id], now()->addHour());
-        $baseUrl = app()->environment('local')
-            || (config('system.instance_type') === 'facility' && config('offline.enabled'))
-            ? config('app.url')
-            : config('app.public_url');
-        $url = rtrim((string) $baseUrl, '/').route('password.phone.link', ['token' => $token], false);
-        $label = $user->invitation_accepted_at === null ? 'password setup' : 'password reset';
-        app(SmsGatewayFactory::class)->make()->send(User::smsRecipient($user->phone), "CVMS {$label} link: {$url} This link expires in 1 hour.");
+        app(SmsGatewayFactory::class)->make()->send(
+            User::smsRecipient($user->phone),
+            'CVMS: Go to Activate My Account and enter your registered phone number to create your account.'
+        );
         return 'sms';
     }
 }
