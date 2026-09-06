@@ -2,6 +2,15 @@
     <div class="flex flex-col gap-6" x-data="{ otpSent: @js(session('otp_sent', false)), editing: @js(session('otp_locked', false)), locked: @js(session('otp_locked', false)), availableAt: @js(session('otp_available_at')), remaining: 0, timer: null, start() { this.tick(); this.timer = setInterval(() => this.tick(), 1000); }, tick() { this.remaining = Math.max(0, Math.ceil((new Date(this.availableAt) - new Date()) / 1000)); if (!this.remaining && this.timer) clearInterval(this.timer); } }" x-init="if (otpSent) start()">
         <x-auth-header :title="__('Activate my account')" :description="__('Enter your registered email address or contact number to receive an activation code.')" />
         <x-auth-session-status class="text-center" :status="session('status')" />
+        @if ($errors->any())
+            <div class="rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                <ul class="list-disc space-y-1 pl-5">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         @if (session('toast_error'))
             <div class="text-red-600 dark:text-red-400">{{ session('toast_error') }}</div>
         @endif
@@ -20,8 +29,11 @@
             @csrf
             <input type="hidden" name="identifier" value="{{ session('otp_identifier') }}"><input type="hidden" name="mode" value="activation">
             <flux:input name="code" :label="__('Activation code')" inputmode="numeric" maxlength="6" required />
-            <flux:input name="password" :label="__('Password')" type="password" required />
-            <flux:input name="password_confirmation" :label="__('Confirm password')" type="password" required />
+            <p class="-mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                {{ __('Your password must be at least 12 characters and include uppercase and lowercase letters, a number, and a symbol.') }}
+            </p>
+            <flux:input name="password" :label="__('Password')" type="password" required autocomplete="new-password" passwordrules="minlength: 12; upper; lower; digit; special;" />
+            <flux:input name="password_confirmation" :label="__('Confirm password')" type="password" required autocomplete="new-password" />
             <flux:button variant="primary" type="submit" class="w-full">{{ __('Activate my account') }}</flux:button>
             <p class="text-center text-sm text-zinc-500">
                 <span x-show="remaining > 0">{{ __('Resend OTP available in') }} <span x-text="Math.floor(remaining / 60) + ':' + String(remaining % 60).padStart(2, '0')"></span></span>

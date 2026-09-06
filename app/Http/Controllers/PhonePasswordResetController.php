@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password as PasswordBroker;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
@@ -118,12 +119,26 @@ class PhonePasswordResetController extends Controller
 
     public function verifyOtp(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'identifier' => ['required', 'string', 'max:255'],
-            'code' => ['required', 'digits:6'],
-            'password' => ['required', 'confirmed', Password::defaults()],
-            'mode' => ['nullable', 'in:reset,activation'],
-        ]);
+        try {
+            $validated = $request->validate([
+                'identifier' => ['required', 'string', 'max:255'],
+                'code' => ['required', 'digits:6'],
+                'password' => ['required', 'confirmed', Password::defaults()],
+                'mode' => ['nullable', 'in:reset,activation'],
+            ]);
+        } catch (ValidationException $exception) {
+            $returnRoute = $request->input('mode') === 'activation' ? 'account.activation' : 'password.request';
+
+            return to_route($returnRoute)
+                ->withInput()
+                ->withErrors($exception->errors())
+                ->with([
+                    'otp_sent' => true,
+                    'otp_identifier' => $request->input('identifier'),
+                    'otp_available_at' => session('otp_available_at'),
+                    'otp_mode' => $request->input('mode', 'reset'),
+                ]);
+        }
         $mode = $validated['mode'] ?? 'reset';
         $identifier = trim($validated['identifier']);
         $lookup = filter_var($identifier, FILTER_VALIDATE_EMAIL) ? strtolower($identifier) : User::normalizePhone($identifier);
