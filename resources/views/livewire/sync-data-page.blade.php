@@ -37,7 +37,7 @@
     @if (! $viewAll && ! $viewProcessedAll)
         <div class="grid gap-4 md:grid-cols-3">
             <x-stat-card label="Pending sync" :value="$pendingCount" />
-            <x-stat-card label="Last processed" :value="$latestStatus?->last_processed ?? 0" />
+            <x-stat-card label="Sent in last sync" :value="$latestStatus?->last_processed ?? 0" />
             <x-stat-card label="Failed sync" :value="$failedCount" />
         </div>
     @endif
@@ -70,7 +70,10 @@
         <section class="app-card">
             <div class="app-card-header">
                 <div class="flex items-center justify-between gap-3">
-                    <h2 class="app-card-title">Processed in latest sync</h2>
+                    <div>
+                        <h2 class="app-card-title">Sent to Central in this sync</h2>
+                        <p class="mt-1 text-sm text-zinc-500">Items successfully received and acknowledged by Central during the latest Sync now.</p>
+                    </div>
                     <a href="{{ route('sync.processed', ['region_id' => $regionFilter, 'province_id' => $provinceFilter, 'municipality_id' => $municipalityFilter, 'barangay_id' => $barangayFilter]) }}" class="app-button-secondary !px-3 !py-1.5 !text-xs">View all</a>
                 </div>
             </div>
@@ -79,7 +82,7 @@
                     @php($payload = is_array($row->payload) ? $row->payload : [])
                     <tr class="app-table-row"><td class="font-medium">{{ class_basename($row->model_type) }}</td><td class="capitalize">{{ $row->operation }}</td><td>{{ $payload['name'] ?? ($payload['first_name'] ?? ($payload['email'] ?? 'Record '.$row->model_sync_uuid)) }}@if (isset($payload['last_name'])) {{ $payload['last_name'] }}@endif</td><td>{{ $row->synced_at?->format('M d, Y h:i A') }}</td><td><span class="status-pill status-verified">Synced</span></td></tr>
                 @empty
-                    <tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500">No records were processed in the latest sync.</td></tr>
+                    <tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500">No items were acknowledged by Central in the latest sync.</td></tr>
                 @endforelse
             </tbody></table></div>
         </section>
@@ -90,8 +93,8 @@
             <div class="app-card-header">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <h2 class="app-card-title">All processed sync records</h2>
-                        <p class="mt-1 text-sm text-zinc-500">Review records successfully sent to Central.</p>
+                        <h2 class="app-card-title">All items sent to Central</h2>
+                        <p class="mt-1 text-sm text-zinc-500">Review every item successfully acknowledged by Central.</p>
                     </div>
                     <div class="flex flex-wrap items-center gap-3">
                         <label class="flex items-center gap-2 text-sm text-zinc-500">
@@ -125,7 +128,12 @@
     <section class="app-card">
         <div class="app-card-header">
             <div class="flex items-center justify-between gap-3">
-                <h2 class="app-card-title">{{ $viewAll ? 'All sync queue activity' : 'Latest sync queue activity' }}</h2>
+                <div>
+                    <h2 class="app-card-title">{{ $viewAll ? 'Local sync queue history' : 'Recent local queue activity' }}</h2>
+                    @unless ($viewAll)
+                        <p class="mt-1 text-sm text-zinc-500">Local records waiting to sync, being retried, or already sent to Central.</p>
+                    @endunless
+                </div>
                 @unless ($viewAll)
                     <a href="{{ route('sync.all', ['region_id' => $regionFilter, 'province_id' => $provinceFilter, 'municipality_id' => $municipalityFilter, 'barangay_id' => $barangayFilter]) }}" class="app-button-secondary !px-3 !py-1.5 !text-xs">View all</a>
                 @endunless
