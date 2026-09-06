@@ -270,10 +270,15 @@
                                         >
                                             {{ ucfirst($record->verification_status) }}
                                         </span>
-                                        <div class="mt-1 text-xs text-zinc-500">Recorded by {{ $record->recordedByDisplayName() }}</div>
-                                        @if ($record->submitter)
-                                            <div class="mt-1 text-xs text-zinc-500">Submitted by {{ $record->submitter->name }}</div>
-                                        @endif
+                                        <div class="mt-1 text-xs text-zinc-500">
+                                            @if ($record->verification_status === 'pending')
+                                                Submitted by {{ $record->submitter?->name ?? 'Unknown parent' }}
+                                            @elseif ($record->verification_status === 'verified')
+                                                Approved by {{ $record->verifier?->name ?? $record->recordedByDisplayName() }}
+                                            @else
+                                                Rejected by {{ $record->verifier?->name ?? $record->recordedByDisplayName() }}
+                                            @endif
+                                        </div>
                                     </td>
                                     <td>
                                         {{ $record->suggested_vaccine ?? 'None' }}
