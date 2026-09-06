@@ -6,6 +6,7 @@ use App\Models\AdverseEventReport;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\ClinicAnnouncement;
+use App\Models\FacilityStaff;
 use App\Models\Municipality;
 use App\Models\OfflineSyncOutbox;
 use App\Models\Province;
@@ -124,6 +125,7 @@ class SyncDataPage extends Component
             $lastProcessedRows = (clone $processedQuery)
                 ->whereBetween('synced_at', [$latestStatus->last_attempted_at, $latestStatus->last_synced_at])
                 ->latest('synced_at')
+                ->take(10)
                 ->get();
         }
         $processedRows = $this->viewProcessedAll
@@ -138,6 +140,7 @@ class SyncDataPage extends Component
                 ->get()
                 ->map(fn ($row) => (object) [
                     'model_type' => match ($row->entity) {
+                        'facility_staff' => FacilityStaff::class,
                         'children' => ChildProfile::class,
                         'immunization_records' => VaccinationRecord::class,
                         'guardians' => User::class,
@@ -149,7 +152,7 @@ class SyncDataPage extends Component
                     'synced_at' => Carbon::parse($row->applied_at),
                 ]);
 
-            $lastProcessedRows = $this->viewProcessedAll ? collect() : $centralRows;
+            $lastProcessedRows = $this->viewProcessedAll ? collect() : $centralRows->take(10);
             if ($this->viewProcessedAll) {
                 $page = (int) $this->getPage();
                 $processedRows = new LengthAwarePaginator(
@@ -183,6 +186,7 @@ class SyncDataPage extends Component
     private function centralRecordLabel(string $entity, string $recordUuid): string
     {
         return match ($entity) {
+            'facility_staff' => FacilityStaff::query()->where('staff_uuid', $recordUuid)->value('name') ?? 'Facility staff '.$recordUuid,
             'children' => ChildProfile::withoutGlobalScopes()->where('sync_uuid', $recordUuid)->get()->map(fn ($child) => trim($child->first_name.' '.$child->last_name))->first() ?? 'Child '.$recordUuid,
             'guardians' => User::query()->whereKey($recordUuid)->value('name') ?? 'Parent '.$recordUuid,
             'immunization_records' => 'Immunization '.$recordUuid,
