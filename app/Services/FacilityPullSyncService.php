@@ -8,6 +8,7 @@ use App\Models\ClinicAnnouncement;
 use App\Models\Municipality;
 use App\Models\Province;
 use App\Models\User;
+use App\Models\VaccinationRecord;
 use App\Models\Region;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -34,6 +35,7 @@ class FacilityPullSyncService
         DB::transaction(function () use ($payload, $installation): void {
             $this->applyStaff($payload['data']['facility_staff'] ?? [], $installation->facility_id);
             $this->applyParentAccounts($payload['data']['parent_accounts'] ?? []);
+            $this->applyParentVaccinationRecords($payload['data']['parent_vaccination_records'] ?? []);
             /*
              * Temporarily disabled; retain for future reactivation.
              * $this->applyChildTransfers($payload['data']['child_transfers'] ?? [], $installation->facility_id);
@@ -115,6 +117,64 @@ class FacilityPullSyncService
                 'invitation_accepted_at' => $record['invitation_accepted_at'] ?? null,
                 'is_active' => (bool) ($record['active'] ?? true),
             ])->saveQuietly();
+        }
+    }
+
+    /** @param array<int, array<string, mixed>> $records */
+    private function applyParentVaccinationRecords(array $records): void
+    {
+        foreach ($records as $record) {
+            $childId = DB::table('child_profiles')->where('sync_uuid', $record['child_uuid'])->value('id');
+            $vaccineId = DB::table('vaccine_types')->where('code', $record['vaccine_code'])->value('id');
+
+            if (! $childId || ! $vaccineId) {
+                continue;
+            }
+
+            $parent = User::query()
+                ->where(function ($query) use ($record): void {
+                    $query->whereKey($record['submitter_uuid'])
+                        ->when(filled($record['submitter_email'] ?? null), fn ($query) => $query->orWhere('email', $record['submitter_email']))
+                        ->when(filled($record['submitter_phone'] ?? null), fn ($query) => $query->orWhere('phone', $record['submitter_phone']));
+                })
+                ->where(function ($query): void {
+                    $query->where('role', 'parent')->orWhereJsonContains('roles', 'parent');
+                })
+                ->first();
+
+            if (! $parent) {
+                continue;
+            }
+
+            $local = VaccinationRecord::withoutGlobalScopes()->where('sync_uuid', $record['uuid'])->first() ?? new VaccinationRecord;
+            $local->forceFill([
+                'id' => $local->id ?: $record['uuid'],
+                'sync_uuid' => $record['uuid'],
+                'child_profile_id' => $childId,
+                'vaccine_type_id' => $vaccineId,
+                'recorded_by' => $parent->id,
+                'submitted_by' => $parent->id,
+                'verified_by' => null,
+                'verified_at' => $record['verified_at'] ?? null,
+                'dose_number' => $record['dose_number'],
+                'source' => $record['source'],
+                'verification_status' => $record['verification_status'],
+                'administered_at' => $record['administered_at'],
+                'clinic_name' => $record['clinic_name'] ?? null,
+                'clinic_location' => $record['clinic_location'] ?? null,
+                'proof_path' => $record['proof_path'] ?? null,
+                'proof_paths' => $record['proof_paths'] ?? null,
+                'client_submission_id' => $record['client_submission_id'] ?? null,
+                'next_due_at' => $record['next_due_at'] ?? null,
+                'suggested_vaccine' => $record['suggested_vaccine'] ?? null,
+                'suggestion_note' => $record['suggestion_note'] ?? null,
+                'remarks' => $record['remarks'] ?? null,
+                'sync_version' => $record['version'] ?? 1,
+            ])->saveQuietly();
+
+            if ($local->verification_status === 'pending') {
+                app(InAppNotificationService::class)->vaccinationSubmitted($local->fresh());
+            }
         }
     }
 

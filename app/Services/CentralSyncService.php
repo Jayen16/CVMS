@@ -9,6 +9,7 @@ use App\Models\FacilityConnection;
 use App\Models\VaccineSchedule;
 use App\Models\VaccineType;
 use App\Models\ParentChangeRequest;
+use App\Models\VaccinationRecord;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -59,6 +60,43 @@ class CentralSyncService
                     'invitation_accepted_at' => $parent->invitation_accepted_at,
                     'active' => (bool) $parent->is_active,
                     'updated_at' => $parent->user_updated_at,
+                ]
+            ),
+            'parent_vaccination_records' => $this->serializeModels(
+                VaccinationRecord::query()
+                    ->with(['child', 'vaccineType', 'submitter'])
+                    ->whereNotNull('submitted_by')
+                    ->whereHas('child', fn ($query) => $query->where('facility_uuid', $connection->facility_id))
+                    ->where(function (Builder $query) use ($after): void {
+                        $query->where('verification_status', 'pending')
+                            ->when($after, fn (Builder $query) => $query->orWhere('updated_at', '>', $after));
+                    })
+                    ->orderBy('updated_at')
+                    ->get(),
+                fn (VaccinationRecord $record): array => [
+                    'uuid' => (string) $record->sync_uuid,
+                    'child_uuid' => (string) $record->child->sync_uuid,
+                    'vaccine_code' => $record->vaccineType?->code,
+                    'dose_number' => $record->dose_number,
+                    'source' => $record->source,
+                    'verification_status' => $record->verification_status,
+                    'administered_at' => $record->administered_at?->toDateString(),
+                    'verified_at' => $record->verified_at?->toIso8601String(),
+                    'clinic_name' => $record->clinic_name,
+                    'clinic_location' => $record->clinic_location,
+                    'proof_path' => $record->proof_path,
+                    'proof_paths' => $record->proof_paths,
+                    'client_submission_id' => $record->client_submission_id,
+                    'next_due_at' => $record->next_due_at?->toDateString(),
+                    'suggested_vaccine' => $record->suggested_vaccine,
+                    'suggestion_note' => $record->suggestion_note,
+                    'remarks' => $record->remarks,
+                    'submitter_uuid' => (string) $record->submitted_by,
+                    'submitter_name' => $record->submitter?->name,
+                    'submitter_email' => $record->submitter?->email,
+                    'submitter_phone' => $record->submitter?->phone,
+                    'version' => (int) ($record->sync_version ?: 1),
+                    'updated_at' => $record->updated_at?->toIso8601String(),
                 ]
             ),
             /*
