@@ -12,6 +12,7 @@ use App\Models\ParentChangeRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Laravel\Passport\Client;
 
 class CentralSyncService
@@ -30,6 +31,36 @@ class CentralSyncService
                 'uuid' => (string) $staff->staff_uuid, 'name' => $staff->name, 'role' => $staff->role, 'active' => $staff->active,
                 'last_seen_at' => $staff->last_seen_at?->toIso8601String(), 'updated_at' => $staff->updated_at?->toIso8601String(),
             ]),
+            'parent_accounts' => $this->serializeModels(
+                DB::table('facility_guardians')
+                    ->leftJoin('users', function ($join): void {
+                        $join->on('users.id', '=', 'facility_guardians.user_id')
+                    ->orOn('users.email', '=', 'facility_guardians.email')
+                            ->orOn('users.phone', '=', 'facility_guardians.phone');
+                    })
+                    ->select([
+                        'facility_guardians.guardian_uuid',
+                        'facility_guardians.email as guardian_email',
+                        'facility_guardians.phone as guardian_phone',
+                        'users.email as user_email',
+                        'users.phone as user_phone',
+                        'users.invitation_accepted_at',
+                        'users.is_active',
+                        'users.updated_at as user_updated_at',
+                    ])
+                    ->where('facility_guardians.facility_id', $connection->facility_id)
+                    ->whereNotNull('users.id')
+                    ->orderBy('users.updated_at')
+                    ->get(),
+                fn (object $parent): array => [
+                    'uuid' => (string) $parent->guardian_uuid,
+                    'email' => $parent->user_email ?? $parent->guardian_email,
+                    'phone' => $parent->user_phone ?? $parent->guardian_phone,
+                    'invitation_accepted_at' => $parent->invitation_accepted_at,
+                    'active' => (bool) $parent->is_active,
+                    'updated_at' => $parent->user_updated_at,
+                ]
+            ),
             /*
             'child_transfers' => $this->serializeModels(ChildTransferHistory::query()->where('facility_uuid', $connection->facility_id)->when($after, fn (Builder $query) => $query->where('updated_at', '>', $after))->orderBy('updated_at')->get(), fn (ChildTransferHistory $transfer): array => [
                 'uuid' => (string) $transfer->id, 'child_uuid' => $transfer->child_sync_uuid, 'facility_uuid' => $transfer->facility_uuid,

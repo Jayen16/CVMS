@@ -7,6 +7,7 @@ use App\Models\ChildTransferHistory;
 use App\Models\ClinicAnnouncement;
 use App\Models\Municipality;
 use App\Models\Province;
+use App\Models\User;
 use App\Models\Region;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -32,6 +33,7 @@ class FacilityPullSyncService
 
         DB::transaction(function () use ($payload, $installation): void {
             $this->applyStaff($payload['data']['facility_staff'] ?? [], $installation->facility_id);
+            $this->applyParentAccounts($payload['data']['parent_accounts'] ?? []);
             /*
              * Temporarily disabled; retain for future reactivation.
              * $this->applyChildTransfers($payload['data']['child_transfers'] ?? [], $installation->facility_id);
@@ -91,6 +93,28 @@ class FacilityPullSyncService
                 'id' => $record['uuid'], 'name' => $record['name'], 'role' => $record['role'], 'active' => $record['active'] ?? true,
                 'last_seen_at' => $record['last_seen_at'] ?? null, 'created_at' => now(), 'updated_at' => $record['updated_at'] ?? now(),
             ]);
+        }
+    }
+
+    /** @param array<int, array<string, mixed>> $records */
+    private function applyParentAccounts(array $records): void
+    {
+        foreach ($records as $record) {
+            $parent = User::query()
+                ->where(function ($query) use ($record): void {
+                    $query->whereKey($record['uuid'])
+                        ->when(filled($record['email'] ?? null), fn ($query) => $query->orWhere('email', $record['email']))
+                        ->when(filled($record['phone'] ?? null), fn ($query) => $query->orWhere('phone', $record['phone']));
+                })
+                ->where(function ($query): void {
+                    $query->where('role', 'parent')->orWhereJsonContains('roles', 'parent');
+                })
+                ->first();
+
+            $parent?->forceFill([
+                'invitation_accepted_at' => $record['invitation_accepted_at'] ?? null,
+                'is_active' => (bool) ($record['active'] ?? true),
+            ])->saveQuietly();
         }
     }
 
