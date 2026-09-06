@@ -16,6 +16,7 @@
         "laravel/framework": "^13.17",
         "laravel/passport": "^13.8",
         "laravel/tinker": "^3.0",
+        "league/flysystem-aws-s3-v3": "*",
         "livewire/blaze": "^1.0",
         "livewire/flux": "^2.13.1",
         "livewire/livewire": "^4.1",

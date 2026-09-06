@@ -195,3 +195,24 @@ test('new unstarted vaccine series follows the active schedule version', functio
         ->and($suggestion['due_label'])->toBe('3 months')
         ->and($suggestion['suggested_schedule_version_id'])->toBe($version2026->id);
 });
+
+test('older child without dose history receives a catch-up review instead of an infant dose', function () {
+    $barangay = Barangay::create(['name' => 'Catch-up Barangay']);
+    $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
+    $child = ChildProfile::create([
+        'barangay_id' => $barangay->id,
+        'created_by' => $nurse->id,
+        'first_name' => 'Late',
+        'last_name' => 'Registration',
+        'birthdate' => now()->subYears(5)->subDay()->toDateString(),
+        'sex' => 'female',
+        'guardian_name' => 'Parent Catch-up',
+    ]);
+
+    $suggestion = app(ImmunizationSuggestionService::class)->suggestNextDose($child);
+
+    expect($suggestion['status'])->toBe('catch_up_review')
+        ->and($suggestion['vaccine_name'])->toBeNull()
+        ->and($suggestion['note'])->toContain('catch-up assessment')
+        ->and($suggestion['checks'])->toContain('Use the current catch-up schedule for the child’s age; do not restart an incomplete series.');
+});
