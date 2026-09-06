@@ -13,6 +13,7 @@ use App\Models\Region;
 use App\Models\SyncReceivedItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class FacilityPullSyncService
@@ -33,6 +34,24 @@ class FacilityPullSyncService
             'cursor' => $installation->pull_cursor,
         ])->throw();
         $payload = $response->json();
+        $parentRecords = $payload['data']['parent_vaccination_records'] ?? [];
+        $previouslyReceivedRecords = VaccinationRecord::query()
+            ->whereIn('sync_uuid', SyncReceivedItem::query()
+                ->where('entity', 'parent_vaccination_records')
+                ->pluck('record_uuid'))
+            ->whereNotNull('proof_path')
+            ->get(['sync_uuid', 'proof_path', 'proof_paths'])
+            ->map(fn (VaccinationRecord $record): array => [
+                'uuid' => $record->sync_uuid,
+                'proof_path' => $record->proof_path,
+                'proof_paths' => $record->proof_paths,
+            ])
+            ->all();
+        $this->downloadParentProofs(
+            array_merge($parentRecords, $previouslyReceivedRecords),
+            $centralUrl,
+            $token,
+        );
         $batchUuid = (string) Str::uuid();
 
         DB::transaction(function () use ($payload, $installation, $batchUuid): void {
@@ -63,6 +82,40 @@ class FacilityPullSyncService
             'batch_uuid' => $batchUuid,
             'received' => collect($payload['data'] ?? [])->flatten(1)->count(),
         ];
+    }
+
+    /** @param array<int, array<string, mixed>> $records */
+    private function downloadParentProofs(array $records, string $centralUrl, string $token): void
+    {
+        $proofDiskName = config('filesystems.proof_disk', 'public');
+        $proofDisk = Storage::disk($proofDiskName);
+        $proofDisk->makeDirectory('vaccination-proofs');
+
+        foreach ($records as $record) {
+            $paths = is_array($record['proof_paths'] ?? null) ? $record['proof_paths'] : [];
+
+            if (filled($record['proof_path'] ?? null) && ! in_array($record['proof_path'], $paths, true)) {
+                $paths[] = $record['proof_path'];
+            }
+
+            foreach (array_values($paths) as $index => $path) {
+                if (! is_string($path) || ! Str::startsWith($path, 'vaccination-proofs/')) {
+                    continue;
+                }
+
+                if ($proofDisk->exists($path)) {
+                    continue;
+                }
+
+                $contents = Http::withToken($token)
+                    ->timeout(30)
+                    ->get($centralUrl.'/api/v1/sync/proofs/'.rawurlencode((string) ($record['uuid'] ?? '')).'/'.($index + 1))
+                    ->throw()
+                    ->body();
+
+                abort_unless($proofDisk->put($path, $contents), 500, 'Unable to save synchronized vaccination proof.');
+            }
+        }
     }
 
     /** @param array<string, mixed> $data */
