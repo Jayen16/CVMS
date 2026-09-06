@@ -4,7 +4,7 @@ namespace App\Services;
 
 class FacilitySyncService
 {
-    /** @return array{pulled: int, pushed: int, failed: int} */
+    /** @return array{pulled: int, pushed: int, failed: int, pull_batch_uuid: string} */
     public function synchronize(): array
     {
         $installation = app(FacilityActivationService::class)->localInstallation();
@@ -21,6 +21,11 @@ class FacilitySyncService
             throw $exception;
         }
 
-        return ['pulled' => $pulled['processed'], 'pushed' => $pushed['processed'], 'failed' => $pushed['failed']];
+        return [
+            'pulled' => $pulled['processed'],
+            'pushed' => $pushed['processed'],
+            'failed' => $pushed['failed'],
+            'pull_batch_uuid' => $pulled['batch_uuid'],
+        ];
     }
 }

@@ -276,7 +276,7 @@ class OfflineSyncService
         };
     }
 
-    /** @return array{processed: int, failed: int} */
+    /** @return array{processed: int, failed: int, pulled: int, pull_batch_uuid: string} */
     public function syncPending(): array
     {
         try {
@@ -284,7 +284,12 @@ class OfflineSyncService
 
             // FacilitySyncService reports the number uploaded under `pushed`.
             // Expose that count as `processed` to the manual-sync controller.
-            return ['processed' => $result['pushed'], 'failed' => $result['failed']];
+            return [
+                'processed' => $result['pushed'],
+                'failed' => $result['failed'],
+                'pulled' => $result['pulled'],
+                'pull_batch_uuid' => $result['pull_batch_uuid'],
+            ];
         } catch (\Throwable $exception) {
             report($exception);
 
@@ -294,7 +299,7 @@ class OfflineSyncService
                 app(FacilityActivationService::class)->localInstallation()->update(['status' => 'suspended']);
             }
 
-            return ['processed' => 0, 'failed' => 1];
+            return ['processed' => 0, 'failed' => 1, 'pulled' => 0, 'pull_batch_uuid' => ''];
         }
     }
 }
