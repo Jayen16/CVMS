@@ -16,5 +16,6 @@ if (config('system.instance_type') === 'central') {
     // CheckToken validates the bearer token and its required scope; the
     // controllers resolve the authenticated Passport client from the token.
     Route::middleware(CheckToken::using('sync:pull'))->get('v1/sync/pull', [CentralSyncController::class, 'pull'])->name('api.v1.sync.pull');
+    Route::middleware(CheckToken::using('sync:pull'))->get('v1/sync/proofs/{record}/{proofIndex}', [CentralSyncController::class, 'proof'])->name('api.v1.sync.proofs.show');
     Route::middleware(CheckToken::using('sync:push'))->post('v1/sync/push', [CentralPushSyncController::class, 'push'])->name('api.v1.sync.push');
 }

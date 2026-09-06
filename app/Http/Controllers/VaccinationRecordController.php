@@ -11,8 +11,10 @@ use App\Services\InAppNotificationService;
 use App\Services\OfflineSyncService;
 use App\Services\VaccinationSubmissionService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -142,7 +144,7 @@ class VaccinationRecordController extends Controller
         return to_route('children.show', $record->child_profile_id)->with('status', 'Vaccination record rejected.');
     }
 
-    public function showProof(VaccinationRecord $record, int $proofIndex): StreamedResponse
+    public function showProof(VaccinationRecord $record, int $proofIndex): Response|StreamedResponse
     {
         $this->authorizeProofView($record);
 
@@ -150,9 +152,32 @@ class VaccinationRecordController extends Controller
         $proofPath = $proofPaths[$proofIndex - 1] ?? null;
 
         abort_if($proofPath === null, 404);
-        abort_unless(Storage::disk('public')->exists($proofPath), 404);
+        if (! Storage::disk('public')->exists($proofPath)) {
+            return $this->streamCentralProof($record, $proofIndex);
+        }
 
         return Storage::disk('public')->response($proofPath);
+    }
+
+    private function streamCentralProof(VaccinationRecord $record, int $proofIndex): Response
+    {
+        abort_unless(config('system.instance_type') === 'facility', 404);
+
+        $installation = app(\App\Services\FacilityActivationService::class)->localInstallation();
+        abort_unless($installation->status === 'active', 404);
+
+        $token = Http::asForm()->timeout(15)->withBasicAuth($installation->passport_client_id, $installation->passport_client_secret)
+            ->post(rtrim((string) $installation->central_url, '/').'/oauth/token', [
+                'grant_type' => 'client_credentials', 'scope' => 'sync:pull',
+            ])->throw()->json('access_token');
+        $remote = Http::withToken($token)->timeout(30)
+            ->get(rtrim((string) $installation->central_url, '/').'/api/v1/sync/proofs/'.rawurlencode((string) $record->sync_uuid).'/'.$proofIndex)
+            ->throw();
+
+        return response($remote->body(), 200, [
+            'Content-Type' => $remote->header('Content-Type', 'application/octet-stream'),
+            'Content-Disposition' => $remote->header('Content-Disposition', 'inline'),
+        ]);
     }
 
     private function authorizeCreate(ChildProfile $child): void
