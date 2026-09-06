@@ -183,16 +183,20 @@ class CentralPushSyncService
             ->first();
         $user = $guardian?->user_id ? User::query()->find($guardian->user_id) : null;
 
-        if ($user === null && filled($data['email'] ?? null)) {
+        if ($user === null && (filled($data['email'] ?? null) || filled($data['phone'] ?? null))) {
             $user = User::query()
-                ->where('email', $data['email'])
+                ->where(function ($query) use ($data): void {
+                    $query
+                        ->when(filled($data['email'] ?? null), fn ($query) => $query->where('email', $data['email']))
+                        ->when(filled($data['phone'] ?? null), fn ($query) => $query->orWhere('phone', $data['phone']));
+                })
                 ->where(function ($query): void {
                     $query->where('role', 'parent')->orWhereJsonContains('roles', 'parent');
                 })
                 ->first();
         }
 
-        if ($user === null && filled($data['email'] ?? null)) {
+        if ($user === null && (filled($data['email'] ?? null) || filled($data['phone'] ?? null))) {
             $user = User::create([
                 'name' => $data['name'], 'email' => $data['email'], 'phone' => $data['phone'] ?? null,
                 'password' => Str::password(32), 'role' => 'parent', 'roles' => ['parent'],

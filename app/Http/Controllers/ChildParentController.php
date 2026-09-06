@@ -9,7 +9,6 @@ use App\Services\OfflineSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -126,7 +125,7 @@ class ChildParentController extends Controller
 
             $status = $setupChannel === 'email'
                 ? 'Parent account linked to child profile. A password setup link was sent by email.'
-                : 'Parent account linked to child profile. A password setup link was sent successfully by SMS.';
+                : 'Parent account linked to child profile. Activation instructions were sent successfully by SMS.';
         } elseif ($setupChannel !== null) {
             $status = 'Parent account linked. The activation email will be sent after the child record is synchronized to the central system.';
         }
@@ -141,15 +140,18 @@ class ChildParentController extends Controller
         abort_unless($parent->isParent(), 404);
         abort_unless($child->parents()->whereKey($parent->id)->exists(), 404);
         abort_if($parent->invitation_accepted_at !== null, 422, 'Parent has already configured the account.');
-        abort_if(blank($parent->email), 422, 'This parent does not have an email address for password setup links.');
-
-        Password::sendResetLink(['email' => $parent->email]);
+        $channel = filled($parent->email) ? 'email' : 'sms';
+        app(AccountRecoveryService::class)->send($parent, $channel);
 
         if ($request->expectsJson()) {
-            return response()->json(['message' => 'Password setup link sent again.']);
+            return response()->json(['message' => $channel === 'email'
+                ? 'Password setup link sent again.'
+                : 'Activation instructions sent again by SMS.']);
         }
 
-        return to_route('children.show', $child)->with('status', 'Password setup link sent again.');
+        return to_route('children.show', $child)->with('status', $channel === 'email'
+            ? 'Password setup link sent again.'
+            : 'Activation instructions sent again by SMS.');
     }
 
     public function update(Request $request, ChildProfile $child, User $parent): RedirectResponse

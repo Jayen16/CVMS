@@ -66,7 +66,7 @@ test('linking a phone-only parent sends a password setup link by SMS', function 
             'relationship' => 'mother',
         ])
         ->assertRedirect(route('children.show', $child, absolute: false))
-        ->assertSessionHas('status', 'Parent account linked to child profile. A password setup link was sent successfully by SMS.');
+        ->assertSessionHas('status', 'Parent account linked to child profile. Activation instructions were sent successfully by SMS.');
 
     $parent = User::where('phone', '09179990000')->firstOrFail();
 
@@ -77,7 +77,7 @@ test('linking a phone-only parent sends a password setup link by SMS', function 
     Notification::assertNothingSent();
     Log::shouldHaveReceived('info')->with('SMS reminder logged.', Mockery::on(function (array $context): bool {
         return $context['recipient'] === '+639177999000'
-            && str_contains($context['message'], 'CVMS password setup link:');
+            && $context['message'] === 'CVMS: Go to Activate My Account and enter your registered phone number to create your account.';
     }));
 });
 
