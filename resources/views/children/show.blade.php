@@ -129,10 +129,12 @@
             <div class="border-b border-teal-100 bg-teal-50 px-5 py-4 dark:border-teal-900 dark:bg-teal-950">
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">{{ auth()->user()->isParent() ? 'Next clinic visit' : 'AI decision support' }}</p>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-teal-700 dark:text-teal-300">{{ auth()->user()->isParent() ? 'Next clinic visit' : 'Decision support' }}</p>
                         <h2 class="mt-1 text-lg font-semibold text-slate-950 dark:text-white">
                             @if ($suggestion['vaccine_name'])
                                 {{ auth()->user()->isParent() ? 'Visit for ' : 'Recommend ' }}{{ $suggestion['vaccine_name'] }} dose {{ $suggestion['dose_number'] }}
+                            @elseif ($suggestion['status'] === 'catch_up_review')
+                                Catch-up review required
                             @else
                                 No routine dose currently pending
                             @endif
@@ -144,8 +146,9 @@
                         @elseif ($suggestion['status'] === 'delayed') bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200
                         @elseif ($suggestion['status'] === 'due') bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200
                         @elseif ($suggestion['status'] === 'upcoming') bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200
+                        @elseif ($suggestion['status'] === 'catch_up_review') bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200
                         @else status-verified @endif">
-                        {{ ucfirst($suggestion['status']) }}
+                        {{ $suggestion['status'] === 'catch_up_review' ? 'Catch-up review' : ucfirst($suggestion['status']) }}
                     </span>
                 </div>
             </div>

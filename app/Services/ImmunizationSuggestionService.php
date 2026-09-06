@@ -24,6 +24,28 @@ class ImmunizationSuggestionService
             ->with('vaccineType')
             ->get();
 
+        if ($records->isEmpty() && $this->isOlderChildWithoutDoseHistory($child)) {
+            $age = Carbon::parse($child->birthdate)->diffInYears(Carbon::today());
+
+            return [
+                'vaccine_code' => null,
+                'vaccine_name' => null,
+                'dose_number' => null,
+                'due_at' => null,
+                'action_at' => Carbon::today(),
+                'status' => 'catch_up_review',
+                'due_label' => null,
+                'note' => "This child is {$age} years old and has no recorded vaccination doses. Complete a catch-up assessment and verify any paper or outside-clinic records before selecting the next dose.",
+                'checks' => [
+                    'Ask for the child health card and confirm any doses given elsewhere.',
+                    'Use the current catch-up schedule for the child’s age; do not restart an incomplete series.',
+                    'Check minimum ages, minimum intervals, contraindications, and special-risk indications.',
+                    'Document the verified history before recording the next dose.',
+                ],
+                'suggested_schedule_version_id' => null,
+            ];
+        }
+
         $candidate = $this->nextMissingRoutineDose($child, $records);
 
         if ($candidate === null) {
@@ -157,5 +179,10 @@ class ImmunizationSuggestionService
         usort($candidates, fn (array $first, array $second) => $first['due_at']->timestamp <=> $second['due_at']->timestamp);
 
         return $candidates[0] ?? null;
+    }
+
+    private function isOlderChildWithoutDoseHistory(ChildProfile $child): bool
+    {
+        return ! Carbon::parse($child->birthdate)->addYear()->isFuture();
     }
 }
