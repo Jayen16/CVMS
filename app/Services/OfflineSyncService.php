@@ -100,7 +100,10 @@ class OfflineSyncService
             'invitation_accepted_at' => $user->invitation_accepted_at?->toIso8601String(),
         ];
         $latest = OfflineSyncOutbox::query()->where('entity', 'facility_staff')->where('model_sync_uuid', $user->id)->latest('created_at')->first();
-        if ($latest && $latest->payload === $payload) {
+        // JSON columns may return equivalent values with different scalar
+        // types after a round trip through the database. Compare the actual
+        // staff data rather than requiring strict PHP type identity.
+        if ($latest && $latest->payload == $payload) {
             return;
         }
 

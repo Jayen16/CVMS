@@ -110,11 +110,11 @@ class SyncDataPage extends Component
             ? $rowsQuery->latest('queued_at')->paginate($this->perPage)
             : $rowsQuery->latest('queued_at')->take(10)->get());
         $recentRows = $this->attachLocations($recentRows);
-        $processedQuery = $this->locationScopedQuery(
-            OfflineSyncOutbox::query(),
-            $locationData['barangayIds'],
-            $locationData['syncUuids'],
-        )->where('status', 'synced');
+        // Processed sync history represents the events acknowledged by Central.
+        // Do not apply the child-location UUID filter here: guardian and
+        // relationship events use their own UUIDs and would disappear from
+        // the history even though they were successfully synchronized.
+        $processedQuery = OfflineSyncOutbox::query()->where('status', 'synced');
         if ($this->viewProcessedAll && filled($this->dateFilter)) {
             $processedQuery->whereDate('synced_at', $this->dateFilter);
         }
