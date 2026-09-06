@@ -425,17 +425,49 @@
                         </div>
 
                         @if (auth()->user()->canManageChildren())
-                            <section class="app-panel {{ $activeTab === 'vaccination' ? '' : 'hidden' }}" data-tab-panel="vaccination">
+                            <section
+                                class="app-panel {{ $activeTab === 'vaccination' ? '' : 'hidden' }}"
+                                data-tab-panel="vaccination"
+                                x-data="{
+                                    vaccineId: @js((string) old('vaccine_type_id', '')),
+                                    inventoryVaccineIds: @js($inventoryItems->mapWithKeys(fn ($item) => [(string) $item->id => (string) $item->vaccine_type_id])),
+                                    inventorySelect: null,
+                                    filterInventoryOptions() {
+                                        [...this.$refs.inventorySelect.options].forEach((option, index) => {
+                                            option.hidden = index > 0 && this.vaccineId !== '' && this.inventoryVaccineIds[option.value] !== this.vaccineId;
+                                            if (option.hidden && option.selected) {
+                                                this.$refs.inventorySelect.value = '';
+                                            }
+                                        });
+                                    },
+                                    changeVaccine() {
+                                        this.filterInventoryOptions();
+                                    }
+                                }"
+                                x-init="$nextTick(() => filterInventoryOptions())"
+                            >
                                 <form method="POST" action="{{ route('children.vaccinations.store', $child) }}" class="grid content-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                     @csrf
                                     <h2 class="app-card-title sm:col-span-2 lg:col-span-4">Record vaccination</h2>
-                                    <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" />
+                                    <label class="grid gap-2 text-sm">
+                                        <span class="font-medium text-slate-800 dark:text-zinc-100">Vaccine</span>
+                                        <select name="vaccine_type_id" class="app-input" x-model="vaccineId" @change="changeVaccine()">
+                                            <option value="">Select vaccine</option>
+                                            @foreach ($vaccines as $vaccine)
+                                                <option value="{{ $vaccine->id }}">{{ $vaccine->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('vaccine_type_id')
+                                            <span class="text-xs font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
+                                        @enderror
+                                    </label>
                                     <x-form-field label="Dose number" name="dose_number" type="number" />
                                     <x-form-field label="Date given" name="administered_at" type="date" />
                                     <x-form-field
                                         label="Inventory stock (optional)"
                                         name="vaccine_inventory_item_id"
                                         type="select"
+                                        x-ref="inventorySelect"
                                         :options="$inventoryItems->mapWithKeys(fn ($item) => [$item->id => $item->vaccineType->name.' · '.($item->batch_number ?: $item->item_code).' · '.$item->availableStock().' doses'])->all()"
                                     />
                                     <div class="sm:col-span-2 lg:col-span-4">
