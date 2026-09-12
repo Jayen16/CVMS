@@ -10,6 +10,7 @@ use App\Models\ChildVaccineSeriesVersion;
 use App\Models\ClinicAnnouncement;
 use App\Models\Municipality;
 use App\Models\OfflineSyncOutbox;
+use App\Models\PopulationBackground;
 use App\Models\SyncStatus;
 use App\Models\User;
 use App\Models\VaccinationRecord;
@@ -60,6 +61,7 @@ class DemoDataSeeder extends Seeder
         $this->seedScheduleVersions();
         $this->seedBarangays();
         $this->seedUsers();
+        $this->seedChildrenPopulation();
         // Announcements are temporarily disabled; their routes are commented out.
         // $this->seedAnnouncements();
         $this->seedChildrenAndVaccinationHistories();
@@ -173,18 +175,40 @@ class DemoDataSeeder extends Seeder
     private function seedBarangays(): void
     {
         $indang = Municipality::query()->where('name', 'Indang')->first();
-        $barangay = Barangay::query()
-            ->when($indang, fn ($query) => $query->where('municipality_id', $indang->id))
-            ->orderBy('name')
-            ->first();
 
-        if ($barangay === null) {
-            throw new \RuntimeException('No Indang barangay found. Run PsgcSeeder first.');
+        if ($indang === null) {
+            throw new \RuntimeException('Indang municipality not found. Run PsgcSeeder first.');
         }
 
-        foreach (['barangay_1', 'san_isidro', 'santa_maria', 'riverside'] as $key) {
+        $requiredBarangays = [
+            'barangay_1' => 'Bancod',
+            'san_isidro' => 'Barangay 4 (Pob.)',
+            'santa_maria' => 'Kaytapos',
+            'riverside' => 'Kaytambog',
+            'buna_cerca' => 'Buna Cerca',
+        ];
+
+        foreach ($requiredBarangays as $key => $name) {
+            $barangay = Barangay::query()
+                ->where('municipality_id', $indang->id)
+                ->get()
+                ->first(fn (Barangay $candidate) => $this->matchesSeedBarangayName($candidate->name, $name));
+
+            if ($barangay === null) {
+                throw new \RuntimeException("Indang barangay {$name} not found. Run PsgcSeeder first.");
+            }
+
             $this->barangays[$key] = $barangay;
         }
+    }
+
+    private function matchesSeedBarangayName(string $actual, string $expected): bool
+    {
+        if ($expected === 'Barangay 4 (Pob.)') {
+            return preg_match('/^(barangay|brgy\.?)[\s.-]*4\b/i', trim($actual)) === 1;
+        }
+
+        return strcasecmp(trim($actual), $expected) === 0;
     }
 
     private function seedUsers(): void
@@ -224,6 +248,14 @@ class DemoDataSeeder extends Seeder
             '09170000004',
             'barangay_admin',
             $this->barangays['riverside'],
+        );
+
+        $this->users['buna_cerca_admin'] = $this->upsertUser(
+            'Ramon Bautista',
+            'bunacerca.admin@example.com',
+            '09170000005',
+            'barangay_admin',
+            $this->barangays['buna_cerca'],
         );
 
         $this->users['nurse_lara'] = $this->upsertUser(
@@ -267,6 +299,14 @@ class DemoDataSeeder extends Seeder
             active: false,
             invitationAcceptedAt: null,
             emailVerifiedAt: null,
+        );
+
+        $this->users['nurse_buna_cerca'] = $this->upsertUser(
+            'Nina Bautista',
+            'nina.bautista@example.com',
+            '09170000016',
+            'nurse',
+            $this->barangays['buna_cerca'],
         );
 
         $this->users['maria_lopez'] = $this->upsertUser(
@@ -324,57 +364,122 @@ class DemoDataSeeder extends Seeder
             '09177777771',
             'parent',
         );
+
+        $this->users['buna_cerca_parent'] = $this->upsertUser(
+            'Carla Bautista',
+            'carla.bautista@example.com',
+            '09178888881',
+            'parent',
+        );
     }
 
     private function seedInventory(): void
     {
-        $barangay = $this->barangays['barangay_1'];
-        $recorder = $this->users['starter_nurse'];
         $today = Carbon::today();
 
-        foreach ([
-            ['code' => 'bcg', 'item' => 'DEMO-BCG-001', 'batch' => 'BCG-2026-01', 'quantity' => 40],
-            ['code' => 'hepb', 'item' => 'DEMO-HEPB-001', 'batch' => 'HEPB-2026-01', 'quantity' => 50],
-            ['code' => 'dtap', 'item' => 'DEMO-DTAP-001', 'batch' => 'DTAP-2026-01', 'quantity' => 75],
-            ['code' => 'pcv', 'item' => 'DEMO-PCV-001', 'batch' => 'PCV-2026-01', 'quantity' => 60],
-            ['code' => 'mmr', 'item' => 'DEMO-MMR-001', 'batch' => 'MMR-2026-01', 'quantity' => 45],
-        ] as $stock) {
-            $vaccine = $this->vaccines->get($stock['code']);
+        $recorders = [
+            'barangay_1' => 'starter_nurse',
+            'san_isidro' => 'nurse_lara',
+            'santa_maria' => 'nurse_sofia',
+            'riverside' => 'nurse_ella',
+            'buna_cerca' => 'nurse_buna_cerca',
+        ];
 
-            if ($vaccine === null) {
-                continue;
+        foreach ($this->barangays as $key => $barangay) {
+            $recorder = $this->users[$recorders[$key]];
+
+            foreach ([
+                ['code' => 'bcg', 'batch' => 'BCG-2026-01', 'quantity' => 40],
+                ['code' => 'hepb', 'batch' => 'HEPB-2026-01', 'quantity' => 50],
+                ['code' => 'dtap', 'batch' => 'DTAP-2026-01', 'quantity' => 75],
+                ['code' => 'pcv', 'batch' => 'PCV-2026-01', 'quantity' => 60],
+                ['code' => 'mmr', 'batch' => 'MMR-2026-01', 'quantity' => 45],
+            ] as $stock) {
+                $vaccine = $this->vaccines->get($stock['code']);
+
+                if ($vaccine === null) {
+                    continue;
+                }
+
+                $itemCode = $key === 'barangay_1'
+                    ? 'DEMO-'.strtoupper($stock['code']).'-001'
+                    : 'DEMO-'.$key.'-'.strtoupper($stock['code']);
+                $syncUuid = $key === 'barangay_1'
+                    ? 'demo-inventory-receipt-'.$stock['code']
+                    : 'demo-inv-'.$key.'-'.$stock['code'];
+                $item = VaccineInventoryItem::updateOrCreate(
+                    ['item_code' => $itemCode],
+                    [
+                        'barangay_id' => $barangay->id,
+                        'vaccine_type_id' => $vaccine->id,
+                        'batch_number' => $stock['batch'],
+                        'expiry_date' => $today->copy()->addYear(),
+                        'received_at' => $today->copy()->subMonth(),
+                        'reference_number' => 'DEMO-RECEIPT-2026-01',
+                        'notes' => 'Demo inventory stock for testing and training.',
+                    ],
+                );
+
+                VaccineInventoryTransaction::updateOrCreate(
+                    ['sync_uuid' => $syncUuid],
+                    [
+                        'barangay_id' => $barangay->id,
+                        'vaccine_type_id' => $vaccine->id,
+                        'vaccine_inventory_item_id' => $item->id,
+                        'recorded_by' => $recorder->id,
+                        'transaction_type' => 'receipt',
+                        'movement' => 'in',
+                        'quantity' => $stock['quantity'],
+                        'batch_number' => $item->batch_number,
+                        'expiry_date' => $item->expiry_date,
+                        'transaction_date' => $today,
+                        'reference_number' => 'DEMO-RECEIPT-2026-01',
+                        'notes' => 'Demo inventory receipt.',
+                    ],
+                );
             }
+        }
+    }
 
-            $item = VaccineInventoryItem::updateOrCreate(
-                ['item_code' => $stock['item']],
-                [
-                    'barangay_id' => $barangay->id,
-                    'vaccine_type_id' => $vaccine->id,
-                    'batch_number' => $stock['batch'],
-                    'expiry_date' => $today->copy()->addYear(),
-                    'received_at' => $today->copy()->subMonth(),
-                    'reference_number' => 'DEMO-RECEIPT-2026-01',
-                    'notes' => 'Demo inventory stock for testing and training.',
-                ],
-            );
+    private function seedChildrenPopulation(): void
+    {
+        $populationByBarangay = [
+            'barangay_1' => [48, 36, 28, 42],
+            'san_isidro' => [32, 24, 20, 35],
+            'santa_maria' => [41, 30, 23, 39],
+            'riverside' => [29, 22, 18, 31],
+            'buna_cerca' => [25, 18, 15, 27],
+        ];
+        $ageGroups = ['0–11 months', '1–2 years', '3–5 years', '6–12 years'];
 
-            VaccineInventoryTransaction::updateOrCreate(
-                ['sync_uuid' => 'demo-inventory-receipt-'.$stock['code']],
-                [
-                    'barangay_id' => $barangay->id,
-                    'vaccine_type_id' => $vaccine->id,
-                    'vaccine_inventory_item_id' => $item->id,
-                    'recorded_by' => $recorder->id,
-                    'transaction_type' => 'receipt',
-                    'movement' => 'in',
-                    'quantity' => $stock['quantity'],
-                    'batch_number' => $item->batch_number,
-                    'expiry_date' => $item->expiry_date,
-                    'transaction_date' => $today,
-                    'reference_number' => 'DEMO-RECEIPT-2026-01',
-                    'notes' => 'Demo inventory receipt.',
-                ],
-            );
+        foreach ($populationByBarangay as $key => $targets) {
+            $barangay = $this->barangays[$key];
+            $municipality = $barangay->municipalityRelation;
+            $admin = match ($key) {
+                'barangay_1' => $this->users['starter_barangay_admin'],
+                'san_isidro' => $this->users['san_isidro_admin'],
+                'santa_maria' => $this->users['santa_maria_admin'],
+                'riverside' => $this->users['riverside_admin'],
+                'buna_cerca' => $this->users['buna_cerca_admin'],
+            };
+
+            foreach ($ageGroups as $index => $ageGroup) {
+                PopulationBackground::updateOrCreate(
+                    [
+                        'municipality_id' => $municipality?->id,
+                        'barangay_id' => $barangay->id,
+                        'reference_year' => 2026,
+                        'age_group' => $ageGroup,
+                        'sex' => 'both',
+                    ],
+                    [
+                        'target_population' => $targets[$index],
+                        'source' => 'Demo child population estimates',
+                        'created_by' => $admin->id,
+                        'updated_by' => $admin->id,
+                    ],
+                );
+            }
         }
     }
 
@@ -782,6 +887,33 @@ class DemoDataSeeder extends Seeder
             $this->clinicDose('hep_a', 1, '2025-05-30'),
             $this->clinicDose('dtap', 4, '2025-08-30'),
         ], $this->users['nurse_ella'], $this->users['sylvia_garcia'], $this->archivedVersion);
+
+        $this->children['buna_cerca_child'] = $this->createChild(
+            'buna_cerca_child',
+            $this->barangays['buna_cerca'],
+            $this->users['nurse_buna_cerca'],
+            [
+                'first_name' => 'Luna',
+                'middle_name' => 'Marie',
+                'last_name' => 'Bautista',
+                'birthdate' => '2026-01-18',
+                'sex' => 'female',
+                'guardian_name' => 'Carla Bautista',
+                'guardian_contact' => '09178888881',
+                'address' => 'Purok 1, Buna Cerca, Indang, Cavite',
+            ],
+            [
+                ['user' => $this->users['buna_cerca_parent'], 'relationship' => 'mother'],
+            ],
+        );
+
+        $this->seedHistory($this->children['buna_cerca_child'], [
+            $this->clinicDose('bcg', 1, '2026-01-18'),
+            $this->clinicDose('hepb', 1, '2026-01-18'),
+            $this->clinicDose('dtap', 1, '2026-02-20'),
+            $this->clinicDose('opv', 1, '2026-02-20'),
+            $this->clinicDose('pcv', 1, '2026-02-20'),
+        ], $this->users['nurse_buna_cerca'], $this->users['buna_cerca_parent'], $this->activeVersion);
     }
 
     private function seedAefiReports(): void
