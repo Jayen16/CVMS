@@ -5,6 +5,7 @@ use App\Models\ChildProfile;
 use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineType;
+use Illuminate\Http\UploadedFile;
 
 test('parents can submit outside clinic vaccination records for nurse verification', function () {
     $barangay = Barangay::create(['name' => 'Barangay Test']);
@@ -25,12 +26,13 @@ test('parents can submit outside clinic vaccination records for nurse verificati
     $child->parents()->attach($parent->id, ['relationship' => 'mother']);
 
     $this->actingAs($parent)
-        ->postJson(route('api.parent.children.vaccinations.store', $child), [
+        ->post(route('api.parent.children.vaccinations.store', $child), [
             'vaccine_type_id' => $vaccine->id,
             'dose_number' => 1,
             'administered_at' => now()->subDay()->toDateString(),
             'clinic_name' => 'Other Clinic',
             'clinic_location' => 'Nearby City',
+            'proof_file' => UploadedFile::fake()->image('proof.jpg'),
         ])
         ->assertCreated()
         ->assertJsonPath('data.source', 'outside_clinic')
@@ -80,6 +82,7 @@ test('parents can submit vaccination history from the child profile page', funct
             'clinic_name' => 'Provincial Clinic',
             'clinic_location' => 'Nearby Municipality',
             'remarks' => 'Submitted from parent page.',
+            'proof_file' => UploadedFile::fake()->image('proof.jpg'),
         ])
         ->assertRedirect(route('children.show', $child, absolute: false));
 
@@ -163,6 +166,8 @@ test('parents can edit their own pending vaccination history submissions', funct
         'clinic_name' => 'Initial Clinic',
         'clinic_location' => 'Initial Town',
         'remarks' => 'Initial remarks',
+        'proof_paths' => ['vaccination-proofs/initial-proof.jpg'],
+        'proof_path' => 'vaccination-proofs/initial-proof.jpg',
     ]);
 
     $this->actingAs($parent)

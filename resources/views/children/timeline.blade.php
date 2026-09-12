@@ -220,17 +220,7 @@
                                                     </div>
                                                     @if ($point['record']->proofPaths() !== [])
                                                         <div class="pt-1">
-                                                            @foreach ($point['record']->proofPaths() as $proofPath)
-                                                                <div class="@if (! $loop->first) mt-1 @endif">
-                                                                    <a
-                                                                        href="{{ route('vaccinations.proofs.show', ['record' => $point['record'], 'proofIndex' => $loop->iteration]) }}"
-                                                                        target="_blank"
-                                                                        class="text-teal-700 hover:underline dark:text-teal-300"
-                                                                    >
-                                                                        View submitted proof {{ $loop->iteration }}
-                                                                    </a>
-                                                                </div>
-                                                            @endforeach
+                                                            <x-proof-photo-viewer :record="$point['record']" />
                                                         </div>
                                                     @endif
                                                 @elseif ($point['action_at'])
@@ -367,18 +357,8 @@
                                                             Given {{ $point['record']->administered_at->format('M d, Y') }}
                                                         </div>
                                                         @if ($point['record']->proofPaths() !== [])
-                                                            <div class="mt-2 space-y-1">
-                                                                @foreach ($point['record']->proofPaths() as $proofPath)
-                                                                    <div>
-                                                                        <a
-                                                                            href="{{ route('vaccinations.proofs.show', ['record' => $point['record'], 'proofIndex' => $loop->iteration]) }}"
-                                                                            target="_blank"
-                                                                            class="pointer-events-auto text-teal-700 hover:underline dark:text-teal-300"
-                                                                        >
-                                                                            View submitted proof {{ $loop->iteration }}
-                                                                        </a>
-                                                                    </div>
-                                                                @endforeach
+                                                            <div class="mt-2 pointer-events-auto">
+                                                                <x-proof-photo-viewer :record="$point['record']" />
                                                             </div>
                                                         @endif
                                                     @elseif ($point['action_at'])

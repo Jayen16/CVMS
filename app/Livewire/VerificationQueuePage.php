@@ -42,6 +42,8 @@ class VerificationQueuePage extends Component
 
     public ?array $pendingRecordSummary = null;
 
+    public string $rejectionRemark = '';
+
     public function updating($name): void
     {
         if (in_array($name, ['barangay_id', 'vaccine_type_id', 'source', 'from', 'to'], true)) {
@@ -51,30 +53,35 @@ class VerificationQueuePage extends Component
 
     public function promptVerify(string $recordId): void
     {
+        $this->resetValidation();
         $this->openConfirmationModal($recordId, 'verify');
     }
 
     public function promptReject(string $recordId): void
     {
+        $this->resetValidation();
+        $this->rejectionRemark = '';
         $this->openConfirmationModal($recordId, 'reject');
     }
 
     public function cancelConfirmation(): void
     {
+        $this->resetValidation();
         $this->confirmingAction = false;
         $this->pendingAction = 'verify';
         $this->pendingRecordId = null;
         $this->pendingRecordSummary = null;
+        $this->rejectionRemark = '';
     }
 
-    public function confirmPendingAction(): void
+    public function confirmPendingAction(InAppNotificationService $notifications): void
     {
         abort_if($this->pendingRecordId === null, 404);
 
         if ($this->pendingAction === 'verify') {
-            $this->verify($this->pendingRecordId);
+            $this->verify($this->pendingRecordId, $notifications);
         } else {
-            $this->reject($this->pendingRecordId);
+            $this->reject($this->pendingRecordId, $notifications);
         }
     }
 
@@ -100,6 +107,12 @@ class VerificationQueuePage extends Component
 
     public function reject(string $recordId, InAppNotificationService $notifications): void
     {
+        $validated = $this->validate([
+            'rejectionRemark' => ['required', 'string', 'max:1000'],
+        ], [
+            'rejectionRemark.required' => 'Please provide a reason for rejecting this vaccination record.',
+        ]);
+
         $record = VaccinationRecord::findOrFail($recordId);
         abort_unless($record->isPendingVerification(), 403);
         abort_unless(auth()->user()->canVerifyVaccinations(), 403);
@@ -110,6 +123,7 @@ class VerificationQueuePage extends Component
                 'verification_status' => 'rejected',
                 'verified_by' => auth()->id(),
                 'verified_at' => now(),
+                'remarks' => trim($validated['rejectionRemark']),
             ]))->fresh(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier'])
         );
         $notifications->vaccinationRejected($record);

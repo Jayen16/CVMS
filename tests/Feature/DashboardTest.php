@@ -14,3 +14,19 @@ test('authenticated users can visit the dashboard', function () {
     $response = $this->get(route('dashboard'));
     $response->assertOk();
 });
+
+test('dashboard KPI cards are not links to unauthorized pages', function () {
+    $nurse = User::factory()->create([
+        'role' => 'nurse',
+        'roles' => ['nurse'],
+        'permissions' => [],
+    ]);
+
+    $response = $this->actingAs($nurse)->get(route('dashboard'));
+
+    $response
+        ->assertOk()
+        ->assertDontSee('href="'.route('reports.index').'"', false)
+        ->assertDontSee('href="'.route('children.index').'"', false)
+        ->assertDontSee('href="'.route('verification-queue.index').'"', false);
+});
