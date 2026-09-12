@@ -15,6 +15,7 @@
         <div class="flex flex-wrap gap-2">
             @if (auth()->user()->isNurse())
                 <a href="{{ route('children.index') }}" class="app-button-secondary" wire:navigate>Children</a>
+                <a href="{{ route('verification-queue.index') }}" class="app-button-secondary" wire:navigate>Verification queue</a>
             @endif
             @if (auth()->user()->isAdmin())
                 <a href="{{ route('sync.index') }}" class="app-button-secondary inline-flex items-center gap-2" wire:navigate>
@@ -224,17 +225,24 @@
         </section>
     @else
         <div class="grid gap-4 md:grid-cols-5">
-            <x-stat-card label="Assigned barangay" :value="$stats['barangay']" />
-            <x-stat-card label="Children" :value="$stats['children']" />
-            <x-stat-card label="Vaccination records" :value="$stats['vaccinations']" />
-            <x-stat-card label="Pending verification" :value="$stats['pending']" />
-        </div>
-
-        <div class="mt-4 flex flex-wrap gap-2">
-            <a href="{{ route('verification-queue.index') }}" class="app-button-secondary" wire:navigate>Verification queue</a>
+            <x-stat-card label="Assigned barangay" :value="$stats['barangay']" :href="route('reports.index')" />
+            <x-stat-card label="Children" :value="$stats['children']" :href="route('children.index')" />
+            <x-stat-card label="Vaccination records" :value="$stats['vaccinations']" :href="route('reports.index')" />
+            <x-stat-card label="Pending verification" :value="$stats['pending']" :href="route('verification-queue.index')" />
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2">
+            <x-dashboard-bar-chart title="Children by age" subtitle="Age distribution of children in your barangay." :data="$ageChart" />
+            <x-dashboard-pie-chart title="Children by sex" subtitle="Sex distribution of children in your barangay." :data="$sexChart" />
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+            <x-dashboard-bar-chart title="Available vaccine stock" subtitle="Available doses by vaccine type in your barangay." orientation="horizontal" :data="$stockChart" />
+            <x-dashboard-bar-chart title="Vaccination activity" subtitle="Administered records over the last six months in your barangay." :data="$monthlyVaccinationChart" />
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+            <x-dashboard-bar-chart title="Immunization progress" subtitle="Children grouped by their next recommended action." orientation="horizontal" :data="$immunizationStatusChart" />
             <x-dashboard-bar-chart title="Verification status" subtitle="Records in your barangay by review status." :data="$statusChart" />
         </div>
 
@@ -246,7 +254,10 @@
                 @forelse ($children as $child)
                     <a href="{{ route('children.show', $child) }}" class="flex items-center justify-between px-5 py-4 transition hover:bg-teal-50/50 dark:hover:bg-zinc-800" wire:navigate>
                         <span class="font-medium text-slate-950 dark:text-white">{{ $child->full_name }}</span>
-                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">{{ $child->vaccinations_count }} records</span>
+                        <span class="text-right">
+                            <span class="block rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">{{ $child->vaccinations_count }} records</span>
+                            <span class="mt-1 block text-xs text-slate-500 dark:text-zinc-400">Last updated {{ $child->updated_at?->format('M d, Y h:i A') ?? '—' }}</span>
+                        </span>
                     </a>
                 @empty
                     <p class="px-4 py-6 text-sm text-zinc-500">No child profiles yet.</p>

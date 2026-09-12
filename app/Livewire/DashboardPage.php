@@ -9,6 +9,7 @@ use App\Models\OfflineSyncOutbox;
 use App\Models\PopulationBackground;
 use App\Models\User;
 use App\Models\VaccinationRecord;
+use App\Models\VaccineType;
 use App\Services\ImmunizationSuggestionService;
 use App\Services\PredictiveAnalyticsService;
 use Illuminate\Support\Carbon;
@@ -81,6 +82,41 @@ class DashboardPage extends Component
             ])
             ->values()
             ->all();
+    }
+
+    private function ageChart($children): array
+    {
+        $counts = collect([
+            '0–11 months' => 0,
+            '1–2 years' => 0,
+            '3–5 years' => 0,
+            '6–12 years' => 0,
+            '13+ years' => 0,
+            'Unknown' => 0,
+        ]);
+
+        foreach ($children as $child) {
+            if (! $child->birthdate) {
+                $counts->put('Unknown', $counts->get('Unknown') + 1);
+
+                continue;
+            }
+
+            $months = $child->birthdate->diffInMonths(today());
+            $group = match (true) {
+                $months < 12 => '0–11 months',
+                $months < 36 => '1–2 years',
+                $months < 72 => '3–5 years',
+                $months < 156 => '6–12 years',
+                default => '13+ years',
+            };
+            $counts->put($group, $counts->get($group) + 1);
+        }
+
+        return $counts->map(fn (int $value, string $label): array => [
+            'label' => $label,
+            'value' => $value,
+        ])->values()->all();
     }
 
     public function render(ImmunizationSuggestionService $suggestions, PredictiveAnalyticsService $analytics): View
@@ -270,9 +306,33 @@ class DashboardPage extends Component
         $children = ChildProfile::query()
             ->where('barangay_id', $user->barangay_id)
             ->withCount('vaccinations')
-            ->latest()
+            ->latest('updated_at')
             ->take(8)
             ->get();
+        $nurseBarangayVaccinations = VaccinationRecord::whereHas('child', fn ($query) => $query->where('barangay_id', $user->barangay_id));
+        $nurseBarangayChildren = ChildProfile::query()
+            ->where('barangay_id', $user->barangay_id)
+            ->with('vaccinations.vaccineType')
+            ->get();
+        $nurseSexCounts = $nurseBarangayChildren->countBy(fn (ChildProfile $child): string => strtolower((string) $child->sex));
+        $nurseStockChart = VaccineType::query()
+            ->where('active', true)
+            ->withSum(['inventoryTransactions as stock_in' => fn ($query) => $query
+                ->where('barangay_id', $user->barangay_id)
+                ->where('movement', 'in')], 'quantity')
+            ->withSum(['inventoryTransactions as stock_out' => fn ($query) => $query
+                ->where('barangay_id', $user->barangay_id)
+                ->where('movement', 'out')], 'quantity')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (VaccineType $vaccine): array => [
+                'label' => $vaccine->name,
+                'value' => max(0, (int) ($vaccine->stock_in ?? 0) - (int) ($vaccine->stock_out ?? 0)),
+            ])
+            ->sortByDesc('value')
+            ->take(10)
+            ->values()
+            ->all();
 
         return view('livewire.dashboard-page', [
             'role' => 'nurse',
@@ -287,6 +347,14 @@ class DashboardPage extends Component
             ],
             'children' => $children,
             'statusChart' => $this->statusChart(VaccinationRecord::whereHas('child', fn ($query) => $query->where('barangay_id', $user->barangay_id))),
+            'ageChart' => $this->ageChart($nurseBarangayChildren),
+            'stockChart' => $nurseStockChart,
+            'monthlyVaccinationChart' => $this->monthlyVaccinationChart($nurseBarangayVaccinations),
+            'immunizationStatusChart' => $this->immunizationStatusChart($nurseBarangayChildren, $suggestions),
+            'sexChart' => [
+                ['label' => 'Male', 'value' => (int) $nurseSexCounts->get('male', 0), 'color' => '#14b8a6'],
+                ['label' => 'Female', 'value' => (int) $nurseSexCounts->get('female', 0), 'color' => '#f472b6'],
+            ],
             'announcements' => $announcements,
         ])->layout('layouts.app', ['title' => 'Dashboard']);
     }
