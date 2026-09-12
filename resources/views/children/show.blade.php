@@ -9,6 +9,7 @@
             verificationActionUrl: '',
             verificationActionLabel: 'Verify',
             verificationSubject: '',
+            verificationRemark: '',
             proofModalOpen: false,
             proofModalImages: [],
             proofModalIndex: 0,
@@ -274,6 +275,7 @@
                                 <th class="px-4 py-3 font-medium">Source</th>
                                 <th class="px-4 py-3 font-medium">Status</th>
                                 <th class="px-4 py-3 font-medium">Next suggestion</th>
+                                <th class="px-4 py-3 font-medium">Remarks</th>
                                 @if (auth()->user()->isParent())
                                     <th class="px-4 py-3 font-medium">Action</th>
                                 @endif
@@ -333,6 +335,7 @@
                                             <div class="text-xs text-zinc-500">{{ $record->next_due_at->format('M d, Y') }}</div>
                                         @endif
                                     </td>
+                                    <td class="max-w-xs whitespace-pre-line text-sm">{{ $record->remarks ?? '—' }}</td>
                                     @if (auth()->user()->isParent())
                                         <td>
                                             @if ($record->submitted_by === auth()->id() && $record->isParentEditable())
@@ -363,7 +366,7 @@
                                                         <button
                                                             type="button"
                                                             class="app-button-danger !px-3 !py-1.5 !text-xs"
-                                                            @click="openVerificationModal = true; verificationActionUrl = @js(route('vaccinations.reject', $record)); verificationActionLabel = 'Reject'; verificationSubject = @js($child->full_name.' - '.$record->vaccineType->name)"
+                                                            @click="openVerificationModal = true; verificationActionUrl = @js(route('vaccinations.reject', $record)); verificationActionLabel = 'Reject'; verificationSubject = @js($child->full_name.' - '.$record->vaccineType->name); verificationRemark = ''"
                                                         >
                                                             Reject
                                                         </button>
@@ -376,7 +379,7 @@
                                     @endif
                                 </tr>
                             @empty
-                                <tr><td colspan="{{ auth()->user()->isParent() || auth()->user()->canVerifyVaccinations() ? 8 : 6 }}" class="px-4 py-8 text-center text-zinc-500">No vaccination records yet.</td></tr>
+                                <tr><td colspan="{{ auth()->user()->isParent() || auth()->user()->canVerifyVaccinations() ? 8 : 7 }}" class="px-4 py-8 text-center text-zinc-500">No vaccination records yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -676,6 +679,7 @@
 
         <form method="POST" x-ref="verificationForm" class="hidden">
             @csrf
+            <input type="hidden" name="remarks" x-model="verificationRemark">
         </form>
 
         <div
@@ -726,6 +730,10 @@
                     <span class="font-semibold text-slate-950 dark:text-white" x-text="verificationActionLabel.toLowerCase()"></span>
                     <span x-text="` ${verificationSubject}.`"></span>
                 </p>
+                <div x-show="verificationActionLabel === 'Reject'" class="mt-5">
+                    <label for="verification-remark" class="mb-2 block text-sm font-medium text-slate-800 dark:text-zinc-100">Rejection remark <span class="text-red-600">*</span></label>
+                    <textarea id="verification-remark" x-model="verificationRemark" rows="4" maxlength="1000" class="app-input w-full" placeholder="Explain why this vaccination record was rejected so the parent can correct it."></textarea>
+                </div>
                 <div class="mt-6 flex justify-end gap-2">
                     <button type="button" class="app-button-secondary" @click="openVerificationModal = false">Cancel</button>
                     <button

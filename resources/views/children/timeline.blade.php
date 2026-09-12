@@ -220,9 +220,7 @@
                                                     </div>
                                                     @if ($point['record']->proofPaths() !== [])
                                                         <div class="pt-1">
-                                                            <a href="{{ route('vaccinations.proofs.view', $point['record']) }}" target="_blank" class="text-teal-700 hover:underline dark:text-teal-300">
-                                                                View submitted {{ count($point['record']->proofPaths()) }} photo{{ count($point['record']->proofPaths()) === 1 ? '' : 's' }}
-                                                            </a>
+                                                            <x-proof-photo-viewer :record="$point['record']" />
                                                         </div>
                                                     @endif
                                                 @elseif ($point['action_at'])
@@ -359,10 +357,8 @@
                                                             Given {{ $point['record']->administered_at->format('M d, Y') }}
                                                         </div>
                                                         @if ($point['record']->proofPaths() !== [])
-                                                            <div class="mt-2">
-                                                                <a href="{{ route('vaccinations.proofs.view', $point['record']) }}" target="_blank" class="pointer-events-auto text-teal-700 hover:underline dark:text-teal-300">
-                                                                    View submitted {{ count($point['record']->proofPaths()) }} photo{{ count($point['record']->proofPaths()) === 1 ? '' : 's' }}
-                                                                </a>
+                                                            <div class="mt-2 pointer-events-auto">
+                                                                <x-proof-photo-viewer :record="$point['record']" />
                                                             </div>
                                                         @endif
                                                     @elseif ($point['action_at'])
