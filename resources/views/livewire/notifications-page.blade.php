@@ -31,7 +31,7 @@
 
     <div class="app-panel mt-6 divide-y divide-slate-200 dark:divide-zinc-800">
         @forelse ($notifications as $notification)
-            <a href="{{ route('notifications.read', $notification) }}" class="flex gap-4 px-5 py-4 transition hover:bg-teal-50/50 dark:hover:bg-zinc-800 {{ $notification->read_at ? 'opacity-70' : '' }}">
+            <a href="{{ route('notifications.read', $notification, false) }}" class="flex gap-4 px-5 py-4 transition hover:bg-teal-50/50 dark:hover:bg-zinc-800 {{ $notification->read_at ? 'opacity-70' : '' }}">
                 <div class="mt-0.5 rounded-full bg-teal-100 p-2 text-teal-700 dark:bg-teal-950 dark:text-teal-300">
                     <flux:icon :icon="$notification->data['icon'] ?? 'bell'" class="size-4" />
                 </div>

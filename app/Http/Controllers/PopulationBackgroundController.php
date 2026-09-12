@@ -29,7 +29,9 @@ class PopulationBackgroundController extends Controller
             ? Municipality::query()->pluck('id')->map(fn ($id) => (string) $id)
             : collect([$user->municipality_id])->filter();
         $allowedBarangays = $user->accessibleBarangayIds()->map(fn ($id) => (string) $id);
-        abort_unless($user->isSuperAdmin() || ($selectedMunicipality === '' && $selectedBarangay === '' && $selectedRegion === '' && $selectedProvince === ''), 403);
+        // Municipal admins can use the municipality/barangay filters rendered for
+        // them, but must not be able to inject broader region/province filters.
+        abort_unless($user->isSuperAdmin() || ($selectedRegion === '' && $selectedProvince === ''), 403);
         abort_unless(($selectedMunicipality === '' || $allowedMunicipalities->contains($selectedMunicipality)) && ($selectedBarangay === '' || $allowedBarangays->contains($selectedBarangay)), 403);
 
         $perPage = in_array((int) request('per_page', 25), [10, 25, 50, 100], true) ? (int) request('per_page', 25) : 25;
@@ -134,6 +136,8 @@ class PopulationBackgroundController extends Controller
             if (blank($values['sex'] ?? null) || blank($values['age_group'] ?? null)) {
                 continue;
             }
+            $sex = strtolower(trim((string) $values['sex']));
+            abort_unless(in_array($sex, ['female', 'male'], true), 422, 'Sex must be female or male.');
             $municipality = $this->findMunicipality($values['municipality'] ?? null, $user);
             $barangay = $this->findBarangay($values['barangay'] ?? null, $municipality, $user);
             abort_if($municipality === null && $barangay === null, 422, 'Each row must include a valid municipality or barangay.');
@@ -149,7 +153,7 @@ class PopulationBackgroundController extends Controller
                     'barangay_id' => $barangay?->id,
                     'reference_year' => (int) $header,
                     'age_group' => trim($values['age_group']),
-                    'sex' => trim($values['sex']),
+                    'sex' => $sex,
                 ], ['target_population' => (int) $values[$header], 'source' => $source, 'created_by' => $user->id, 'updated_by' => $user->id]);
                 $saved++;
             }
@@ -163,7 +167,7 @@ class PopulationBackgroundController extends Controller
     {
         abort_unless(auth()->user()->canManagePopulationBackground(), 403);
 
-        return response("municipality,barangay,sex,age_group,2020,2021,2022\nCavite City,,Both Sexes,All Ages,0,0,0\n", 200, [
+        return response("municipality,barangay,sex,age_group,2020,2021,2022\nCavite City,,female,All Ages,0,0,0\nCavite City,,male,All Ages,0,0,0\n", 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename=population-background-template.csv',
         ]);
@@ -274,7 +278,7 @@ class PopulationBackgroundController extends Controller
             'barangay_id' => ['nullable', 'uuid', 'exists:barangays,id'],
             'reference_year' => ['required', 'integer', 'min:2000', 'max:2100'],
             'age_group' => ['required', 'string', 'max:100'],
-            'sex' => ['required', 'string', 'max:30'],
+            'sex' => ['required', 'in:female,male'],
             'target_population' => ['required', 'integer', 'min:0'],
             'source' => ['required', 'string', 'max:255'],
         ]);

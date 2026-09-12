@@ -53,9 +53,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $code }} {{ $title }} - {{ config('app.name') }}</title>
 
-    <link rel="icon" href="/favicon.ico" sizes="any">
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" href="{{ asset('storage/child_vacc_icon.png') }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ asset('storage/child_vacc_icon.png') }}">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>

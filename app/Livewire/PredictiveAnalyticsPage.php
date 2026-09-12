@@ -66,8 +66,16 @@ class PredictiveAnalyticsPage extends Component
 
         $requiresLocationSelection = $user->isSuperAdmin() && $this->regionId === 'all';
 
+        $demand = $requiresLocationSelection ? collect() : $analytics->vaccineDemand($user, $months, $selectedVersion, $this->regionId, $this->provinceId, $this->municipalityId, $this->barangayId);
+
         return view('livewire.predictive-analytics-page', [
-            'demand' => $requiresLocationSelection ? collect() : $analytics->vaccineDemand($user, $months, $selectedVersion, $this->regionId, $this->provinceId, $this->municipalityId, $this->barangayId),
+            'demand' => $demand,
+            'forecastChart' => $demand->map(fn (array $row): array => [
+                'label' => $row['vaccine']->name,
+                'demand' => (int) $row['estimated_demand'],
+                'stock' => (int) $row['available_stock'],
+                'status' => $row['stock_status'],
+            ])->all(),
             'forecastMonths' => $months,
             'scheduleVersions' => $versions,
             'selectedVersion' => $selectedVersion,
@@ -76,6 +84,6 @@ class PredictiveAnalyticsPage extends Component
             'municipalities' => $municipalities,
             'barangays' => $barangays,
             'requiresLocationSelection' => $requiresLocationSelection,
-        ])->layout('layouts.app', ['title' => 'Vaccine demand forecast']);
+        ])->layout('layouts.app', ['title' => 'Vaccine Demand Forecast']);
     }
 }

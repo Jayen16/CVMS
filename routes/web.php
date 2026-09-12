@@ -18,6 +18,7 @@ use App\Http\Controllers\MunicipalAdminController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NurseController;
 use App\Http\Controllers\PopulationBackgroundController;
+use App\Http\Controllers\PlanningReportController;
 use App\Http\Controllers\PrivacyAcknowledgmentController;
 use App\Http\Controllers\PhonePasswordResetController;
 use App\Http\Controllers\VaccinationRecordController;
@@ -179,8 +180,10 @@ Route::middleware(['auth', 'verified', 'parent.privacy'])->group(function () {
     Route::get('verification-queue', VerificationQueuePage::class)->name('verification-queue.index');
     // Route::get('defaulters', DefaulterPage::class)->name('defaulters.index');
     Route::get('schedule-monitoring', ImmunizationSchedulePage::class)->name('schedule-monitoring.index');
+    Route::get('schedule-monitoring/pdf', [PlanningReportController::class, 'schedule'])->name('schedule-monitoring.pdf');
     Route::get('schedule-monitoring/reminder-history', ReminderHistoryPage::class)->name('reminder-history.index');
     Route::get('predictive-analytics', PredictiveAnalyticsPage::class)->name('predictive-analytics.index');
+    Route::get('predictive-analytics/pdf', [PlanningReportController::class, 'forecast'])->name('predictive-analytics.pdf');
     // Duplicate Children detection disabled temporarily:
     // Route::get('duplicates', DuplicateChildrenPage::class)->name('duplicates.index');
     // AEFI/adverse event reports disabled temporarily:

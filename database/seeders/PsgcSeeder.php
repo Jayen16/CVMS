@@ -14,18 +14,14 @@ class PsgcSeeder extends Seeder
 {
     private const API = 'https://psgc.cloud/api/v2';
 
-    /**
-     * Barangays currently included for Indang.
-     * All other Indang barangays are intentionally excluded from seeding.
-     */
+    /** Barangays included for the Indang demo installation. */
     private const INDANG_BARANGAYS = [
         'Bancod',
+        'Barangay 4',
         'Barangay 4 (Pob.)',
         'Kaytapos',
         'Kaytambog',
         'Buna Cerca',
-
-        // Other Indang barangays are intentionally commented out and excluded.
     ];
 
     public function run(): void
@@ -39,13 +35,11 @@ class PsgcSeeder extends Seeder
             ->values()->all();
         $places = collect($this->get('cities-municipalities'))
             ->filter(fn (array $row) => $this->parentName($row, 'province') === 'Cavite'
-                && $this->parentName($row, 'region') === 'Region IV-A (CALABARZON)')
+                && $this->parentName($row, 'region') === 'Region IV-A (CALABARZON)'
+                && $row['name'] === 'Indang')
             ->values()->all();
-        $barangays = collect($this->getBarangays(array_values(array_filter(
-            $places,
-            fn (array $row) => $row['name'] === 'Indang'
-        ))))
-            ->filter(fn (array $row) => in_array($row['name'], self::INDANG_BARANGAYS, true))
+        $barangays = collect($this->getBarangays($places))
+            ->filter(fn (array $row) => $this->isIncludedIndangBarangay((string) ($row['name'] ?? '')))
             ->values()
             ->all();
 
@@ -188,5 +182,16 @@ class PsgcSeeder extends Seeder
         $latin = iconv('UTF-8', 'ISO-8859-1//IGNORE', $value);
 
         return $latin === false ? $value : (iconv('ISO-8859-1', 'UTF-8//IGNORE', $latin) ?: $value);
+    }
+
+    private function isIncludedIndangBarangay(string $name): bool
+    {
+        $normalized = strtolower(trim($name));
+
+        if (preg_match('/^(barangay|brgy\.?)[\s.-]*4\b/', $normalized) === 1) {
+            return true;
+        }
+
+        return in_array($name, self::INDANG_BARANGAYS, true);
     }
 }
