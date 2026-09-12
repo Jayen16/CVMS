@@ -149,10 +149,16 @@ class ParentChildController extends Controller
             'sync_locked' => ! $record->isParentEditable() && $record->verification_status === 'pending',
             'clinic_name' => $record->clinic_name,
             'clinic_location' => $record->clinic_location,
-            'proof_url' => $record->proof_path ? asset('storage/'.$record->proof_path) : null,
+            'proof_url' => $record->proof_path
+                ? route('vaccinations.proofs.show', ['record' => $record, 'proofIndex' => 1])
+                : null,
             'proof_urls' => array_map(
-                fn (string $path) => asset('storage/'.$path),
-                $record->proofPaths()
+                fn (string $path, int $index) => route('vaccinations.proofs.show', [
+                    'record' => $record,
+                    'proofIndex' => $index + 1,
+                ]),
+                $record->proofPaths(),
+                array_keys($record->proofPaths())
             ),
             'remarks' => $record->remarks,
             'submitted_by' => $record->submitter?->name,

@@ -98,9 +98,9 @@ class FacilityPullSyncService
     /** @param array<int, array<string, mixed>> $records */
     private function downloadParentProofs(array $records, string $centralUrl, string $token): void
     {
-        // Central may use private S3, but the facility always keeps its own
-        // offline copy on the local public disk.
-        $proofDisk = Storage::disk('public');
+        // Keep the facility's offline copy on the configured proof disk,
+        // which defaults to the local private disk for facility instances.
+        $proofDisk = Storage::disk(config('filesystems.proof_disk', 'local'));
         $proofDisk->makeDirectory('vaccination-proofs');
 
         foreach ($records as $record) {
