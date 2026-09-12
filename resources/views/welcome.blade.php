@@ -7,9 +7,8 @@
 
     <title>{{ __('Welcome') }} - {{ config('app.name') }}</title>
 
-    <link rel="icon" href="/favicon.ico" sizes="any">
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" href="{{ asset('storage/child_vacc_icon.png') }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ asset('storage/child_vacc_icon.png') }}">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -23,7 +22,7 @@
             <header
                 class="flex items-center justify-between rounded-2xl border border-white/80 bg-white/75 px-4 py-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-zinc-950/75 sm:px-6">
                 <a href="{{ url('/') }}" class="flex items-center gap-3">
-                    <span class="rhu-monogram" aria-hidden="true">RHU</span>
+                    <x-app-logo-icon class="h-12 w-12" />
                     <div>
                         <p class="text-[0.65rem] font-bold uppercase tracking-[0.24em] text-emerald-700">RHU</p>
                         <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ config('rhu.system_name') }}</p>
@@ -43,10 +42,17 @@
                             Care that keeps families on schedule
                         </div>
                         <div class="space-y-4">
+                            <div class="flex flex-col gap-6 sm:flex-row sm:items-center">
                             <h1
-                                class="max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
+                                class="max-w-3xl flex-1 text-4xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-5xl lg:text-6xl">
                                 Every child’s next healthy step, <span class="text-emerald-700">within reach.</span>
                             </h1>
+                                <img
+                                    class="h-32 w-32 shrink-0 self-center rounded-full object-contain shadow-lg ring-4 ring-white/80 sm:h-52 sm:w-52 sm:self-auto lg:h-60 lg:w-60"
+                                    src="{{ asset('storage/child_vacc_icon.png') }}"
+                                    alt="Child Vaccination Management System logo"
+                                >
+                            </div>
                             <p class="max-w-2xl text-lg leading-8 text-slate-600 dark:text-zinc-300">
                                 The secure vaccination workspace for Rural Health Unit staff and families in your community.
                                 Find records, follow schedules, and keep care moving forward.
