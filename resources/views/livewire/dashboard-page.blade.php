@@ -56,6 +56,10 @@
             </div>
         </div>
 
+        <div class="grid gap-4 lg:grid-cols-2">
+            <x-dashboard-bar-chart title="Vaccination verification" subtitle="Current record status across all barangays." :data="$statusChart" />
+        </div>
+
         <section class="app-card">
             <div class="app-card-header">
                 <h2 class="app-card-title">Barangay statistics</h2>
@@ -92,42 +96,23 @@
         </section>
     @elseif ($role === 'barangay_admin')
         <div class="grid gap-4 md:grid-cols-5">
-            <x-stat-card label="Assigned barangay" :value="$stats['barangay']" />
-            <x-stat-card label="Nurses" :value="$stats['nurses']" />
-            <x-stat-card label="Children" :value="$stats['children']" />
-            <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" />
-            <x-stat-card label="Pending sync" :value="$stats['pendingSync']" />
+            <x-stat-card label="Assigned barangay" :value="$stats['barangay']" :href="route('reports.index')" />
+            <x-stat-card label="Nurses" :value="$stats['nurses']" :href="route('nurses.index')" />
+            <x-stat-card label="Children" :value="$stats['children']" :href="route('children.index')" />
+            <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" :href="route('reports.index')" />
+            <x-stat-card label="Pending sync" :value="$stats['pendingSync']" :href="route('sync.index')" />
         </div>
 
-        <div class="mt-4 grid gap-4 md:grid-cols-2">
-            <x-stat-card label="Pending verification" :value="$stats['pending']" />
-            <div class="app-card flex items-center justify-between p-4">
-                <div>
-                    <h2 class="app-card-title">Quick actions</h2>
-                    <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Monitor coverage in your barangay and manage your nurses.</p>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <a href="{{ route('nurses.index') }}" class="app-button-secondary" wire:navigate>Nurses</a>
-                    <a href="{{ route('reports.index') }}" class="app-button-secondary" wire:navigate>Reports</a>
-                </div>
-            </div>
+        <div class="grid gap-4 lg:grid-cols-2">
+            <x-dashboard-bar-chart title="Vaccination activity" subtitle="Administered records over the last six months." :data="$monthlyVaccinationChart" />
+            <x-dashboard-pie-chart title="Children by sex" subtitle="Sex distribution of registered children." :data="$sexChart" />
         </div>
 
-        <section class="app-card">
-            <div class="app-card-header">
-                <h2 class="app-card-title">Recent child profiles</h2>
-            </div>
-            <div class="divide-y divide-slate-200 dark:divide-zinc-800">
-                @forelse ($children as $child)
-                    <a href="{{ route('children.show', $child) }}" class="flex items-center justify-between px-5 py-4 transition hover:bg-teal-50/50 dark:hover:bg-zinc-800" wire:navigate>
-                        <span class="font-medium text-slate-950 dark:text-white">{{ $child->full_name }}</span>
-                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">{{ $child->vaccinations_count }} records</span>
-                    </a>
-                @empty
-                    <p class="px-4 py-6 text-sm text-zinc-500">No child profiles yet.</p>
-                @endforelse
-            </div>
-        </section>
+        <div class="grid gap-4 lg:grid-cols-2">
+            <x-dashboard-bar-chart title="Immunization progress" subtitle="Children grouped by their next recommended action." orientation="horizontal" :data="$immunizationStatusChart" />
+            <x-dashboard-bar-chart title="Verification status" subtitle="Records in your barangay by review status." :data="$statusChart" />
+        </div>
+
     @elseif ($role === 'municipal_admin')
         <div class="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
             <x-stat-card label="Assigned municipality" :value="$stats['municipality']" />
@@ -148,6 +133,9 @@
                 <a href="{{ route('reports.index') }}" class="app-button-secondary" wire:navigate>Reports</a>
                 <a href="{{ route('audit-logs.index') }}" class="app-button-secondary" wire:navigate>Audit logs</a>
             </div>
+        </div>
+        <div class="grid gap-4 lg:grid-cols-2">
+            <x-dashboard-bar-chart title="Vaccination verification" subtitle="Records in your municipality by review status." :data="$statusChart" />
         </div>
         <section class="app-card mt-4">
             <div class="app-card-header"><h2 class="app-card-title">Barangay statistics</h2></div>
@@ -176,6 +164,10 @@
         <div class="grid gap-4 md:grid-cols-3">
             <x-stat-card label="Linked children" :value="$stats['children']" />
             <x-stat-card label="Vaccination records" :value="$stats['vaccinations']" />
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+            <x-dashboard-bar-chart title="Vaccination verification" subtitle="Your vaccination records by review status." :data="$statusChart" />
         </div>
 
         <section class="app-card">
@@ -228,6 +220,10 @@
 
         <div class="mt-4 flex flex-wrap gap-2">
             <a href="{{ route('verification-queue.index') }}" class="app-button-secondary" wire:navigate>Verification queue</a>
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+            <x-dashboard-bar-chart title="Verification status" subtitle="Records in your barangay by review status." :data="$statusChart" />
         </div>
 
         <section class="app-card">

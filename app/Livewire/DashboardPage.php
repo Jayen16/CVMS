@@ -17,6 +17,63 @@ use Livewire\Component;
 #[Title('Dashboard')]
 class DashboardPage extends Component
 {
+    private function statusChart($query): array
+    {
+        return collect(['verified', 'pending', 'rejected'])
+            ->map(fn (string $status): array => [
+                'label' => ucfirst($status),
+                'value' => (clone $query)->where('verification_status', $status)->count(),
+                'color' => match ($status) {
+                    'verified' => 'bg-emerald-500',
+                    'pending' => 'bg-amber-500',
+                    default => 'bg-red-500',
+                },
+            ])->all();
+    }
+
+    private function monthlyVaccinationChart($query): array
+    {
+        $start = today()->subMonths(5)->startOfMonth();
+        $records = (clone $query)
+            ->whereBetween('administered_at', [$start, today()->endOfMonth()])
+            ->get(['administered_at']);
+
+        return collect(range(0, 5))->map(function (int $monthsAgo) use ($start, $records): array {
+            $month = $start->copy()->addMonths($monthsAgo);
+
+            return [
+                'label' => $month->format('M Y'),
+                'value' => $records->filter(fn (VaccinationRecord $record): bool => $record->administered_at?->isSameMonth($month) ?? false)->count(),
+            ];
+        })->all();
+    }
+
+    private function immunizationStatusChart($children, ImmunizationSuggestionService $suggestions): array
+    {
+        $labels = [
+            'complete' => 'Up to date',
+            'upcoming' => 'Upcoming',
+            'due' => 'Due now',
+            'delayed' => 'Delayed',
+            'overdue' => 'Overdue',
+            'catch_up_review' => 'Catch-up review',
+        ];
+        $counts = collect($labels)->mapWithKeys(fn (string $label, string $status): array => [$status => 0]);
+
+        foreach ($children as $child) {
+            $status = $suggestions->suggestNextDose($child)['status'];
+            $counts->put($status, ($counts->get($status) ?? 0) + 1);
+        }
+
+        return collect($labels)
+            ->map(fn (string $label, string $status): array => [
+                'label' => $label,
+                'value' => $counts->get($status, 0),
+            ])
+            ->values()
+            ->all();
+    }
+
     public function render(ImmunizationSuggestionService $suggestions): View
     {
         $user = auth()->user();
@@ -56,6 +113,7 @@ class DashboardPage extends Component
                     ->withCount(['users as nurses_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'nurse')])
                     ->orderBy('name')
                     ->paginate(50),
+                'statusChart' => $this->statusChart(VaccinationRecord::query()),
                 'announcements' => $announcements,
             ])->layout('layouts.app', ['title' => 'Dashboard']);
         }
@@ -91,6 +149,7 @@ class DashboardPage extends Component
                 ],
                 'children' => $children,
                 'calendarItems' => $calendarItems,
+                'statusChart' => $this->statusChart(VaccinationRecord::whereHas('child.parents', fn ($query) => $query->whereKey($user->id))),
                 'announcements' => $announcements,
             ])->layout('layouts.app', ['title' => 'Dashboard']);
         }
@@ -119,11 +178,19 @@ class DashboardPage extends Component
                     ->orderBy('name')
                     ->get(),
                 'children' => $children,
+                'statusChart' => $this->statusChart(VaccinationRecord::whereHas('child', fn ($query) => $query->whereIn('barangay_id', $user->accessibleBarangayIds()))),
                 'announcements' => $announcements,
             ])->layout('layouts.app', ['title' => 'Dashboard']);
         }
 
         if ($user->isBarangayAdmin() && ! $user->isNurse()) {
+            $barangayVaccinations = VaccinationRecord::whereHas('child', fn ($query) => $query->where('barangay_id', $user->barangay_id));
+            $barangayChildren = ChildProfile::query()
+                ->where('barangay_id', $user->barangay_id)
+                ->withCount('vaccinations')
+                ->get();
+            $sexCounts = $barangayChildren->countBy(fn (ChildProfile $child): string => strtolower((string) $child->sex));
+
             return view('livewire.dashboard-page', [
                 'role' => 'barangay_admin',
                 'stats' => [
@@ -136,12 +203,13 @@ class DashboardPage extends Component
                         ->count(),
                     'pendingSync' => $pendingSync,
                 ],
-                'children' => ChildProfile::query()
-                    ->where('barangay_id', $user->barangay_id)
-                    ->withCount('vaccinations')
-                    ->latest()
-                    ->take(8)
-                    ->get(),
+                'statusChart' => $this->statusChart(VaccinationRecord::whereHas('child', fn ($query) => $query->where('barangay_id', $user->barangay_id))),
+                'immunizationStatusChart' => $this->immunizationStatusChart($barangayChildren, $suggestions),
+                'monthlyVaccinationChart' => $this->monthlyVaccinationChart($barangayVaccinations),
+                'sexChart' => [
+                    ['label' => 'Male', 'value' => (int) $sexCounts->get('male', 0), 'color' => '#14b8a6'],
+                    ['label' => 'Female', 'value' => (int) $sexCounts->get('female', 0), 'color' => '#f472b6'],
+                ],
                 'announcements' => $announcements,
             ])->layout('layouts.app', ['title' => 'Dashboard']);
         }
@@ -165,6 +233,7 @@ class DashboardPage extends Component
                 'pendingSync' => $pendingSync,
             ],
             'children' => $children,
+            'statusChart' => $this->statusChart(VaccinationRecord::whereHas('child', fn ($query) => $query->where('barangay_id', $user->barangay_id))),
             'announcements' => $announcements,
         ])->layout('layouts.app', ['title' => 'Dashboard']);
     }

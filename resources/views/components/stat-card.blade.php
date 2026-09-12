@@ -1,10 +1,14 @@
-@props(['label', 'value'])
+@props(['label', 'value', 'href' => null])
 
 @php
     $normalizedLabel = \Illuminate\Support\Str::lower($label);
 @endphp
 
-<div class="app-card p-5">
+@if ($href)
+    <a href="{{ $href }}" class="app-card block p-5 transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 dark:hover:border-teal-700 dark:focus:ring-offset-zinc-950" wire:navigate>
+@else
+    <div class="app-card p-5">
+@endif
     <div class="flex items-start justify-between gap-4">
         <div>
             <p class="text-sm font-medium text-slate-500 dark:text-zinc-400">{{ $label }}</p>
@@ -30,4 +34,8 @@
             @endif
         </div>
     </div>
-</div>
+@if ($href)
+    </a>
+@else
+    </div>
+@endif
