@@ -46,9 +46,7 @@
                                 {{ str($record->source)->replace('_', ' ')->title() }}
                                 @if ($record->proofPaths() !== [])
                                     <div class="text-xs">
-                                        <a href="{{ route('vaccinations.proofs.view', $record) }}" target="_blank" class="text-teal-700 hover:underline dark:text-teal-300">
-                                            View submitted {{ count($record->proofPaths()) }} photo{{ count($record->proofPaths()) === 1 ? '' : 's' }}
-                                        </a>
+                                        <x-proof-photo-viewer :record="$record" />
                                     </div>
                                 @endif
                             </td>
@@ -123,6 +121,16 @@
                         </div>
                     </dl>
                 </div>
+
+                @if ($pendingAction === 'reject')
+                    <div class="mt-5">
+                        <label for="rejection-remark" class="mb-2 block text-sm font-medium text-slate-800 dark:text-zinc-100">Rejection remark <span class="text-red-600">*</span></label>
+                        <textarea id="rejection-remark" wire:model="rejectionRemark" rows="4" maxlength="1000" class="app-input w-full" placeholder="Explain why this vaccination record was rejected so the parent can correct it."></textarea>
+                        @error('rejectionRemark')
+                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                    </div>
+                @endif
 
                 <div class="mt-6 flex justify-end gap-2">
                     <button type="button" class="app-button-secondary" wire:click="cancelConfirmation">Cancel</button>

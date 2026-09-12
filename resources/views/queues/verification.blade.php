@@ -46,9 +46,7 @@
                                     {{ str($record->source)->replace('_', ' ')->title() }}
                                     @if ($record->proofPaths() !== [])
                                         <div class="text-xs">
-                                            <a href="{{ route('vaccinations.proofs.view', $record) }}" target="_blank" class="text-teal-700 hover:underline dark:text-teal-300">
-                                                View submitted {{ count($record->proofPaths()) }} photo{{ count($record->proofPaths()) === 1 ? '' : 's' }}
-                                            </a>
+                                            <x-proof-photo-viewer :record="$record" />
                                         </div>
                                     @endif
                                 </td>
