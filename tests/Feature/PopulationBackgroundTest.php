@@ -19,7 +19,7 @@ test('municipal admins can manage authorized population targets only in their mu
         'barangay_id' => $barangay->id,
         'reference_year' => 2026,
         'age_group' => '0–11 months',
-        'sex' => 'both',
+        'sex' => 'female',
         'target_population' => 125,
         'source' => 'Municipal Health Office masterlist',
     ])->assertRedirect();
@@ -57,7 +57,7 @@ test('barangay admins can view but cannot manage population targets', function (
         'barangay_id' => $barangay->id,
         'reference_year' => 2026,
         'age_group' => '1–4 years',
-        'sex' => 'both',
+        'sex' => 'male',
         'target_population' => 20,
         'source' => 'Official source',
     ])->assertForbidden();

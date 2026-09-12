@@ -464,21 +464,23 @@ class DemoDataSeeder extends Seeder
             };
 
             foreach ($ageGroups as $index => $ageGroup) {
-                PopulationBackground::updateOrCreate(
-                    [
-                        'municipality_id' => $municipality?->id,
-                        'barangay_id' => $barangay->id,
-                        'reference_year' => 2026,
-                        'age_group' => $ageGroup,
-                        'sex' => 'both',
-                    ],
-                    [
-                        'target_population' => $targets[$index],
-                        'source' => 'Demo child population estimates',
-                        'created_by' => $admin->id,
-                        'updated_by' => $admin->id,
-                    ],
-                );
+                foreach (['female', 'male'] as $sexIndex => $sex) {
+                    PopulationBackground::updateOrCreate(
+                        [
+                            'municipality_id' => $municipality?->id,
+                            'barangay_id' => $barangay->id,
+                            'reference_year' => 2026,
+                            'age_group' => $ageGroup,
+                            'sex' => $sex,
+                        ],
+                        [
+                            'target_population' => intdiv($targets[$index] + (1 - $sexIndex), 2),
+                            'source' => 'Demo child population estimates',
+                            'created_by' => $admin->id,
+                            'updated_by' => $admin->id,
+                        ],
+                    );
+                }
             }
         }
     }
