@@ -17,6 +17,9 @@
     </div>
 
     @if (session('status')) <div class="app-alert-success">{{ session('status') }}</div> @endif
+    @if (! $requiresLocationSelection && $records->isEmpty() && ($selectedRegion !== '' || $selectedProvince !== '' || $selectedMunicipality !== '' || $selectedBarangay !== ''))
+        <div x-data x-init="window.Flux?.toast({ variant: 'warning', text: 'No authorized population targets found for the selected location.' })"></div>
+    @endif
 
     @if ($canManage && $isManagePage)
         <section class="app-card overflow-hidden" x-data="{ tab: null, region: '', province: '', municipality: '', barangay: '' }">

@@ -29,7 +29,9 @@ class PopulationBackgroundController extends Controller
             ? Municipality::query()->pluck('id')->map(fn ($id) => (string) $id)
             : collect([$user->municipality_id])->filter();
         $allowedBarangays = $user->accessibleBarangayIds()->map(fn ($id) => (string) $id);
-        abort_unless($user->isSuperAdmin() || ($selectedMunicipality === '' && $selectedBarangay === '' && $selectedRegion === '' && $selectedProvince === ''), 403);
+        // Municipal admins can use the municipality/barangay filters rendered for
+        // them, but must not be able to inject broader region/province filters.
+        abort_unless($user->isSuperAdmin() || ($selectedRegion === '' && $selectedProvince === ''), 403);
         abort_unless(($selectedMunicipality === '' || $allowedMunicipalities->contains($selectedMunicipality)) && ($selectedBarangay === '' || $allowedBarangays->contains($selectedBarangay)), 403);
 
         $perPage = in_array((int) request('per_page', 25), [10, 25, 50, 100], true) ? (int) request('per_page', 25) : 25;

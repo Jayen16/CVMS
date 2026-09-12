@@ -28,6 +28,27 @@ test('municipal admins can manage authorized population targets only in their mu
     $this->actingAs($admin)->get(route('population-background.index'))->assertOk()->assertSee('Population Barangay');
 });
 
+test('municipal admins can apply a municipality and barangay location with no existing targets', function () {
+    $region = Region::create(['name' => 'Empty Population Region']);
+    $province = Province::create(['name' => 'Empty Population Province', 'region_id' => $region->id]);
+    $municipality = Municipality::create(['name' => 'Empty Population Municipality', 'province_id' => $province->id]);
+    $barangay = Barangay::create(['name' => 'Empty Population Barangay', 'municipality_id' => $municipality->id]);
+    $admin = User::factory()->create([
+        'role' => 'municipal_admin',
+        'roles' => ['municipal_admin'],
+        'municipality_id' => $municipality->id,
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('population-background.index', [
+            'municipality_id' => $municipality->id,
+            'barangay_id' => $barangay->id,
+        ]))
+        ->assertOk()
+        ->assertSee('No authorized population targets yet.')
+        ->assertSee('No authorized population targets found for the selected location.');
+});
+
 test('barangay admins can view but cannot manage population targets', function () {
     $barangay = Barangay::create(['name' => 'Read Only Barangay']);
     $admin = User::factory()->create(['role' => 'barangay_admin', 'roles' => ['barangay_admin'], 'barangay_id' => $barangay->id]);
