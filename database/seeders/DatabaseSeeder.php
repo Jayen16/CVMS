@@ -12,6 +12,7 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -131,5 +132,51 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(DemoDataSeeder::class);
+
+        $this->seedNurseAccountsForAllBarangays($now);
+    }
+
+    /**
+     * Ensure every barangay has at least one nurse account.
+     *
+     * The demo seeder defines named nurses for the demo barangays. This pass
+     * also covers barangays added by PSGC (or by another seeder) without
+     * replacing any existing staff account.
+     */
+    private function seedNurseAccountsForAllBarangays(Carbon $now): void
+    {
+        Barangay::query()
+            ->with('municipalityRelation')
+            ->orderBy('id')
+            ->each(function (Barangay $barangay) use ($now): void {
+                $hasNurse = User::query()
+                    ->where('barangay_id', $barangay->id)
+                    ->where(function ($query): void {
+                        $query->whereJsonContains('roles', 'nurse')
+                            ->orWhere('role', 'nurse');
+                    })
+                    ->exists();
+
+                if ($hasNurse) {
+                    return;
+                }
+
+                $municipalitySlug = Str::slug($barangay->municipalityRelation?->name ?? 'municipality');
+                $barangaySlug = Str::slug($barangay->name);
+                $email = "nurse.{$municipalitySlug}.{$barangaySlug}@example.com";
+
+                User::updateOrCreate(['email' => $email], [
+                    'name' => "Nurse {$barangay->name}",
+                    'password' => Hash::make('password123'),
+                    'role' => 'nurse',
+                    'roles' => ['nurse'],
+                    'permissions' => User::defaultNursePermissions(),
+                    'municipality_id' => $barangay->municipality_id,
+                    'barangay_id' => $barangay->id,
+                    'is_active' => true,
+                    'email_verified_at' => $now,
+                    'invitation_accepted_at' => $now,
+                ]);
+            });
     }
 }
