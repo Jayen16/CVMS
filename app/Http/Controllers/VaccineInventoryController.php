@@ -33,12 +33,15 @@ class VaccineInventoryController extends Controller
         $selectedBarangay = $user->isSuperAdmin() || $user->isMunicipalAdmin()
             ? request()->string('barangay')->toString()
             : (string) $user->barangay_id;
+        $perPage = in_array((int) request()->input('per_page', 10), [10, 25, 50, 100], true)
+            ? (int) request()->input('per_page', 10)
+            : 10;
 
         $requiresLocationSelection = $user->isSuperAdmin() && $regionFilter === '';
 
         if ($requiresLocationSelection) {
             return view('vaccine-inventory.index', [
-                'transactions' => VaccineInventoryTransaction::query()->whereRaw('1 = 0')->paginate(25),
+                'transactions' => VaccineInventoryTransaction::query()->whereRaw('1 = 0')->paginate($perPage),
                 'balances' => collect(),
                 'regions' => Region::query()->orderBy('name')->get(),
                 'provinces' => collect(),
@@ -51,6 +54,7 @@ class VaccineInventoryController extends Controller
                 'types' => VaccineInventoryTransaction::typeOptions(),
                 'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
                 'inventoryItems' => collect(),
+                'perPage' => $perPage,
                 'requiresLocationSelection' => true,
             ]);
         }
@@ -61,7 +65,7 @@ class VaccineInventoryController extends Controller
             ->with(['barangay', 'vaccineType', 'inventoryItem', 'recorder'])
             ->latest('transaction_date')
             ->latest('created_at')
-            ->paginate(25)
+            ->paginate($perPage)
             ->withQueryString();
 
         $balances = VaccineType::query()
@@ -99,6 +103,7 @@ class VaccineInventoryController extends Controller
             'types' => VaccineInventoryTransaction::typeOptions(),
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
             'inventoryItems' => $this->inventoryItems($selectedBarangay),
+            'perPage' => $perPage,
             'requiresLocationSelection' => false,
         ]);
     }

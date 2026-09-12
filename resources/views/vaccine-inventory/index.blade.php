@@ -90,7 +90,17 @@
     @endif
 
     <section class="app-card">
-        <div class="app-card-header"><h2 class="app-card-title">Transaction history</h2></div>
+        <div class="app-card-header flex flex-wrap items-center justify-between gap-3">
+            <h2 class="app-card-title">Transaction history</h2>
+            <label class="flex items-center gap-2 text-sm text-zinc-500">
+                <span>Rows per page</span>
+                <select class="app-input w-auto py-1.5" data-transaction-page-size aria-label="Rows per page">
+                    @foreach ([10, 25, 50, 100] as $option)
+                        <option value="{{ $option }}" @selected($perPage === $option)>{{ $option }}</option>
+                    @endforeach
+                </select>
+            </label>
+        </div>
         <div class="overflow-x-auto"><table class="app-table"><thead><tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">Item ID</th><th class="px-4 py-3">Vaccine</th><th class="px-4 py-3">Transaction</th><th class="px-4 py-3">Quantity</th><th class="px-4 py-3">Batch / expiry</th><th class="px-4 py-3">Recorded by</th></tr></thead><tbody>
             @forelse ($transactions as $transaction)
                 <tr class="app-table-row"><td>{{ $transaction->transaction_date->format('M d, Y') }}</td><td class="font-medium">{{ $transaction->inventoryItem?->item_code ?? 'Legacy entry' }}</td><td class="font-medium">{{ $transaction->vaccineType->name }}</td><td>{{ $types[$transaction->transaction_type] ?? ucfirst($transaction->transaction_type) }}</td><td class="{{ $transaction->movement === 'out' ? 'text-red-600' : 'text-emerald-600' }}">{{ $transaction->movement === 'out' ? '-' : '+' }}{{ number_format($transaction->quantity) }}</td><td>{{ $transaction->inventoryItem?->batch_number ?? $transaction->batch_number ?? '—' }} @if($transaction->inventoryItem?->expiry_date ?? $transaction->expiry_date)<div class="text-xs text-zinc-500">{{ ($transaction->inventoryItem?->expiry_date ?? $transaction->expiry_date)->format('M d, Y') }}</div>@endif</td><td>{{ $transaction->recorder->name }}</td></tr>
@@ -98,12 +108,22 @@
                 <tr><td colspan="7" class="px-4 py-8 text-center text-zinc-500">No inventory transactions recorded yet.</td></tr>
             @endforelse
         </tbody></table></div>
-        <div class="p-5">{{ $transactions->links() }}</div>
+        @if ($transactions->hasPages())
+            <div class="border-t border-slate-200 p-5 dark:border-zinc-700">{{ $transactions->links() }}</div>
+        @endif
     </section>
     @endif
 </div>
 
 <script>
+    const transactionPageSize = document.querySelector('[data-transaction-page-size]');
+    transactionPageSize?.addEventListener('change', (event) => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('per_page', event.target.value);
+        url.searchParams.delete('page');
+        window.location.assign(url);
+    });
+
     (() => {
         const form = document.querySelector('[data-inventory-form]');
         if (!form) return;
