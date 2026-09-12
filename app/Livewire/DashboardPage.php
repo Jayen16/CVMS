@@ -189,6 +189,7 @@ class DashboardPage extends Component
                 ->withCount('vaccinations')
                 ->latest()
                 ->get();
+            $parentVaccinations = VaccinationRecord::whereHas('child.parents', fn ($query) => $query->whereKey($user->id));
 
             $calendarItems = $children->map(function (ChildProfile $child) use ($suggestions) {
                 $suggestion = $suggestions->suggestNextDose($child);
@@ -214,7 +215,8 @@ class DashboardPage extends Component
                 ],
                 'children' => $children,
                 'calendarItems' => $calendarItems,
-                'statusChart' => $this->statusChart(VaccinationRecord::whereHas('child.parents', fn ($query) => $query->whereKey($user->id))),
+                'monthlyVaccinationChart' => $this->monthlyVaccinationChart($parentVaccinations),
+                'statusChart' => $this->statusChart($parentVaccinations),
                 'announcements' => $announcements,
             ])->layout('layouts.app', ['title' => 'Dashboard']);
         }

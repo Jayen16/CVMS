@@ -349,7 +349,7 @@
                         method="POST"
                         action="{{ $editableRecord ? route('vaccinations.update', $editableRecord) : route('children.vaccinations.store', $child) }}"
                         class="app-panel order-1 grid content-start gap-4 sm:grid-cols-2 lg:grid-cols-3 {{ auth()->user()->canManageChildren() && $activeTab !== 'vaccination' ? 'hidden' : '' }}"
-                        x-data="{ submitHistoryOpen: false }"
+                        x-data="{ submitHistoryOpen: true }"
                         enctype="multipart/form-data"
                         @if (auth()->user()->canManageChildren()) data-tab-panel="vaccination" @endif
                     >

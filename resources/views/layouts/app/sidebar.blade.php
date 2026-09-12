@@ -39,7 +39,11 @@
                     {{ __('Dashboard') }}
                 </flux:sidebar.item>
 
-                @if (auth()->user()->canViewChildrenRegistry()
+                @if (auth()->user()->isParent() && auth()->user()->canViewChildrenRegistry())
+                    <flux:sidebar.item icon="users" :href="route('children.index')" :current="request()->routeIs('children.*')" wire:navigate>
+                        {{ __('Children') }}
+                    </flux:sidebar.item>
+                @elseif (auth()->user()->canViewChildrenRegistry()
                     || auth()->user()->canViewVerificationQueue())
                     <flux:sidebar.group expandable :heading="__('Child Records')" class="grid">
                         @if (auth()->user()->canViewChildrenRegistry())
