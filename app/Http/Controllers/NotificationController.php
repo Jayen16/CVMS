@@ -34,6 +34,22 @@ class NotificationController extends Controller
             return to_route('notifications.index');
         }
 
-        return redirect($actionUrl);
+        // Notification URLs may have been generated with a different local host
+        // (for example, APP_URL=localhost while the browser uses 127.0.0.1).
+        // Redirect to the validated path on the current host instead of sending
+        // the user to the host stored in the notification payload.
+        $destination = $path;
+        $query = parse_url($actionUrl, PHP_URL_QUERY);
+        $fragment = parse_url($actionUrl, PHP_URL_FRAGMENT);
+
+        if (is_string($query) && $query !== '') {
+            $destination .= '?'.$query;
+        }
+
+        if (is_string($fragment) && $fragment !== '') {
+            $destination .= '#'.$fragment;
+        }
+
+        return redirect(url($destination));
     }
 }

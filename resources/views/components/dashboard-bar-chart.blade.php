@@ -1,4 +1,4 @@
-@props(['title', 'subtitle' => null, 'data' => [], 'suffix' => '', 'orientation' => 'vertical'])
+@props(['title', 'subtitle' => null, 'data' => [], 'suffix' => '', 'orientation' => 'vertical', 'barClass' => 'fill-teal-500 dark:fill-teal-400'])
 
 @php
     $max = max(1, (int) collect($data)->max('value'));
@@ -36,7 +36,7 @@
                             $barWidth = 460 * ((int) $item['value'] / (int) $max);
                         @endphp
                         <text x="140" y="{{ $y + 15 }}" text-anchor="end" class="fill-slate-600 dark:fill-zinc-300" font-size="12">{{ $item['label'] }}</text>
-                        <rect x="150" y="{{ $y }}" width="{{ max(2, $barWidth) }}" height="22" rx="5" class="fill-teal-500 dark:fill-teal-400" />
+                        <rect x="150" y="{{ $y }}" width="{{ max(2, $barWidth) }}" height="22" rx="5" class="{{ $barClass }}" />
                         <text x="{{ 158 + $barWidth }}" y="{{ $y + 15 }}" class="fill-slate-700 dark:fill-zinc-200" font-size="12" font-weight="600">{{ $item['value'] }}{{ $suffix }}</text>
                     @endforeach
                 </svg>
@@ -59,7 +59,7 @@
                         $y = $plotTop + $plotHeight - $barHeight;
                         $label = str($item['label'])->limit(16);
                     @endphp
-                    <rect x="{{ $x }}" y="{{ $y }}" width="{{ $barWidth }}" height="{{ max(2, $barHeight) }}" rx="5" class="fill-teal-500 dark:fill-teal-400" />
+                    <rect x="{{ $x }}" y="{{ $y }}" width="{{ $barWidth }}" height="{{ max(2, $barHeight) }}" rx="5" class="{{ $barClass }}" />
                     <text x="{{ $x + ($barWidth / 2) }}" y="{{ max(14, $y - 8) }}" text-anchor="middle" class="fill-slate-700 dark:fill-zinc-200" font-size="12" font-weight="600">{{ $item['value'] }}{{ $suffix }}</text>
                     <text x="{{ $x + ($barWidth / 2) }}" y="{{ $plotTop + $plotHeight + 24 }}" text-anchor="middle" class="fill-slate-500 dark:fill-zinc-400" font-size="11">{{ $label }}</text>
                 @endforeach

@@ -39,7 +39,7 @@
 
         <div class="min-h-0 flex-1 overflow-hidden py-2">
             @forelse ($notificationPreview as $notification)
-                <a href="{{ route('notifications.read', $notification) }}" class="mx-4 my-2 block rounded-lg border border-slate-200 px-4 py-4 transition hover:border-teal-300 hover:bg-teal-50/60 dark:border-zinc-800 dark:hover:border-teal-800 dark:hover:bg-zinc-800 {{ $notification->read_at ? 'opacity-70' : '' }}">
+                <a href="{{ route('notifications.read', $notification, false) }}" class="mx-4 my-2 block rounded-lg border border-slate-200 px-4 py-4 transition hover:border-teal-300 hover:bg-teal-50/60 dark:border-zinc-800 dark:hover:border-teal-800 dark:hover:bg-zinc-800 {{ $notification->read_at ? 'opacity-70' : '' }}">
                     <div class="flex items-start gap-4">
                         <div class="mt-0.5 rounded-full bg-teal-100 p-2 text-teal-700 dark:bg-teal-950 dark:text-teal-300">
                             <flux:icon :icon="$notification->data['icon'] ?? 'bell'" class="size-4" />

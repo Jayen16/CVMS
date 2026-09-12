@@ -8,6 +8,7 @@ use App\Models\ClinicAnnouncement;
 use App\Models\OfflineSyncOutbox;
 use App\Models\PopulationBackground;
 use App\Models\User;
+use App\Models\VaccineInventoryTransaction;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineType;
 use App\Services\ImmunizationSuggestionService;
@@ -219,7 +220,30 @@ class DashboardPage extends Component
         }
 
         if ($user->isMunicipalAdmin()) {
-            $children = ChildProfile::query()->visibleTo($user)->withCount('vaccinations')->latest()->take(8)->get();
+            $barangays = Barangay::query()
+                ->where('municipality_id', $user->municipality_id)
+                ->withCount('children')
+                ->withCount('vaccinations')
+                ->withCount(['vaccinations as pending_vaccinations_count' => fn ($query) => $query->where('verification_status', 'pending')])
+                ->withCount(['users as barangay_admins_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'barangay_admin')])
+                ->withCount(['users as nurses_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'nurse')])
+                ->orderBy('name')
+                ->get();
+            $shortagesByBarangay = VaccineInventoryTransaction::query()
+                ->whereIn('barangay_id', $barangays->pluck('id'))
+                ->get(['barangay_id', 'vaccine_type_id', 'movement', 'quantity'])
+                ->groupBy(fn (VaccineInventoryTransaction $transaction): string => $transaction->barangay_id.'|'.$transaction->vaccine_type_id)
+                ->map(function ($transactions): array {
+                    $first = $transactions->first();
+                    $available = $transactions->sum(fn (VaccineInventoryTransaction $transaction): int => $transaction->signedQuantity());
+
+                    return [
+                        'barangay_id' => $first->barangay_id,
+                        'shortage' => $available <= 0,
+                    ];
+                })
+                ->filter(fn (array $balance): bool => $balance['shortage'])
+                ->countBy('barangay_id');
 
             return view('livewire.dashboard-page', [
                 'role' => 'municipal_admin',
@@ -233,16 +257,32 @@ class DashboardPage extends Component
                     'pending' => VaccinationRecord::where('verification_status', 'pending')->whereHas('child', fn ($query) => $query->whereIn('barangay_id', $user->accessibleBarangayIds()))->count(),
                     'pendingSync' => $pendingSync,
                 ],
-                'barangays' => Barangay::query()
-                    ->where('municipality_id', $user->municipality_id)
-                    ->withCount('children')
-                    ->withCount('vaccinations')
-                    ->withCount(['users as barangay_admins_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'barangay_admin')])
-                    ->withCount(['users as nurses_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'nurse')])
-                    ->orderBy('name')
-                    ->get(),
-                'children' => $children,
-                'statusChart' => $this->statusChart(VaccinationRecord::whereHas('child', fn ($query) => $query->whereIn('barangay_id', $user->accessibleBarangayIds()))),
+                'barangays' => $barangays,
+                'barangayChildrenChart' => $barangays->sortByDesc('children_count')->map(fn (Barangay $barangay): array => [
+                    'label' => $barangay->name,
+                    'value' => $barangay->children_count,
+                ])->values()->all(),
+                'barangayVaccinationChart' => $barangays->sortByDesc('vaccinations_count')->map(fn (Barangay $barangay): array => [
+                    'label' => $barangay->name,
+                    'value' => $barangay->vaccinations_count,
+                ])->values()->all(),
+                'barangayAdminsChart' => $barangays->sortByDesc('barangay_admins_count')->map(fn (Barangay $barangay): array => [
+                    'label' => $barangay->name,
+                    'value' => $barangay->barangay_admins_count,
+                ])->values()->all(),
+                'barangayNursesChart' => $barangays->sortByDesc('nurses_count')->map(fn (Barangay $barangay): array => [
+                    'label' => $barangay->name,
+                    'value' => $barangay->nurses_count,
+                ])->values()->all(),
+                'insufficientInventoryChart' => $barangays
+                    ->map(fn (Barangay $barangay): array => [
+                        'label' => $barangay->name,
+                        'value' => (int) $shortagesByBarangay->get($barangay->id, 0),
+                    ])
+                    ->filter(fn (array $item): bool => $item['value'] > 0)
+                    ->sortByDesc('value')
+                    ->values()
+                    ->all(),
                 'announcements' => $announcements,
             ])->layout('layouts.app', ['title' => 'Dashboard']);
         }
