@@ -199,6 +199,7 @@
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2">
+            <x-dashboard-bar-chart title="Vaccination activity" subtitle="Administered records for your children over the last six months." :data="$monthlyVaccinationChart" />
             <x-dashboard-bar-chart title="Vaccination verification" subtitle="Your vaccination records by review status." :data="$statusChart" />
         </div>
 
@@ -206,7 +207,7 @@
             <div class="app-card-header">
                 <h2 class="app-card-title">This month’s family due calendar</h2>
             </div>
-            <div class="grid gap-3 md:grid-cols-2">
+            <div class="grid gap-3 grid-cols-1">
                 @forelse ($calendarItems as $date => $items)
                     <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
                         <div class="text-sm font-semibold text-slate-950 dark:text-white">{{ \Illuminate\Support\Carbon::parse($date)->format('M d, Y') }}</div>

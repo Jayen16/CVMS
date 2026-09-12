@@ -85,7 +85,7 @@
                 <div class="app-card-header">
                     <h2 class="app-card-title">This month’s family due calendar</h2>
                 </div>
-                <div class="grid gap-3 md:grid-cols-2">
+                <div class="grid gap-3 grid-cols-1">
                     @forelse ($calendarItems as $date => $items)
                         <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
                             <div class="text-sm font-semibold text-slate-950 dark:text-white">{{ \Illuminate\Support\Carbon::parse($date)->format('M d, Y') }}</div>
