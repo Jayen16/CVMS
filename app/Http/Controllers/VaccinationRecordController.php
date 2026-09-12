@@ -152,7 +152,7 @@ class VaccinationRecordController extends Controller
         $proofPath = $proofPaths[$proofIndex - 1] ?? null;
 
         abort_if($proofPath === null, 404);
-        $proofDisk = Storage::disk(config('filesystems.proof_disk', 'public'));
+        $proofDisk = Storage::disk(config('filesystems.proof_disk', 'local'));
         if (! $proofDisk->exists($proofPath)) {
             return $this->streamCentralProof($record, $proofIndex);
         }

@@ -35,10 +35,10 @@ class CentralSyncController extends Controller
         $proofPath = $vaccination->proofPaths()[$proofIndex - 1] ?? null;
 
         abort_if($proofPath === null, 404);
-        $proofDisk = Storage::disk(config('filesystems.proof_disk', 'public'));
+        $proofDisk = Storage::disk(config('filesystems.proof_disk', 'local'));
         abort_unless($proofDisk->exists($proofPath), 404);
 
-        if (config('filesystems.disks.'.config('filesystems.proof_disk', 'public').'.driver') === 's3') {
+        if (config('filesystems.disks.'.config('filesystems.proof_disk', 'local').'.driver') === 's3') {
             return redirect()->away($proofDisk->temporaryUrl($proofPath, now()->addMinutes(10)));
         }
 
@@ -64,7 +64,7 @@ class CentralSyncController extends Controller
         abort_if($proofPath === null, 404);
         abort_unless(str_starts_with($proofPath, 'vaccination-proofs/'), 422, 'Invalid proof path.');
 
-        $proofDisk = Storage::disk(config('filesystems.proof_disk', 'public'));
+        $proofDisk = Storage::disk(config('filesystems.proof_disk', 'local'));
         abort_unless($proofDisk->put($proofPath, $request->file('file')->get()), 500, 'Unable to save vaccination proof.');
 
         return response()->json(['stored' => true]);

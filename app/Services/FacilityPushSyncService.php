@@ -86,7 +86,7 @@ class FacilityPushSyncService
 
     private function uploadProofs($rows, string $centralUrl, string $token): void
     {
-        $proofDisk = Storage::disk(config('filesystems.proof_disk', 'public'));
+        $proofDisk = Storage::disk(config('filesystems.proof_disk', 'local'));
 
         foreach ($rows as $row) {
             if ($row->entity !== 'immunization_records' || $row->operation === 'deleted') {

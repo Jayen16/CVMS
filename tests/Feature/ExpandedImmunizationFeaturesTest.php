@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 test('parent submissions can include photo proof and appear on the digital vaccine card', function () {
-    Storage::fake('public');
+    Storage::fake('local');
 
     $barangay = Barangay::create(['name' => 'Proof Barangay']);
     $parent = User::factory()->create(['role' => 'parent']);
@@ -51,7 +51,7 @@ test('parent submissions can include photo proof and appear on the digital vacci
     $record = VaccinationRecord::firstOrFail();
 
     expect($record->proof_path)->not->toBeNull();
-    Storage::disk('public')->assertExists($record->proof_path);
+    Storage::disk('local')->assertExists($record->proof_path);
     expect(OfflineSyncOutbox::where('model_type', VaccinationRecord::class)->count())->toBeGreaterThan(0);
 
     $this->actingAs($parent)
