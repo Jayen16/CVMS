@@ -67,14 +67,14 @@ class VerificationQueuePage extends Component
         $this->pendingRecordSummary = null;
     }
 
-    public function confirmPendingAction(): void
+    public function confirmPendingAction(InAppNotificationService $notifications): void
     {
         abort_if($this->pendingRecordId === null, 404);
 
         if ($this->pendingAction === 'verify') {
-            $this->verify($this->pendingRecordId);
+            $this->verify($this->pendingRecordId, $notifications);
         } else {
-            $this->reject($this->pendingRecordId);
+            $this->reject($this->pendingRecordId, $notifications);
         }
     }
 
