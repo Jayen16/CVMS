@@ -9,6 +9,19 @@
             verificationActionUrl: '',
             verificationActionLabel: 'Verify',
             verificationSubject: '',
+            proofModalOpen: false,
+            proofModalImages: [],
+            proofModalIndex: 0,
+            openProofModal(images) {
+                this.proofModalImages = images;
+                this.proofModalIndex = 0;
+                this.proofModalOpen = true;
+            },
+            closeProofModal() {
+                this.proofModalOpen = false;
+                this.proofModalImages = [];
+                this.proofModalIndex = 0;
+            },
             openConfirmModal: false,
             confirmActionLabel: 'Confirm',
             confirmMessage: '',
@@ -176,18 +189,37 @@
                         </div>
                     </div>
 
-                    <p class="mt-4 text-sm leading-6 text-slate-600 dark:text-zinc-300">{{ $suggestion['note'] }}</p>
+                    <p class="mt-4 text-sm leading-6 text-slate-600 dark:text-zinc-300">
+                        @if (auth()->user()->isParent())
+                            This clinic visit is recommended based on the child’s immunization schedule. Please bring your child and vaccine card or any outside-clinic records so the clinic team can confirm the dose and update the vaccination history.
+                        @else
+                            {{ $suggestion['note'] }}
+                        @endif
+                    </p>
                 </div>
 
                 <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                    <h3 class="text-sm font-semibold text-slate-950 dark:text-white">Before giving this dose</h3>
+                    <h3 class="text-sm font-semibold text-slate-950 dark:text-white">{{ auth()->user()->isParent() ? 'Before your clinic visit' : 'Before giving this dose' }}</h3>
                     <ul class="mt-3 space-y-2 text-sm leading-5 text-slate-600 dark:text-zinc-300">
-                        @foreach ($suggestion['checks'] as $check)
-                            <li class="flex gap-2">
-                                <span class="mt-1 size-1.5 rounded-full bg-teal-600"></span>
-                                <span>{{ $check }}</span>
-                            </li>
-                        @endforeach
+                        @if (auth()->user()->isParent())
+                            @foreach ([
+                                'Bring your child and vaccine card or outside-clinic proof to the visit.',
+                                'Tell the clinic team about allergies, previous reactions, or current illness.',
+                                'Ask the clinic to record the dose and your child’s next due date.',
+                            ] as $check)
+                                <li class="flex gap-2">
+                                    <span class="mt-1 size-1.5 rounded-full bg-teal-600"></span>
+                                    <span>{{ $check }}</span>
+                                </li>
+                            @endforeach
+                        @else
+                            @foreach ($suggestion['checks'] as $check)
+                                <li class="flex gap-2">
+                                    <span class="mt-1 size-1.5 rounded-full bg-teal-600"></span>
+                                    <span>{{ $check }}</span>
+                                </li>
+                            @endforeach
+                        @endif
                     </ul>
                 </div>
             </div>
@@ -217,8 +249,20 @@
                 class="app-card {{ auth()->user()->isParent() ? 'order-2' : '' }} {{ auth()->user()->canManageChildren() && $activeTab !== 'vaccination' ? 'hidden' : '' }}"
                 @if (auth()->user()->canManageChildren()) data-tab-panel="vaccination" @endif
             >
-                <div class="app-card-header">
-                    <h2 class="app-card-title">Vaccination history</h2>
+                <div class="app-card-header flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="app-card-title">Vaccination history</h2>
+                        <p class="mt-1 text-sm text-zinc-500">{{ $vaccinations->total() }} record{{ $vaccinations->total() === 1 ? '' : 's' }}</p>
+                    </div>
+                    <label class="flex items-center gap-2 text-sm font-medium">
+                        Rows per page
+                        <select wire:model.live="perPage" class="app-input !w-auto">
+                            <option value="10">10</option>
+                            <option value="15">15</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                    </label>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="app-table">
@@ -239,7 +283,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($child->vaccinations->sortByDesc('administered_at') as $record)
+                            @forelse ($vaccinations as $record)
                                 <tr class="app-table-row">
                                     <td class="font-semibold text-slate-950 dark:text-white">
                                         <a href="{{ route('children.timeline', ['child' => $child, 'vaccine' => $record->vaccineType->code]) }}" class="text-teal-700 hover:underline dark:text-teal-300">
@@ -253,13 +297,13 @@
                                         @if ($record->clinic_name)
                                             <div class="text-xs text-zinc-500">{{ $record->clinic_name }}</div>
                                         @endif
-                                        @foreach ($record->proofPaths() as $proofPath)
+                                        @if ($record->proofPaths() !== [])
                                             <div class="text-xs">
-                                                <a href="{{ route('vaccinations.proofs.show', ['record' => $record, 'proofIndex' => $loop->iteration]) }}" target="_blank" class="text-teal-700 hover:underline dark:text-teal-300">
-                                                    View proof photo {{ $loop->iteration }}
+                                                <a href="#" @click.prevent="openProofModal(@js($this->proofImageUrls($record)))" class="text-teal-700 hover:underline dark:text-teal-300">
+                                                    View submitted {{ count($record->proofPaths()) }} photo{{ count($record->proofPaths()) === 1 ? '' : 's' }}
                                                 </a>
                                             </div>
-                                        @endforeach
+                                        @endif
                                     </td>
                                     <td>
                                         <span
@@ -337,6 +381,11 @@
                         </tbody>
                     </table>
                 </div>
+                @if ($vaccinations->hasPages())
+                    <div class="border-t border-slate-200 px-5 py-3 dark:border-zinc-800">
+                        {{ $vaccinations->links() }}
+                    </div>
+                @endif
             </section>
 
             <div class="contents">
@@ -381,15 +430,13 @@
                             <x-form-field label="Facility or clinic location" name="clinic_location" :value="$defaultClinicLocation" />
                             <label class="grid gap-2 text-sm sm:col-span-2 lg:col-span-3">
                                 <span class="font-medium text-slate-800 dark:text-zinc-100">Photo proof of vaccine card or record</span>
-                                <input type="file" name="proof_files[]" accept="image/*" multiple class="app-input">
-                                <span class="text-xs text-zinc-500">You can upload up to 5 photos.</span>
+                                <input type="file" name="proof_files[]" accept="image/*" multiple class="app-input" {{ ! $editableRecord || $editableRecord->proofPaths() === [] ? 'required' : '' }}>
+                                <span class="text-xs text-zinc-500">At least 1 photo is required. You can upload up to 5 photos.</span>
                                 @if ($editableRecord && $editableRecord->proofPaths() !== [])
-                                    <div class="space-y-1 text-xs">
-                                        @foreach ($editableRecord->proofPaths() as $proofPath)
-                                            <a href="{{ route('vaccinations.proofs.show', ['record' => $editableRecord, 'proofIndex' => $loop->iteration]) }}" target="_blank" class="block text-teal-700 hover:underline dark:text-teal-300">
-                                                Current proof photo {{ $loop->iteration }}
-                                            </a>
-                                        @endforeach
+                                    <div class="text-xs">
+                                        <a href="#" @click.prevent="openProofModal(@js($this->proofImageUrls($editableRecord)))" class="text-teal-700 hover:underline dark:text-teal-300">
+                                            View submitted {{ count($editableRecord->proofPaths()) }} photo{{ count($editableRecord->proofPaths()) === 1 ? '' : 's' }}
+                                        </a>
                                     </div>
                                 @endif
                                 @error('proof_files')
@@ -630,6 +677,37 @@
         <form method="POST" x-ref="verificationForm" class="hidden">
             @csrf
         </form>
+
+        <div
+            x-cloak
+            x-show="proofModalOpen"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4"
+            x-transition.opacity
+            @keydown.escape.window="closeProofModal()"
+        >
+            <div
+                @click.outside="closeProofModal()"
+                class="w-full max-w-4xl rounded-2xl bg-white p-4 shadow-xl dark:bg-zinc-900 sm:p-6"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="proof-modal-title"
+            >
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h2 id="proof-modal-title" class="text-lg font-semibold text-slate-950 dark:text-white">Submitted vaccine proof</h2>
+                        <p class="text-sm text-zinc-500" x-text="`Photo ${proofModalIndex + 1} of ${proofModalImages.length}`"></p>
+                    </div>
+                    <button type="button" class="app-button-secondary" @click="closeProofModal()">Close</button>
+                </div>
+                <div class="mt-4 flex min-h-96 items-center justify-center rounded-lg bg-zinc-950 p-3">
+                    <img :src="proofModalImages[proofModalIndex]" :alt="`Submitted vaccine proof photo ${proofModalIndex + 1}`" class="max-h-[70vh] max-w-full object-contain">
+                </div>
+                <div x-show="proofModalImages.length > 1" class="mt-4 flex items-center justify-between gap-3">
+                    <button type="button" class="app-button-secondary" :disabled="proofModalIndex === 0" @click="proofModalIndex = Math.max(0, proofModalIndex - 1)">Previous</button>
+                    <button type="button" class="app-button-primary" :disabled="proofModalIndex === proofModalImages.length - 1" @click="proofModalIndex = Math.min(proofModalImages.length - 1, proofModalIndex + 1)">Next</button>
+                </div>
+            </div>
+        </div>
 
         <div
             x-cloak

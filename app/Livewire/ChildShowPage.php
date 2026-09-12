@@ -8,11 +8,18 @@ use App\Models\VaccineInventoryItem;
 use App\Models\VaccineType;
 use App\Services\ImmunizationSuggestionService;
 use Illuminate\Contracts\View\View;
+use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class ChildShowPage extends Component
 {
+    use WithPagination;
+
     public ChildProfile $child;
+
+    #[Url]
+    public int $perPage = 10;
 
     public function mount(ChildProfile $child): void
     {
@@ -38,6 +45,8 @@ class ChildShowPage extends Component
 
         $editableRecord = null;
 
+        $this->perPage = in_array($this->perPage, [10, 15, 25, 50], true) ? $this->perPage : 10;
+
         if (auth()->user()->isParent() && request()->filled('edit_record')) {
             $editableRecord = $this->child->vaccinations
                 ->first(fn (VaccinationRecord $record) => $record->id === request()->string('edit_record')->toString());
@@ -49,6 +58,11 @@ class ChildShowPage extends Component
 
         return view('children.show', [
             'child' => $this->child,
+            'vaccinations' => VaccinationRecord::query()
+                ->with(['vaccineType', 'recorder', 'submitter', 'verifier'])
+                ->where('child_profile_id', $this->child->id)
+                ->latest('created_at')
+                ->paginate($this->perPage),
             'suggestion' => $suggestions->suggestNextDose($this->child),
             'vaccines' => VaccineType::where('active', true)->orderBy('name')->get(),
             'inventoryItems' => VaccineInventoryItem::query()
@@ -63,6 +77,27 @@ class ChildShowPage extends Component
         ])->layout('layouts.app', [
             'title' => $this->child->full_name,
         ]);
+    }
+
+    public function updatedPerPage(): void
+    {
+        $this->perPage = in_array($this->perPage, [10, 15, 25, 50], true) ? $this->perPage : 10;
+        $this->resetPage();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function proofImageUrls(VaccinationRecord $record): array
+    {
+        return collect($record->proofPaths())
+            ->keys()
+            ->map(fn (int $index): string => route('vaccinations.proofs.show', [
+                'record' => $record,
+                'proofIndex' => $index + 1,
+            ]))
+            ->values()
+            ->all();
     }
 
     private function authorizeChild(ChildProfile $child): void

@@ -120,6 +120,7 @@ Route::middleware(['auth', 'verified', 'parent.privacy'])->group(function () {
     Route::delete('children/{child}/parents/{parent}', [ChildParentController::class, 'destroy'])->name('children.parents.destroy');
     Route::post('children/{child}/vaccinations', [VaccinationRecordController::class, 'store'])->name('children.vaccinations.store');
     Route::put('vaccinations/{record}', [VaccinationRecordController::class, 'update'])->name('vaccinations.update');
+    Route::get('vaccinations/{record}/proofs/view', [VaccinationRecordController::class, 'viewProofs'])->name('vaccinations.proofs.view');
     Route::get('vaccinations/{record}/proofs/{proofIndex}', [VaccinationRecordController::class, 'showProof'])->name('vaccinations.proofs.show');
     Route::post('vaccinations/{record}/verify', [VaccinationRecordController::class, 'verify'])->name('vaccinations.verify');
     Route::post('vaccinations/{record}/reject', [VaccinationRecordController::class, 'reject'])->name('vaccinations.reject');

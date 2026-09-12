@@ -160,6 +160,22 @@ class VaccinationRecordController extends Controller
         return $proofDisk->response($proofPath);
     }
 
+    public function viewProofs(Request $request, VaccinationRecord $record)
+    {
+        $this->authorizeProofView($record);
+
+        $proofPaths = $record->proofPaths();
+        abort_if($proofPaths === [], 404);
+
+        $proofIndex = max(1, min($request->integer('proof', 1), count($proofPaths)));
+
+        return view('vaccinations.proofs', [
+            'record' => $record,
+            'proofCount' => count($proofPaths),
+            'proofIndex' => $proofIndex,
+        ]);
+    }
+
     private function streamCentralProof(VaccinationRecord $record, int $proofIndex): Response
     {
         abort_unless(config('system.instance_type') === 'facility', 404);

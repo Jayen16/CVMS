@@ -220,17 +220,9 @@
                                                     </div>
                                                     @if ($point['record']->proofPaths() !== [])
                                                         <div class="pt-1">
-                                                            @foreach ($point['record']->proofPaths() as $proofPath)
-                                                                <div class="@if (! $loop->first) mt-1 @endif">
-                                                                    <a
-                                                                        href="{{ route('vaccinations.proofs.show', ['record' => $point['record'], 'proofIndex' => $loop->iteration]) }}"
-                                                                        target="_blank"
-                                                                        class="text-teal-700 hover:underline dark:text-teal-300"
-                                                                    >
-                                                                        View submitted proof {{ $loop->iteration }}
-                                                                    </a>
-                                                                </div>
-                                                            @endforeach
+                                                            <a href="{{ route('vaccinations.proofs.view', $point['record']) }}" target="_blank" class="text-teal-700 hover:underline dark:text-teal-300">
+                                                                View submitted {{ count($point['record']->proofPaths()) }} photo{{ count($point['record']->proofPaths()) === 1 ? '' : 's' }}
+                                                            </a>
                                                         </div>
                                                     @endif
                                                 @elseif ($point['action_at'])
@@ -367,18 +359,10 @@
                                                             Given {{ $point['record']->administered_at->format('M d, Y') }}
                                                         </div>
                                                         @if ($point['record']->proofPaths() !== [])
-                                                            <div class="mt-2 space-y-1">
-                                                                @foreach ($point['record']->proofPaths() as $proofPath)
-                                                                    <div>
-                                                                        <a
-                                                                            href="{{ route('vaccinations.proofs.show', ['record' => $point['record'], 'proofIndex' => $loop->iteration]) }}"
-                                                                            target="_blank"
-                                                                            class="pointer-events-auto text-teal-700 hover:underline dark:text-teal-300"
-                                                                        >
-                                                                            View submitted proof {{ $loop->iteration }}
-                                                                        </a>
-                                                                    </div>
-                                                                @endforeach
+                                                            <div class="mt-2">
+                                                                <a href="{{ route('vaccinations.proofs.view', $point['record']) }}" target="_blank" class="pointer-events-auto text-teal-700 hover:underline dark:text-teal-300">
+                                                                    View submitted {{ count($point['record']->proofPaths()) }} photo{{ count($point['record']->proofPaths()) === 1 ? '' : 's' }}
+                                                                </a>
                                                             </div>
                                                         @endif
                                                     @elseif ($point['action_at'])

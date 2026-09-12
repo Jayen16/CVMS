@@ -44,17 +44,13 @@
                                 <td>{{ $record->administered_at->format('M d, Y') }}</td>
                                 <td>
                                     {{ str($record->source)->replace('_', ' ')->title() }}
-                                        @foreach ($record->proofPaths() as $proofPath)
-                                            <div class="text-xs">
-                                                <a
-                                                    href="{{ route('vaccinations.proofs.show', ['record' => $record, 'proofIndex' => $loop->iteration]) }}"
-                                                    target="_blank"
-                                                    class="text-teal-700 hover:underline dark:text-teal-300"
-                                                >
-                                                View proof photo {{ $loop->iteration }}
+                                    @if ($record->proofPaths() !== [])
+                                        <div class="text-xs">
+                                            <a href="{{ route('vaccinations.proofs.view', $record) }}" target="_blank" class="text-teal-700 hover:underline dark:text-teal-300">
+                                                View submitted {{ count($record->proofPaths()) }} photo{{ count($record->proofPaths()) === 1 ? '' : 's' }}
                                             </a>
                                         </div>
-                                    @endforeach
+                                    @endif
                                 </td>
                                 <td>{{ $record->submitter?->name ?? 'N/A' }}</td>
                                 <td>
