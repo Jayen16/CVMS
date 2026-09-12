@@ -7,8 +7,8 @@
 
     <title>{{ __('Welcome') }} - {{ config('app.name') }}</title>
 
-    <link rel="icon" href="{{ asset('storage/child_vacc_icon.png') }}" type="image/png">
-    <link rel="apple-touch-icon" href="{{ asset('storage/child_vacc_icon.png') }}">
+    <link rel="icon" href="{{ asset('images/child_vacc_icon.png') }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ asset('images/child_vacc_icon.png') }}">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -49,7 +49,7 @@
                             </h1>
                                 <img
                                     class="h-32 w-32 shrink-0 self-center rounded-full object-contain shadow-lg ring-4 ring-white/80 sm:h-52 sm:w-52 sm:self-auto lg:h-60 lg:w-60"
-                                    src="{{ asset('storage/child_vacc_icon.png') }}"
+                                    src="{{ asset('images/child_vacc_icon.png') }}"
                                     alt="Child Vaccination Management System logo"
                                 >
                             </div>

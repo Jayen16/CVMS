@@ -4,7 +4,7 @@
 >
     <img
         class="h-full w-full rounded-full object-contain"
-        src="{{ asset('storage/child_vacc_icon.png') }}"
+        src="{{ asset('images/child_vacc_icon.png') }}"
         alt="{{ config('rhu.name', 'Child Vaccination Management System') }}"
         onerror="this.hidden = true; this.nextElementSibling.classList.remove('hidden'); this.nextElementSibling.classList.add('flex');"
     >

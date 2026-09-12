@@ -5,8 +5,8 @@
     {{ filled($title ?? null) ? $title.' - '.config('app.name', 'Laravel') : config('app.name', 'Laravel') }}
 </title>
 
-<link rel="icon" href="{{ asset('storage/child_vacc_icon.png') }}" type="image/png">
-<link rel="apple-touch-icon" href="{{ asset('storage/child_vacc_icon.png') }}">
+<link rel="icon" href="{{ asset('images/child_vacc_icon.png') }}" type="image/png">
+<link rel="apple-touch-icon" href="{{ asset('images/child_vacc_icon.png') }}">
 
 @fonts
 
