@@ -14,8 +14,12 @@
 
         <div class="flex flex-wrap gap-2">
             @if (auth()->user()->isNurse())
-                <a href="{{ route('children.index') }}" class="app-button-secondary" wire:navigate>Children</a>
-                <a href="{{ route('verification-queue.index') }}" class="app-button-secondary" wire:navigate>Verification queue</a>
+                @if (auth()->user()->canViewChildrenRegistry())
+                    <a href="{{ route('children.index') }}" class="app-button-secondary" wire:navigate>Children</a>
+                @endif
+                @if (auth()->user()->canViewVerificationQueue())
+                    <a href="{{ route('verification-queue.index') }}" class="app-button-secondary" wire:navigate>Verification queue</a>
+                @endif
             @endif
             @if (auth()->user()->isAdmin())
                 <a href="{{ route('sync.index') }}" class="app-button-secondary inline-flex items-center gap-2" wire:navigate>
@@ -33,18 +37,18 @@
 
     @if ($role === 'superadmin')
         <div class="grid gap-4 md:grid-cols-6">
-            <x-stat-card label="Barangays" :value="$stats['barangays']" :href="route('reports.index')" />
-            <x-stat-card label="Barangay admins" :value="$stats['barangayAdmins']" :href="route('municipal-admins.index')" />
-            <x-stat-card label="Nurses" :value="$stats['nurses']" :href="route('nurses.index')" />
-            <x-stat-card label="Children" :value="$stats['children']" :href="route('children.index')" />
-            <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" :href="route('reports.index')" />
+            <x-stat-card label="Barangays" :value="$stats['barangays']" :href="auth()->user()->canViewOversight() ? route('reports.index') : null" />
+            <x-stat-card label="Barangay admins" :value="$stats['barangayAdmins']" :href="auth()->user()->canManageBarangayAdmins() ? route('municipal-admins.index') : null" />
+            <x-stat-card label="Nurses" :value="$stats['nurses']" :href="auth()->user()->canManageBarangayStaff() ? route('nurses.index') : null" />
+            <x-stat-card label="Children" :value="$stats['children']" :href="auth()->user()->canViewChildrenRegistry() ? route('children.index') : null" />
+            <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" :href="auth()->user()->canViewOversight() ? route('reports.index') : null" />
             @if (auth()->user()->isAdmin())
-                <x-stat-card label="Pending sync" :value="$stats['pendingSync']" :href="route('sync.index')" />
+                <x-stat-card label="Pending sync" :value="$stats['pendingSync']" :href="auth()->user()->isAdmin() ? route('sync.index') : null" />
             @endif
         </div>
 
         <div class="mt-4 max-w-sm">
-            <x-stat-card label="Pending verification" :value="$stats['pending']" :href="route('verification-queue.index')" />
+            <x-stat-card label="Pending verification" :value="$stats['pending']" :href="auth()->user()->canViewVerificationQueue() ? route('verification-queue.index') : null" />
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2">
@@ -104,11 +108,11 @@
         </section>
     @elseif ($role === 'barangay_admin')
         <div class="grid gap-4 md:grid-cols-5">
-            <x-stat-card label="Assigned barangay" :value="$stats['barangay']" :href="route('reports.index')" />
-            <x-stat-card label="Nurses" :value="$stats['nurses']" :href="route('nurses.index')" />
-            <x-stat-card label="Children" :value="$stats['children']" :href="route('children.index')" />
-            <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" :href="route('reports.index')" />
-            <x-stat-card label="Pending sync" :value="$stats['pendingSync']" :href="route('sync.index')" />
+            <x-stat-card label="Assigned barangay" :value="$stats['barangay']" :href="auth()->user()->canViewOversight() ? route('reports.index') : null" />
+            <x-stat-card label="Nurses" :value="$stats['nurses']" :href="auth()->user()->canManageBarangayStaff() ? route('nurses.index') : null" />
+            <x-stat-card label="Children" :value="$stats['children']" :href="auth()->user()->canViewChildrenRegistry() ? route('children.index') : null" />
+            <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" :href="auth()->user()->canViewOversight() ? route('reports.index') : null" />
+            <x-stat-card label="Pending sync" :value="$stats['pendingSync']" :href="auth()->user()->isAdmin() ? route('sync.index') : null" />
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2">
@@ -128,13 +132,13 @@
 
     @elseif ($role === 'municipal_admin')
         <div class="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
-            <x-stat-card label="Assigned municipality" :value="$stats['municipality']" :href="route('reports.index')" />
-            <x-stat-card label="Barangays" :value="$stats['barangays']" :href="route('reports.index')" />
-            <x-stat-card label="Barangay admins" :value="$stats['barangayAdmins']" :href="route('municipal-admins.index')" />
-            <x-stat-card label="Nurses" :value="$stats['nurses']" :href="route('nurses.index')" />
-            <x-stat-card label="Children" :value="$stats['children']" :href="route('children.index')" />
-            <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" :href="route('reports.index')" />
-            <x-stat-card label="Pending verification" :value="$stats['pending']" :href="route('verification-queue.index')" />
+            <x-stat-card label="Assigned municipality" :value="$stats['municipality']" :href="auth()->user()->canViewOversight() ? route('reports.index') : null" />
+            <x-stat-card label="Barangays" :value="$stats['barangays']" :href="auth()->user()->canViewOversight() ? route('reports.index') : null" />
+            <x-stat-card label="Barangay admins" :value="$stats['barangayAdmins']" :href="auth()->user()->canManageBarangayAdmins() ? route('municipal-admins.index') : null" />
+            <x-stat-card label="Nurses" :value="$stats['nurses']" :href="auth()->user()->canManageBarangayStaff() ? route('nurses.index') : null" />
+            <x-stat-card label="Children" :value="$stats['children']" :href="auth()->user()->canViewChildrenRegistry() ? route('children.index') : null" />
+            <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" :href="auth()->user()->canViewOversight() ? route('reports.index') : null" />
+            <x-stat-card label="Pending verification" :value="$stats['pending']" :href="auth()->user()->canViewVerificationQueue() ? route('verification-queue.index') : null" />
         </div>
         <section class="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             <div class="flex flex-col gap-4 border-l-4 border-teal-500 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -245,10 +249,10 @@
         </section>
     @else
         <div class="grid gap-4 md:grid-cols-5">
-            <x-stat-card label="Assigned barangay" :value="$stats['barangay']" :href="route('reports.index')" />
-            <x-stat-card label="Children" :value="$stats['children']" :href="route('children.index')" />
-            <x-stat-card label="Vaccination records" :value="$stats['vaccinations']" :href="route('reports.index')" />
-            <x-stat-card label="Pending verification" :value="$stats['pending']" :href="route('verification-queue.index')" />
+            <x-stat-card label="Assigned barangay" :value="$stats['barangay']" :href="auth()->user()->canViewOversight() ? route('reports.index') : null" />
+            <x-stat-card label="Children" :value="$stats['children']" :href="auth()->user()->canViewChildrenRegistry() ? route('children.index') : null" />
+            <x-stat-card label="Vaccination records" :value="$stats['vaccinations']" :href="auth()->user()->canViewOversight() ? route('reports.index') : null" />
+            <x-stat-card label="Pending verification" :value="$stats['pending']" :href="auth()->user()->canViewVerificationQueue() ? route('verification-queue.index') : null" />
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2">
