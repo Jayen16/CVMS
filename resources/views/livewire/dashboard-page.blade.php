@@ -113,6 +113,11 @@
             <x-dashboard-bar-chart title="Verification status" subtitle="Records in your barangay by review status." :data="$statusChart" />
         </div>
 
+        <div class="grid gap-4 lg:grid-cols-2">
+            <x-dashboard-bar-chart title="Population Coverage" subtitle="Compare the authorized target with registered children in your barangay." :data="$targetPopulationChart" />
+            <x-dashboard-pie-chart title="Missed-dose risk" subtitle="Risk distribution for children in your barangay." :data="$riskChart" />
+        </div>
+
     @elseif ($role === 'municipal_admin')
         <div class="grid gap-4 md:grid-cols-4 lg:grid-cols-7">
             <x-stat-card label="Assigned municipality" :value="$stats['municipality']" />

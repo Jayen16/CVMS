@@ -6,9 +6,11 @@ use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\ClinicAnnouncement;
 use App\Models\OfflineSyncOutbox;
+use App\Models\PopulationBackground;
 use App\Models\User;
 use App\Models\VaccinationRecord;
 use App\Services\ImmunizationSuggestionService;
+use App\Services\PredictiveAnalyticsService;
 use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 use Livewire\Attributes\Title;
@@ -74,7 +76,7 @@ class DashboardPage extends Component
             ->all();
     }
 
-    public function render(ImmunizationSuggestionService $suggestions): View
+    public function render(ImmunizationSuggestionService $suggestions, PredictiveAnalyticsService $analytics): View
     {
         $user = auth()->user();
         $announcements = ClinicAnnouncement::query()
@@ -190,6 +192,21 @@ class DashboardPage extends Component
                 ->withCount('vaccinations')
                 ->get();
             $sexCounts = $barangayChildren->countBy(fn (ChildProfile $child): string => strtolower((string) $child->sex));
+            $riskCounts = collect($analytics->missedDoseRisk($user))->countBy('risk_level');
+            $specificPopulation = PopulationBackground::query()->where('barangay_id', $user->barangay_id);
+            $populationYear = $specificPopulation->max('reference_year');
+            $populationTarget = $populationYear
+                ? (int) $specificPopulation->where('reference_year', $populationYear)->sum('target_population')
+                : (int) PopulationBackground::query()
+                    ->whereNull('barangay_id')
+                    ->where('municipality_id', $user->municipality_id)
+                    ->where('reference_year', function ($query) use ($user): void {
+                        $query->selectRaw('max(reference_year)')
+                            ->from('population_backgrounds')
+                            ->whereNull('barangay_id')
+                            ->where('municipality_id', $user->municipality_id);
+                    })
+                    ->sum('target_population');
 
             return view('livewire.dashboard-page', [
                 'role' => 'barangay_admin',
@@ -209,6 +226,16 @@ class DashboardPage extends Component
                 'sexChart' => [
                     ['label' => 'Male', 'value' => (int) $sexCounts->get('male', 0), 'color' => '#14b8a6'],
                     ['label' => 'Female', 'value' => (int) $sexCounts->get('female', 0), 'color' => '#f472b6'],
+                ],
+                'riskChart' => [
+                    ['label' => 'High', 'value' => (int) $riskCounts->get('high', 0), 'color' => '#ef4444'],
+                    ['label' => 'Medium', 'value' => (int) $riskCounts->get('medium', 0), 'color' => '#f59e0b'],
+                    ['label' => 'Low', 'value' => (int) $riskCounts->get('low', 0), 'color' => '#10b981'],
+                    ['label' => 'Not applicable', 'value' => (int) $riskCounts->get('not_applicable', 0), 'color' => '#a1a1aa'],
+                ],
+                'targetPopulationChart' => [
+                    ['label' => 'Target population', 'value' => $populationTarget],
+                    ['label' => 'Registered children', 'value' => $barangayChildren->count()],
                 ],
                 'announcements' => $announcements,
             ])->layout('layouts.app', ['title' => 'Dashboard']);

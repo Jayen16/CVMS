@@ -114,6 +114,33 @@ class ImmunizationSchedulePage extends Component
             ->sortBy(fn (array $row): array => [$row['status'] === 'overdue' ? 0 : ($row['status'] === 'delayed' ? 1 : 2), $row['suggestion']['due_at']?->timestamp ?? PHP_INT_MAX])->values();
 
         $totalMatching = $rows->count();
+        $statusLabels = [
+            'overdue' => 'Overdue',
+            'delayed' => 'Delayed',
+            'due' => 'Due today',
+            'upcoming' => 'Upcoming',
+            'complete' => 'Complete',
+        ];
+        $riskLabels = [
+            'high' => 'High',
+            'medium' => 'Medium',
+            'low' => 'Low',
+            'not_applicable' => 'Not applicable',
+        ];
+        $statusMonitorChart = collect($statusLabels)->map(fn (string $label, string $status): array => [
+            'label' => $label,
+            'value' => $rows->where('status', $status)->count(),
+        ])->values()->all();
+        $riskChart = collect($riskLabels)->map(fn (string $label, string $risk): array => [
+            'label' => $label,
+            'value' => $rows->where('risk_level', $risk)->count(),
+            'color' => match ($risk) {
+                'high' => '#ef4444',
+                'medium' => '#f59e0b',
+                'low' => '#10b981',
+                default => '#a1a1aa',
+            },
+        ])->all();
         $rows = new LengthAwarePaginator(
             $rows->forPage($this->getPage(), $this->perPage)->values(),
             $totalMatching,
@@ -126,6 +153,8 @@ class ImmunizationSchedulePage extends Component
             'rows' => $rows,
             'totalChildren' => $children->count(),
             'totalMatching' => $totalMatching,
+            'statusMonitorChart' => $statusMonitorChart,
+            'riskChart' => $riskChart,
             'regions' => $regions,
             'provinces' => $provinces,
             'municipalities' => $municipalities,
