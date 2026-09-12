@@ -46,10 +46,12 @@
                         <h2 class="app-card-title">Estimated vaccine demand</h2>
                         <p class="mt-1 text-sm text-zinc-500">{{ $forecastMonths }}-month historical-data forecast compared with recorded inventory. Basis: {{ $selectedVersion?->name ?? 'latest active schedule' }}.</p>
                     </div>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <a href="{{ route('predictive-analytics.pdf', ['months' => $months, 'scheduleVersion' => $scheduleVersion, 'regionId' => $regionId, 'provinceId' => $provinceId, 'municipalityId' => $municipalityId, 'barangayId' => $barangayId]) }}" target="_blank" rel="noopener" class="app-button-secondary inline-flex items-center gap-2" aria-label="Print vaccine demand forecast as PDF"><flux:icon.printer class="size-4" /> Print PDF</a>
                     <div class="flex rounded-lg border border-slate-200 bg-white p-1 dark:border-zinc-700 dark:bg-zinc-950" role="tablist" aria-label="Forecast view">
                         <button type="button" role="tab" title="Table view" aria-label="Table view" x-on:click="view = 'table'" x-bind:aria-selected="view === 'table'" x-bind:class="view === 'table' ? 'bg-teal-700 text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800'" class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-semibold transition"><flux:icon.clipboard-document-list class="size-4" /><span>Table</span></button>
                         <button type="button" role="tab" title="Graph view" aria-label="Graph view" x-on:click="view = 'graph'" x-bind:aria-selected="view === 'graph'" x-bind:class="view === 'graph' ? 'bg-teal-700 text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800'" class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-semibold transition"><flux:icon.chart-bar class="size-4" /><span>Graph</span></button>
-                    </div>
+                    </div></div>
                 </div>
                 <div class="mt-4 flex flex-wrap items-center gap-3">
                     <label class="flex items-center gap-2 text-sm font-medium">Forecast period <select wire:model.live="months" wire:loading.attr="disabled" class="app-input !w-auto"><option value="1">1 month</option><option value="3">3 months</option><option value="6">6 months</option><option value="12">12 months</option></select></label>

@@ -2,7 +2,7 @@
     <div wire:loading.flex class="fixed inset-x-0 top-0 z-[60] items-center justify-center gap-2 bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite">
         <span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span> Filtering data…
     </div>
-    <div class="page-heading"><div><p class="eyebrow">ROUTINE IMMUNIZATION</p><h1 class="page-title">Schedule monitoring</h1><p class="page-subtitle">Review each child’s next schedule item, timing status, missed-dose risk, and follow-up channel.</p></div></div>
+    <div class="page-heading"><div><p class="eyebrow">ROUTINE IMMUNIZATION</p><h1 class="page-title">Schedule monitoring</h1><p class="page-subtitle">Review each child’s next schedule item, timing status, missed-dose risk, and follow-up channel.</p></div>@unless($requiresLocationSelection)<a href="{{ route('schedule-monitoring.pdf', ['search' => $search, 'status' => $status, 'risk' => $risk, 'regionId' => $regionId, 'provinceId' => $provinceId, 'municipalityId' => $municipalityId, 'barangayId' => $barangayId]) }}" target="_blank" rel="noopener" class="app-button-secondary inline-flex items-center gap-2" aria-label="Print schedule monitoring as PDF"><flux:icon.printer class="size-4" /> Print PDF</a>@endunless</div>
     @if (auth()->user()->isSuperAdmin() || auth()->user()->isMunicipalAdmin())
         <x-location-filters
             mode="wire"
