@@ -154,8 +154,8 @@
             </div>
         </section>
         <div class="mt-4 grid gap-4 lg:grid-cols-2">
-            <x-dashboard-bar-chart title="Children by barangay" subtitle="Registered children across barangays in {{ $stats['municipality'] }}." orientation="horizontal" :data="$barangayChildrenChart" />
-            <x-dashboard-bar-chart title="Vaccination records by barangay" subtitle="Vaccination activity across barangays in {{ $stats['municipality'] }}." orientation="horizontal" :data="$barangayVaccinationChart" />
+            <x-dashboard-pie-chart title="Children by barangay" subtitle="Registered children across barangays in {{ $stats['municipality'] }}." :data="$barangayChildrenChart" />
+            <x-dashboard-pie-chart title="Vaccination records by barangay" subtitle="Vaccination activity across barangays in {{ $stats['municipality'] }}." :data="$barangayVaccinationChart" />
         </div>
         <div class="mt-4 grid gap-4 lg:grid-cols-2">
             <x-dashboard-bar-chart title="Barangay admins by barangay" subtitle="Assigned Barangay Admin accounts in each barangay." orientation="horizontal" :data="$barangayAdminsChart" />

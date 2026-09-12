@@ -110,6 +110,75 @@
             <div class="px-5 py-8 text-center text-zinc-500">No authorized population targets yet.</div>
         @endforelse
     </section>
+
+    @if ($years->isNotEmpty() && $matrix->isNotEmpty())
+        @php
+            $chartYears = $years->values();
+            $chartLocationLabel = $matrix->first()['location'] ?? 'selected location';
+            $chartSeries = $matrix->map(function (array $row): array {
+                return [
+                    'label' => ucfirst($row['sex']).' · '.$row['age_group'],
+                    'values' => $row['values'],
+                ];
+            })->values();
+            $chartMax = max(1, (int) $chartSeries->flatMap(fn (array $series) => $chartYears->map(fn ($year) => (int) ($series['values'][$year] ?? 0)))->max());
+            $chartWidth = 900;
+            $chartHeight = 360;
+            $chartLeft = 58;
+            $chartRight = 24;
+            $chartTop = 18;
+            $chartBottom = 48;
+            $plotWidth = $chartWidth - $chartLeft - $chartRight;
+            $plotHeight = $chartHeight - $chartTop - $chartBottom;
+            $colors = ['#14b8a6', '#38bdf8', '#a78bfa', '#f59e0b', '#f43f5e', '#84cc16', '#e879f9', '#fb7185'];
+        @endphp
+        <section class="app-card overflow-hidden">
+            <div class="app-card-header">
+                <div>
+                    <h2 class="app-card-title">Authorized population by year</h2>
+                    <p class="text-sm text-zinc-500">Year-over-year comparison for {{ $chartLocationLabel }}. Each line represents a sex and age group.</p>
+                </div>
+            </div>
+            <div class="overflow-x-auto p-5">
+                <svg viewBox="0 0 {{ $chartWidth }} {{ $chartHeight }}" class="min-w-[720px] w-full" role="img" aria-label="Line chart comparing authorized population by year">
+                    @foreach([0, 25, 50, 75, 100] as $percent)
+                        @php $y = $chartTop + $plotHeight - ($plotHeight * $percent / 100); @endphp
+                        <line x1="{{ $chartLeft }}" y1="{{ $y }}" x2="{{ $chartWidth - $chartRight }}" y2="{{ $y }}" class="stroke-zinc-700" stroke-width="1" />
+                        <text x="{{ $chartLeft - 10 }}" y="{{ $y + 4 }}" text-anchor="end" class="fill-zinc-500" font-size="11">{{ number_format($chartMax * $percent / 100, 0) }}</text>
+                    @endforeach
+                    <line x1="{{ $chartLeft }}" y1="{{ $chartTop }}" x2="{{ $chartLeft }}" y2="{{ $chartTop + $plotHeight }}" class="stroke-zinc-500" />
+                    <line x1="{{ $chartLeft }}" y1="{{ $chartTop + $plotHeight }}" x2="{{ $chartWidth - $chartRight }}" y2="{{ $chartTop + $plotHeight }}" class="stroke-zinc-500" />
+
+                    @foreach($chartYears as $yearIndex => $year)
+                        @php $x = $chartYears->count() === 1 ? $chartLeft + $plotWidth / 2 : $chartLeft + ($plotWidth * $yearIndex / ($chartYears->count() - 1)); @endphp
+                        <text x="{{ $x }}" y="{{ $chartHeight - 18 }}" text-anchor="middle" class="fill-zinc-400" font-size="11">{{ $year }}</text>
+                    @endforeach
+
+                    @foreach($chartSeries as $seriesIndex => $series)
+                        @php
+                            $points = $chartYears->map(function ($year, $yearIndex) use ($series, $chartYears, $chartLeft, $plotWidth, $chartTop, $plotHeight, $chartMax) {
+                                $value = (int) ($series['values'][$year] ?? 0);
+                                $x = $chartYears->count() === 1 ? $chartLeft + $plotWidth / 2 : $chartLeft + ($plotWidth * $yearIndex / ($chartYears->count() - 1));
+                                $y = $chartTop + $plotHeight - ($plotHeight * $value / $chartMax);
+                                return ['x' => $x, 'y' => $y, 'value' => $value];
+                            });
+                            $path = $points->map(fn (array $point, $index) => ($index === 0 ? 'M' : 'L')." {$point['x']} {$point['y']}")->implode(' ');
+                            $color = $colors[$seriesIndex % count($colors)];
+                        @endphp
+                        <path d="{{ $path }}" fill="none" stroke="{{ $color }}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                        @foreach($points as $point)
+                            <circle cx="{{ $point['x'] }}" cy="{{ $point['y'] }}" r="4" fill="{{ $color }}"><title>{{ $series['label'] }}: {{ number_format($point['value']) }} in {{ $chartYears[$loop->index] }}</title></circle>
+                        @endforeach
+                    @endforeach
+                </svg>
+                <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-zinc-500">
+                    @foreach($chartSeries as $seriesIndex => $series)
+                        <span class="inline-flex items-center gap-2"><span class="size-2.5 rounded-full" style="background-color: {{ $colors[$seriesIndex % count($colors)] }}"></span>{{ $series['label'] }}</span>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+    @endif
     @endif
     @endif
 

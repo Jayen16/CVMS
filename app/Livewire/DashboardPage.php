@@ -260,14 +260,20 @@ class DashboardPage extends Component
                     'pendingSync' => $pendingSync,
                 ],
                 'barangays' => $barangays,
-                'barangayChildrenChart' => $barangays->sortByDesc('children_count')->map(fn (Barangay $barangay): array => [
+                'barangayChildrenChart' => $barangays->sortByDesc('children_count')->values()->map(function (Barangay $barangay, int $index): array {
+                    return [
                     'label' => $barangay->name,
                     'value' => $barangay->children_count,
-                ])->values()->all(),
-                'barangayVaccinationChart' => $barangays->sortByDesc('vaccinations_count')->map(fn (Barangay $barangay): array => [
+                    'color' => ['#14b8a6', '#38bdf8', '#a78bfa', '#f59e0b', '#f43f5e'][$index % 5],
+                    ];
+                })->all(),
+                'barangayVaccinationChart' => $barangays->sortByDesc('vaccinations_count')->values()->map(function (Barangay $barangay, int $index): array {
+                    return [
                     'label' => $barangay->name,
                     'value' => $barangay->vaccinations_count,
-                ])->values()->all(),
+                    'color' => ['#06b6d4', '#14b8a6', '#8b5cf6', '#f97316', '#ec4899'][$index % 5],
+                    ];
+                })->all(),
                 'barangayAdminsChart' => $barangays->sortByDesc('barangay_admins_count')->map(fn (Barangay $barangay): array => [
                     'label' => $barangay->name,
                     'value' => $barangay->barangay_admins_count,
