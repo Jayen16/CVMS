@@ -32,37 +32,36 @@
 
     @if ($role === 'superadmin')
         <div class="grid gap-4 md:grid-cols-6">
-            <x-stat-card label="Barangays" :value="$stats['barangays']" />
-            <x-stat-card label="Barangay admins" :value="$stats['barangayAdmins']" />
-            <x-stat-card label="Nurses" :value="$stats['nurses']" />
-            <x-stat-card label="Children" :value="$stats['children']" />
-            <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" />
+            <x-stat-card label="Barangays" :value="$stats['barangays']" :href="route('reports.index')" />
+            <x-stat-card label="Barangay admins" :value="$stats['barangayAdmins']" :href="route('municipal-admins.index')" />
+            <x-stat-card label="Nurses" :value="$stats['nurses']" :href="route('nurses.index')" />
+            <x-stat-card label="Children" :value="$stats['children']" :href="route('children.index')" />
+            <x-stat-card label="Vaccinations" :value="$stats['vaccinations']" :href="route('reports.index')" />
             @if (auth()->user()->isAdmin())
-                <x-stat-card label="Pending sync" :value="$stats['pendingSync']" />
+                <x-stat-card label="Pending sync" :value="$stats['pendingSync']" :href="route('sync.index')" />
             @endif
         </div>
 
-        <div class="mt-4 grid gap-4 md:grid-cols-2">
-            <x-stat-card label="Pending verification" :value="$stats['pending']" />
-            <div class="app-card flex items-center justify-between p-4">
-                <div>
-                    <h2 class="app-card-title">Quick actions</h2>
-                    <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Review system-wide coverage and manage barangay admins.</p>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <a href="{{ route('nurses.index') }}" class="app-button-secondary" wire:navigate>Barangay admins</a>
-                    <a href="{{ route('reports.index') }}" class="app-button-secondary" wire:navigate>Reports</a>
-                </div>
-            </div>
+        <div class="mt-4 max-w-sm">
+            <x-stat-card label="Pending verification" :value="$stats['pending']" :href="route('verification-queue.index')" />
         </div>
 
         <div class="grid gap-4 lg:grid-cols-2">
-            <x-dashboard-bar-chart title="Vaccination verification" subtitle="Current record status across all barangays." :data="$statusChart" />
+            <x-dashboard-bar-chart title="Children by barangay" subtitle="Registered children in the top five barangays." orientation="horizontal" :data="$barangayChildrenChart" />
+            <x-dashboard-bar-chart title="Vaccination records by barangay" subtitle="Total vaccination records in the top five barangays." orientation="horizontal" :data="$barangayVaccinationChart" />
+        </div>
+
+        <div class="grid gap-4 lg:grid-cols-2">
+            <x-dashboard-bar-chart title="Pending verification by barangay" subtitle="Top five barangays by records waiting for review." orientation="horizontal" :data="$barangayPendingChart" />
+            <x-dashboard-bar-chart title="Staff coverage by barangay" subtitle="Top five barangays by assigned admins and nurses." orientation="horizontal" :data="$barangayStaffChart" />
         </div>
 
         <section class="app-card">
             <div class="app-card-header">
-                <h2 class="app-card-title">Barangay statistics</h2>
+                <div>
+                    <h2 class="app-card-title">Barangay statistics</h2>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-zinc-400">Compare staffing, registered children, and vaccination activity at a glance.</p>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="app-table">
@@ -73,6 +72,8 @@
                             <th class="px-4 py-3 font-medium">Nurses</th>
                             <th class="px-4 py-3 font-medium">Children</th>
                             <th class="px-4 py-3 font-medium">Vaccination records</th>
+                            <th class="px-4 py-3 font-medium">Pending</th>
+                            <th class="px-4 py-3 font-medium">Records / child</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -83,9 +84,15 @@
                                 <td>{{ $barangay->nurses_count }}</td>
                                 <td>{{ $barangay->children_count }}</td>
                                 <td>{{ $barangay->vaccinations_count }}</td>
+                                <td>
+                                    <span class="status-pill {{ $barangay->pending_vaccinations_count > 0 ? 'status-pending' : 'status-verified' }}">
+                                        {{ $barangay->pending_vaccinations_count }}
+                                    </span>
+                                </td>
+                                <td>{{ $barangay->children_count > 0 ? number_format($barangay->vaccinations_count / $barangay->children_count, 1) : '—' }}</td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="px-4 py-6 text-center text-zinc-500">No barangays yet.</td></tr>
+                            <tr><td colspan="7" class="px-4 py-6 text-center text-zinc-500">No barangays yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

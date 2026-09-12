@@ -19,6 +19,13 @@ use Livewire\Component;
 #[Title('Dashboard')]
 class DashboardPage extends Component
 {
+    private function barangayChartLabel(Barangay $barangay): string
+    {
+        return collect([$barangay->municipalityRelation?->name, $barangay->name])
+            ->filter()
+            ->implode(' · ');
+    }
+
     private function statusChart($query): array
     {
         return collect(['verified', 'pending', 'rejected'])
@@ -97,6 +104,16 @@ class DashboardPage extends Component
             ? OfflineSyncOutbox::whereNull('synced_at')->count()
             : 0;
         if ($user->isSuperAdmin()) {
+            $barangayStats = Barangay::query()
+                ->with('municipalityRelation')
+                ->withCount('children')
+                ->withCount('vaccinations')
+                ->withCount(['vaccinations as pending_vaccinations_count' => fn ($query) => $query->where('verification_status', 'pending')])
+                ->withCount(['users as barangay_admins_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'barangay_admin')])
+                ->withCount(['users as nurses_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'nurse')])
+                ->orderBy('name');
+            $barangayStatsRows = (clone $barangayStats)->get();
+
             return view('livewire.dashboard-page', [
                 'role' => 'superadmin',
                 'stats' => [
@@ -108,14 +125,23 @@ class DashboardPage extends Component
                     'pending' => VaccinationRecord::where('verification_status', 'pending')->count(),
                     'pendingSync' => $pendingSync,
                 ],
-                'barangays' => Barangay::query()
-                    ->withCount('children')
-                    ->withCount('vaccinations')
-                    ->withCount(['users as barangay_admins_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'barangay_admin')])
-                    ->withCount(['users as nurses_count' => fn ($query) => $query->notArchived()->whereJsonContains('roles', 'nurse')])
-                    ->orderBy('name')
-                    ->paginate(50),
-                'statusChart' => $this->statusChart(VaccinationRecord::query()),
+                'barangays' => (clone $barangayStats)->paginate(50),
+                'barangayChildrenChart' => $barangayStatsRows->sortByDesc('children_count')->take(5)->map(fn (Barangay $barangay): array => [
+                    'label' => $this->barangayChartLabel($barangay),
+                    'value' => $barangay->children_count,
+                ])->all(),
+                'barangayVaccinationChart' => $barangayStatsRows->sortByDesc('vaccinations_count')->take(5)->map(fn (Barangay $barangay): array => [
+                    'label' => $this->barangayChartLabel($barangay),
+                    'value' => $barangay->vaccinations_count,
+                ])->all(),
+                'barangayPendingChart' => $barangayStatsRows->sortByDesc('pending_vaccinations_count')->take(5)->map(fn (Barangay $barangay): array => [
+                    'label' => $this->barangayChartLabel($barangay),
+                    'value' => $barangay->pending_vaccinations_count,
+                ])->all(),
+                'barangayStaffChart' => $barangayStatsRows->sortByDesc(fn (Barangay $barangay): int => $barangay->barangay_admins_count + $barangay->nurses_count)->take(5)->map(fn (Barangay $barangay): array => [
+                    'label' => $this->barangayChartLabel($barangay),
+                    'value' => $barangay->barangay_admins_count + $barangay->nurses_count,
+                ])->all(),
                 'announcements' => $announcements,
             ])->layout('layouts.app', ['title' => 'Dashboard']);
         }
