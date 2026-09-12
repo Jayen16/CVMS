@@ -55,6 +55,35 @@ test('inventory is scoped to the staff barangay and parents are denied', functio
     $this->actingAs($parent)->get(route('vaccine-inventory.index'))->assertForbidden();
 });
 
+test('transaction history supports pagination and configurable page size', function () {
+    $barangay = Barangay::create(['name' => 'Paginated Inventory Barangay']);
+    $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
+    $vaccine = VaccineType::query()->firstOrFail();
+
+    foreach (range(1, 26) as $number) {
+        VaccineInventoryTransaction::create([
+            'barangay_id' => $barangay->id,
+            'vaccine_type_id' => $vaccine->id,
+            'recorded_by' => $nurse->id,
+            'transaction_type' => 'receipt',
+            'movement' => 'in',
+            'quantity' => $number,
+            'transaction_date' => today()->subDays($number),
+        ]);
+    }
+
+    $this->actingAs($nurse)
+        ->get(route('vaccine-inventory.index', ['per_page' => 10]))
+        ->assertOk()
+        ->assertSee('Showing 1 to 10 of 26 results')
+        ->assertSee('per_page=10');
+
+    $this->actingAs($nurse)
+        ->get(route('vaccine-inventory.index', ['per_page' => 10, 'page' => 2]))
+        ->assertOk()
+        ->assertSee('Showing 11 to 20 of 26 results');
+});
+
 test('inventory cannot remove more stock than is available', function () {
     $barangay = Barangay::create(['name' => 'Stock Guard Barangay']);
     $admin = User::factory()->create(['role' => 'barangay_admin', 'barangay_id' => $barangay->id]);
