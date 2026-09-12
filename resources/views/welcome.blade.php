@@ -129,7 +129,7 @@
                                 </div>
 
                                 <div class="flex items-center justify-end">
-                                    <flux:button variant="primary" type="submit" class="w-full !rounded-xl !py-3"
+                                    <flux:button variant="primary" type="submit" class="w-full !rounded-xl !bg-emerald-600 !py-3 !text-white hover:!bg-emerald-700"
                                         data-test="login-button">
                                         {{ __('Sign in securely') }}
                                     </flux:button>
