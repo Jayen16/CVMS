@@ -85,19 +85,19 @@ select:focus[data-flux-control] {
     }
 
     .rhu-auth-showcase-inner {
-        @apply flex h-full flex-col justify-between gap-8;
+        @apply flex h-full flex-col justify-center gap-12;
     }
 
     .rhu-auth-kicker {
-        @apply text-xs font-semibold uppercase tracking-[0.28em] text-emerald-100/85;
+        @apply text-xs font-semibold uppercase tracking-[0.28em] text-emerald-700 dark:text-emerald-300;
     }
 
     .rhu-auth-title {
-        @apply mt-2 text-4xl font-semibold tracking-tight;
+        @apply mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-4xl;
     }
 
     .rhu-auth-subtitle {
-        @apply mt-2 text-base text-emerald-50/85;
+        @apply mt-2 text-base text-slate-600 dark:text-emerald-50/85;
     }
 
     .rhu-auth-copy {

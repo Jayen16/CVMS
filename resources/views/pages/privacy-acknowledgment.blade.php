@@ -28,6 +28,13 @@
                 @enderror
                 <button type="submit" class="mt-6 w-full rounded-lg bg-teal-700 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2">Continue to CVMS</button>
             </form>
+
+            <form method="POST" action="{{ route('logout') }}" class="text-center">
+                @csrf
+                <button type="submit" class="text-sm font-medium text-stone-600 underline-offset-4 hover:text-stone-900 hover:underline focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 dark:text-zinc-400 dark:hover:text-zinc-100">
+                    I don’t want to proceed
+                </button>
+            </form>
         </div>
     </div>
 </x-layouts::auth>

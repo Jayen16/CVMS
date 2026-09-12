@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'name' => env('RHU_NAME', 'Indang Rural Health Unit'),
+    'name' => env('RHU_NAME', 'Rural Health Unit - CVMS'),
     'system_name' => env('RHU_SYSTEM_NAME', 'Child Vaccination Management System'),
     'short_name' => env('RHU_SHORT_NAME', 'RHU'),
     'logo_path' => env('RHU_LOGO_PATH', 'storage/indang-rhu.jpg'),
