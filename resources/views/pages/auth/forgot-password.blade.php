@@ -22,7 +22,7 @@
             <button x-show="otpSent && !editing" type="button" class="-mt-4 text-left text-sm text-teal-700 hover:underline" @click="otpSent = false; editing = false; locked = false; availableAt = null; remaining = 0; if (timer) clearInterval(timer)">{{ __('Change email or phone number') }}</button>
             <p x-show="locked" class="-mt-3 text-sm font-medium text-red-600">{{ __('Verification is locked. Please contact or visit the RHU.') }}</p>
             <input type="hidden" name="mode" value="reset">
-            <flux:button x-show="!otpSent || editing" variant="primary" type="submit" class="w-full">{{ __('Submit') }}</flux:button>
+            <flux:button x-show="!otpSent || editing" variant="primary" color="teal" type="submit" class="w-full">{{ __('Submit') }}</flux:button>
         </form>
 
         <form x-show="otpSent && !locked" x-cloak method="POST" action="{{ route('password.otp.verify') }}" class="flex flex-col gap-6">
