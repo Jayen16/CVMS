@@ -172,3 +172,27 @@ test('resending setup link returns json for ajax requests', function () {
         ->assertOk()
         ->assertJson(['message' => 'Password setup link sent again.']);
 });
+
+test('unlinking a parent detaches the parent from the child', function () {
+    $barangay = Barangay::create(['name' => 'Unlink Barangay']);
+    $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
+    $parent = User::factory()->create(['role' => 'parent']);
+    $child = ChildProfile::create([
+        'barangay_id' => $barangay->id,
+        'created_by' => $nurse->id,
+        'first_name' => 'Ivy',
+        'last_name' => 'Cruz',
+        'birthdate' => now()->subMonths(8)->toDateString(),
+        'sex' => 'female',
+        'guardian_name' => $parent->name,
+    ]);
+
+    $child->parents()->attach($parent->id, ['relationship' => 'guardian']);
+
+    $this->actingAs($nurse)
+        ->delete(route('children.parents.destroy', ['child' => $child, 'parent' => $parent]))
+        ->assertRedirect(route('children.show', $child, absolute: false))
+        ->assertSessionHas('status', 'Parent account unlinked from child profile.');
+
+    expect($child->parents()->whereKey($parent->id)->exists())->toBeFalse();
+});

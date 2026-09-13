@@ -53,7 +53,10 @@
             },
             submitConfirmedAction() {
                 if (this.confirmForm) {
-                    this.confirmForm.requestSubmit();
+                    // The form's submit handler opens this confirmation modal.
+                    // Use the native submit method after confirmation so that
+                    // it does not trigger that handler a second time.
+                    HTMLFormElement.prototype.submit.call(this.confirmForm);
                 }
 
                 this.openConfirmModal = false;
