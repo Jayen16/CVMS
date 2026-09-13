@@ -68,7 +68,7 @@ class SendVaccinationReminders extends Command
                     }
 
                     foreach ($child->parents as $parent) {
-                        foreach ($this->availableChannels($child, $parent, $channels) as $channel) {
+                        foreach ($this->availableChannels($parent, $channels) as $channel) {
                             if ($this->alreadySent($child, $parent, $suggestion, $channel)) {
                                 $skippedCount++;
 
@@ -115,9 +115,9 @@ class SendVaccinationReminders extends Command
      * @param  list<string>  $channels
      * @return list<string>
      */
-    private function availableChannels(ChildProfile $child, User $parent, array $channels): array
+    private function availableChannels(User $parent, array $channels): array
     {
-        if (in_array('sms', $channels, true) && (filled($parent->phone) || filled($child->guardian_contact))) {
+        if (in_array('sms', $channels, true) && filled($parent->phone)) {
             return ['sms'];
         }
 
