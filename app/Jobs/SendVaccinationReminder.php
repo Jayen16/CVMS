@@ -73,7 +73,7 @@ class SendVaccinationReminder implements ShouldBeUnique, ShouldQueue
 
         try {
             $recipient = $this->channel === 'sms'
-                ? $this->smsRecipient($child, $parent)
+                ? $this->smsRecipient($parent)
                 : $parent->email;
 
             $reminder->update(['recipient' => $recipient]);
@@ -102,14 +102,10 @@ class SendVaccinationReminder implements ShouldBeUnique, ShouldQueue
         }
     }
 
-    private function smsRecipient(ChildProfile $child, User $parent): string
+    private function smsRecipient(User $parent): string
     {
         if (filled($parent->phone)) {
             return User::smsRecipient($parent->phone);
-        }
-
-        if (filled($child->guardian_contact)) {
-            return User::smsRecipient($child->guardian_contact);
         }
 
         throw new \RuntimeException("No SMS recipient phone number found for parent {$parent->id}.");
