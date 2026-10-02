@@ -1,5 +1,14 @@
 @php
     $editParent = $child->parents->firstWhere('id', session('edit_parent_id'));
+    $initialChildViewTab = 'schedule';
+
+    if (auth()->user()->canManageChildren()) {
+        if (request()->string('tab')->toString() === 'parents' || $errors->hasAny(['name', 'email', 'phone', 'relationship']) || session('edit_parent_id') !== null) {
+            $initialChildViewTab = 'parents';
+        } elseif ($errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'vaccine_inventory_item_id', 'remarks'])) {
+            $initialChildViewTab = 'vaccination';
+        }
+    }
 @endphp
 
 <div
@@ -20,7 +29,7 @@
                 this.recordDetails = record;
                 this.recordDetailsOpen = true;
             },
-            childViewTab: 'schedule',
+            childViewTab: @js($initialChildViewTab),
             openProofModal(images) {
                 this.proofModalImages = images;
                 this.proofModalIndex = 0;
@@ -187,6 +196,9 @@
         <nav class="app-card flex gap-1 overflow-x-auto p-1.5" aria-label="Child profile sections">
             <button type="button" class="min-w-max flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition" :class="childViewTab === 'schedule' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:bg-teal-50 dark:text-zinc-300 dark:hover:bg-zinc-800'" @click="childViewTab = 'schedule'">Schedule</button>
             <button type="button" class="min-w-max flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition" :class="childViewTab === 'vaccination' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:bg-teal-50 dark:text-zinc-300 dark:hover:bg-zinc-800'" @click="childViewTab = 'vaccination'">Vaccination History</button>
+            @if (auth()->user()->canManageChildren())
+                <button type="button" class="min-w-max flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition" :class="childViewTab === 'parents' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:bg-teal-50 dark:text-zinc-300 dark:hover:bg-zinc-800'" @click="childViewTab = 'parents'">Parent</button>
+            @endif
         </nav>
 
         <section x-cloak x-show="childViewTab === 'schedule'" class="overflow-hidden rounded-lg border border-teal-200 bg-white shadow-sm shadow-teal-900/10 dark:border-teal-900 dark:bg-zinc-900">
@@ -276,38 +288,19 @@
             </div>
         </section>
 
-        @if (auth()->user()->canManageChildren())
-            @php
-                $availableTabs = auth()->user()->canManageChildren()
-                    ? ['vaccination' => 'Record vaccination', 'parents' => 'Linked parents']
-                    : [];
-                $activeTab = array_key_first($availableTabs);
-
-                if ($errors->hasAny(['name', 'email', 'phone', 'relationship'])) {
-                    $activeTab = 'parents';
-                } elseif ($errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'vaccine_inventory_item_id', 'remarks'])) {
-                    $activeTab = 'vaccination';
-                }
-
-                if (request()->string('tab')->toString() === 'parents') {
-                    $activeTab = 'parents';
-                }
-            @endphp
-        @endif
-
-        <div x-cloak x-show="childViewTab === 'vaccination'" class="grid gap-6">
+        <div x-cloak x-show="childViewTab === 'vaccination' || childViewTab === 'parents'" class="grid gap-6">
         <section
-                class="app-card {{ auth()->user()->isParent() ? 'order-2' : '' }} {{ auth()->user()->canManageChildren() && $activeTab !== 'vaccination' ? 'hidden' : '' }}"
-                @if (auth()->user()->canManageChildren()) data-tab-panel="vaccination" @endif
+                x-show="childViewTab === 'vaccination'"
+                class="app-card {{ auth()->user()->isParent() || auth()->user()->canManageChildren() ? 'order-2' : '' }}"
             >
-                <div class="app-card-header flex flex-wrap items-center justify-between gap-3">
+                <div class="app-card-header flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 class="app-card-title">Vaccination history</h2>
                         <p class="mt-1 text-sm text-zinc-500">{{ $vaccinations->total() }} record{{ $vaccinations->total() === 1 ? '' : 's' }}</p>
                     </div>
-                    <div class="flex flex-wrap items-center gap-3">
-                        <a href="{{ route('children.timeline', $child) }}" class="app-button-secondary !px-3 !py-2 text-sm" wire:navigate>View timeline chart</a>
-                        <label class="flex items-center gap-2 text-sm font-medium">
+                    <div class="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+                        <a href="{{ route('children.timeline', $child) }}" class="app-button-secondary w-full !px-3 !py-2 text-sm sm:w-auto" wire:navigate>View timeline chart</a>
+                        <label class="flex items-center justify-between gap-2 text-sm font-medium sm:justify-start">
                             Rows per page
                             <select wire:model.live="perPage" class="app-input !w-auto">
                                 <option value="10">10</option>
@@ -318,7 +311,43 @@
                         </label>
                     </div>
                 </div>
-                <div class="overflow-x-auto">
+                @unless (auth()->user()->isParent())
+                <div class="grid gap-3 p-3 lg:hidden">
+                    @forelse ($vaccinations as $record)
+                        <article class="rounded-xl border border-slate-200 p-4 dark:border-zinc-700">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <a href="{{ route('children.timeline', ['child' => $child, 'vaccine' => $record->vaccineType->code]) }}" class="font-semibold text-teal-700 hover:underline dark:text-teal-300">{{ $record->vaccineType->name }}</a>
+                                    <p class="mt-0.5 text-xs text-zinc-500">{{ $record->dose_number ? 'Dose '.$record->dose_number : 'Not set' }} · {{ $record->administered_at->format('M d, Y') }}</p>
+                                </div>
+                                <span class="status-pill shrink-0 @if ($record->verification_status === 'verified') status-verified @elseif ($record->verification_status === 'pending') status-pending @else status-rejected @endif">{{ ucfirst($record->verification_status) }}</span>
+                            </div>
+                            <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-slate-100 pt-3 text-sm dark:border-zinc-800">
+                                <div><dt class="text-xs text-zinc-500">Source</dt><dd class="mt-0.5">{{ str($record->source)->replace('_', ' ')->title() }}@if ($record->clinic_name)<span class="block text-xs text-zinc-500">{{ $record->clinic_name }}</span>@endif</dd></div>
+                                <div><dt class="text-xs text-zinc-500">Review</dt><dd class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-300">@if ($record->verification_status === 'pending')Submitted by {{ $record->submitter?->name ?? 'Unknown parent' }}@elseif ($record->verification_status === 'verified')Approved by {{ $record->verifier?->name ?? $record->recordedByDisplayName() }}@else Rejected by {{ $record->verifier?->name ?? $record->recordedByDisplayName() }}@endif</dd></div>
+                                <div><dt class="text-xs text-zinc-500">Next suggestion</dt><dd class="mt-0.5">{{ $record->suggested_vaccine ?? 'None' }}@if ($record->next_due_at)<span class="block text-xs text-zinc-500">{{ $record->next_due_at->format('M d, Y') }}</span>@endif</dd></div>
+                                <div><dt class="text-xs text-zinc-500">Remarks</dt><dd class="mt-0.5 whitespace-pre-line">{{ $record->remarks ?? '—' }}</dd></div>
+                            </dl>
+                            @if ($record->proofPaths() !== [])
+                                <a href="#" @click.prevent="openProofModal(@js($this->proofImageUrls($record)))" class="mt-3 inline-block text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300">View submitted {{ count($record->proofPaths()) }} photo{{ count($record->proofPaths()) === 1 ? '' : 's' }}</a>
+                            @endif
+                            @if (auth()->user()->canVerifyVaccinations())
+                                <div class="mt-3 flex gap-2 border-t border-slate-100 pt-3 dark:border-zinc-800">
+                                    @if ($record->isPendingVerification())
+                                        <form method="POST" action="{{ route('vaccinations.verify', $record) }}" class="flex-1">@csrf<button type="button" class="app-button-primary w-full !px-3 !py-2 !text-xs" @click="openVerificationModal = true; verificationActionUrl = @js(route('vaccinations.verify', $record)); verificationActionLabel = 'Verify'; verificationSubject = @js($child->full_name.' - '.$record->vaccineType->name)">Verify</button></form>
+                                        <form method="POST" action="{{ route('vaccinations.reject', $record) }}" class="flex-1">@csrf<button type="button" class="app-button-danger w-full !px-3 !py-2 !text-xs" @click="openVerificationModal = true; verificationActionUrl = @js(route('vaccinations.reject', $record)); verificationActionLabel = 'Reject'; verificationSubject = @js($child->full_name.' - '.$record->vaccineType->name); verificationRemark = ''">Reject</button></form>
+                                    @else
+                                        <span class="text-xs text-zinc-500">{{ $record->verifier ? 'Reviewed by '.$record->verifier->name : 'No action' }}</span>
+                                    @endif
+                                </div>
+                            @endif
+                        </article>
+                    @empty
+                        <div class="app-card p-6 text-center text-sm text-zinc-500">No vaccination records yet.</div>
+                    @endforelse
+                </div>
+                @endunless
+                <div class="{{ auth()->user()->isParent() ? '' : 'hidden lg:block' }} overflow-x-auto">
                     <table class="app-table">
                         <thead>
                             <tr>
@@ -478,10 +507,9 @@
                     <form
                         method="POST"
                         action="{{ $editableRecord ? route('vaccinations.update', $editableRecord) : route('children.vaccinations.store', $child) }}"
-                        class="app-panel order-1 grid content-start gap-4 sm:grid-cols-2 lg:grid-cols-3 {{ auth()->user()->canManageChildren() && $activeTab !== 'vaccination' ? 'hidden' : '' }}"
+                        class="app-panel order-1 grid content-start gap-4 sm:grid-cols-2 lg:grid-cols-3"
                         x-data="{ submitHistoryOpen: @js($editableRecord !== null) }"
                         enctype="multipart/form-data"
-                        @if (auth()->user()->canManageChildren()) data-tab-panel="vaccination" @endif
                     >
                         @csrf
                         @if ($editableRecord)
@@ -541,25 +569,11 @@
                 @endif
 
                 @if (auth()->user()->canManageChildren())
-                    <section class="order-first col-span-full grid gap-4" data-child-tabs data-active-tab="{{ $activeTab }}">
-                        <div class="flex flex-wrap gap-2">
-                            @foreach ($availableTabs as $tabKey => $tabLabel)
-                                <button
-                                    type="button"
-                                    class="rounded-full px-4 py-2 text-sm font-semibold transition {{ $activeTab === $tabKey ? 'bg-teal-600 text-white shadow-sm shadow-teal-900/20' : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-800' }}"
-                                    data-tab-button
-                                    data-tab-target="{{ $tabKey }}"
-                                >
-                                    {{ $tabLabel }}
-                                </button>
-                            @endforeach
-                        </div>
-
-                        @if (auth()->user()->canManageChildren())
-                            <section
-                                class="app-panel {{ $activeTab === 'vaccination' ? '' : 'hidden' }}"
-                                data-tab-panel="vaccination"
+                    <section
+                                class="app-panel order-first"
+                                x-show="childViewTab === 'vaccination'"
                                 x-data="{
+                                     recordVaccinationOpen: @js($errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'vaccine_inventory_item_id', 'remarks'])),
                                     vaccineId: @js((string) old('vaccine_type_id', '')),
                                     inventoryVaccineIds: @js($inventoryItems->mapWithKeys(fn ($item) => [(string) $item->id => (string) $item->vaccine_type_id])),
                                     inventorySelect: null,
@@ -579,7 +593,19 @@
                             >
                                 <form method="POST" action="{{ route('children.vaccinations.store', $child) }}" class="grid content-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                     @csrf
-                                    <h2 class="app-card-title sm:col-span-2 lg:col-span-4">Record vaccination</h2>
+                                    <div class="flex items-center justify-between sm:col-span-2 lg:col-span-4">
+                                        <h2 class="app-card-title">Record vaccination</h2>
+                                        <button
+                                            type="button"
+                                            class="app-button-secondary"
+                                            :aria-expanded="recordVaccinationOpen.toString()"
+                                            aria-controls="record-vaccination-fields"
+                                            @click="recordVaccinationOpen = !recordVaccinationOpen"
+                                        >
+                                            <span x-text="recordVaccinationOpen ? '− Close' : '+ Create'"></span>
+                                        </button>
+                                    </div>
+                                    <div id="record-vaccination-fields" x-show="recordVaccinationOpen" x-cloak class="contents">
                                     <label class="grid gap-2 text-sm">
                                         <span class="font-medium text-slate-800 dark:text-zinc-100">Vaccine</span>
                                         <select name="vaccine_type_id" class="app-input" x-model="vaccineId" @change="changeVaccine()">
@@ -605,14 +631,41 @@
                                         <x-form-field label="Remarks" name="remarks" type="textarea" />
                                     </div>
                                     <button class="app-button-primary sm:col-span-2 lg:col-span-4">Save record</button>
+                                    </div>
                                 </form>
                             </section>
-                        @endif
-
-                        @if (auth()->user()->canManageChildren())
-                        <section class="app-panel flex flex-col {{ $activeTab === 'parents' ? '' : 'hidden' }}" data-tab-panel="parents">
+                        <section class="app-card p-5" x-show="childViewTab === 'parents'">
                             <h2 class="app-card-title">Linked parents</h2>
-                            <div class="order-2 mt-4 overflow-x-auto rounded-lg border border-slate-200 dark:border-zinc-800">
+                            <div class="order-2 mt-4 grid gap-3 lg:hidden">
+                                @forelse ($child->parents as $parent)
+                                    <article class="rounded-xl border border-slate-200 p-4 dark:border-zinc-700">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div class="min-w-0"><h3 class="font-semibold text-slate-950 dark:text-white">{{ $parent->name }}</h3><p class="mt-0.5 text-xs capitalize text-zinc-500">{{ $parent->pivot->relationship }}</p></div>
+                                            @if ($parent->invitation_accepted_at)<span class="status-pill status-verified">Configured</span>@else<span class="status-pill status-pending">Setup pending</span>@endif
+                                        </div>
+                                        <dl class="mt-4 space-y-2 border-t border-slate-100 pt-3 text-sm dark:border-zinc-800">
+                                            <div><dt class="text-xs text-zinc-500">Email</dt><dd class="break-words">{{ $parent->email ?: 'No email' }}</dd></div>
+                                            <div><dt class="text-xs text-zinc-500">Cellphone</dt><dd>{{ $parent->phone ?: 'No phone' }}</dd></div>
+                                        </dl>
+                                        <div class="mt-4 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 dark:border-zinc-800">
+                                            <button type="button" class="app-button-secondary !px-2 !py-2 text-xs" @click="openParentEditor(@js(route('children.parents.update', ['child' => $child, 'parent' => $parent])), @js($parent->name), @js($parent->email), @js($parent->phone), @js($parent->pivot->relationship))">Edit parent</button>
+                                            @if (! $parent->invitation_accepted_at && ($parent->email || $parent->phone))
+                                                <form method="POST" action="{{ route('children.parents.setup-link', ['child' => $child, 'parent' => $parent]) }}" @submit.prevent="fetch($event.currentTarget.action, { method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: new FormData($event.currentTarget) }).then(response => response.json().then(data => { if (! response.ok) throw new Error(data.message || 'Unable to send the setup link.'); window.Flux?.toast({ variant: 'success', text: data.message }); })).catch(error => window.Flux?.toast({ variant: 'danger', text: error.message }))">@csrf<button class="app-button-secondary w-full !px-2 !py-2 text-xs">Resend setup</button></form>
+                                            @endif
+                                            @if ($parent->parentLoginChannel() === 'email')
+                                                <form method="POST" action="{{ route('children.parents.password-link', [$child, $parent]) }}" @submit.prevent="fetch($event.currentTarget.action, { method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: new FormData($event.currentTarget) }).then(response => response.json().then(data => { if (! response.ok) throw new Error(data.message || 'Unable to send the reset link.'); window.Flux?.toast({ variant: 'success', text: data.message }); })).catch(error => window.Flux?.toast({ variant: 'danger', text: error.message }))">@csrf<input type="hidden" name="channel" value="email"><button class="app-button-secondary w-full !px-2 !py-2 text-xs">Reset by email</button></form>
+                                            @endif
+                                            @if ($parent->parentLoginChannel() === 'sms')
+                                                <form method="POST" action="{{ route('children.parents.password-link', [$child, $parent]) }}" @submit.prevent="fetch($event.currentTarget.action, { method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: new FormData($event.currentTarget) }).then(response => response.json().then(data => { if (! response.ok) throw new Error(data.message || 'Unable to send the reset link.'); window.Flux?.toast({ variant: 'success', text: data.message }); })).catch(error => window.Flux?.toast({ variant: 'danger', text: error.message }))">@csrf<input type="hidden" name="channel" value="sms"><button class="app-button-secondary w-full !px-2 !py-2 text-xs">Reset by text</button></form>
+                                            @endif
+                                            <form method="POST" action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => $parent]) }}" @submit.prevent="showConfirmModal('Unlink parent', 'Unlink this parent from the child profile?', $event.currentTarget)">@csrf @method('DELETE')<button class="app-button-danger w-full !px-2 !py-2 text-xs">Unlink parent</button></form>
+                                        </div>
+                                    </article>
+                                @empty
+                                    <div class="app-card p-6 text-center text-sm text-zinc-500">No parent account linked yet.</div>
+                                @endforelse
+                            </div>
+                            <div class="order-2 mt-4 hidden overflow-x-auto rounded-lg border border-slate-200 dark:border-zinc-800 lg:block">
                                 <table class="app-table w-full table-fixed">
                                     <thead>
                                         <tr>
@@ -721,12 +774,16 @@
                                 </table>
                             </div>
 
-                            <form method="POST" action="{{ route('children.parents.store', $child) }}" class="order-1 mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            </section>
+
+                            <form method="POST" action="{{ route('children.parents.store', $child) }}" class="app-card order-first overflow-hidden" x-data="{ inviteParentOpen: @js($errors->hasAny(['name', 'email', 'phone', 'relationship'])) }">
                                 @csrf
-                                <div class="sm:col-span-2 lg:col-span-4">
-                                    <h3 class="text-sm font-semibold text-slate-950 dark:text-white">Invite parent</h3>
-                                    <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Link the parent using either an email address or a phone number. Email parents receive activation instructions by email, while phone-only parents can finish sign up using that phone number and a password.</p>
+                                <div class="app-card-header flex items-center justify-between gap-3">
+                                    <h2 class="app-card-title">Invite Parent</h2>
+                                    <button type="button" class="app-button-secondary shrink-0" @click="inviteParentOpen = !inviteParentOpen" :aria-expanded="inviteParentOpen.toString()" aria-controls="invite-parent-fields" x-text="inviteParentOpen ? '− Hide' : '+ Invite Parent'">+ Invite Parent</button>
                                 </div>
+                                <div id="invite-parent-fields" x-show="inviteParentOpen" x-cloak class="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
+                                <p class="text-sm text-slate-600 dark:text-zinc-300 sm:col-span-2 lg:col-span-4">Link the parent using either an email address or a phone number. Email parents receive activation instructions by email, while phone-only parents can finish sign up using that phone number and a password.</p>
                                 <x-form-field label="Parent name" name="name" />
                                 <x-form-field label="Parent email" name="email" type="email" />
                                 <x-form-field label="Parent cellphone" name="phone" />
@@ -746,11 +803,8 @@
                                     ]"
                                 />
                                 <button class="app-button-primary sm:col-span-2 lg:col-span-4">Link parent account</button>
+                                </div>
                             </form>
-                        </section>
-                        @endif
-
-                    </section>
                 @endif
             </div>
         </div>
@@ -1030,62 +1084,10 @@
     @if (auth()->user()->canManageChildren())
         <script>
             (() => {
-                const tabsRoot = document.querySelector('[data-child-tabs]');
-                if (!tabsRoot) return;
-
-                const buttons = tabsRoot.querySelectorAll('[data-tab-button]');
-                // Tab panels share the page layout with the controls, so query them
-                // from the document rather than relying on DOM nesting.
-                const panels = document.querySelectorAll('[data-tab-panel]');
-                const activeClasses = ['bg-teal-600', 'text-white', 'shadow-sm', 'shadow-teal-900/20'];
-                const inactiveClasses = ['bg-white', 'text-slate-700', 'ring-1', 'ring-slate-200', 'hover:bg-slate-50', 'dark:bg-zinc-900', 'dark:text-zinc-200', 'dark:ring-zinc-800', 'dark:hover:bg-zinc-800'];
-
-                const setActiveTab = (tabName) => {
-                    buttons.forEach((button) => {
-                        const isActive = button.dataset.tabTarget === tabName;
-                        button.setAttribute('aria-selected', isActive ? 'true' : 'false');
-                        button.classList.toggle('bg-teal-600', isActive);
-                        button.classList.toggle('text-white', isActive);
-                        button.classList.toggle('shadow-sm', isActive);
-                        button.classList.toggle('shadow-teal-900/20', isActive);
-                        button.classList.toggle('bg-white', !isActive);
-                        button.classList.toggle('text-slate-700', !isActive);
-                        button.classList.toggle('ring-1', !isActive);
-                        button.classList.toggle('ring-slate-200', !isActive);
-                        button.classList.toggle('hover:bg-slate-50', !isActive);
-                        button.classList.toggle('dark:bg-zinc-900', !isActive);
-                        button.classList.toggle('dark:text-zinc-200', !isActive);
-                        button.classList.toggle('dark:ring-zinc-800', !isActive);
-                        button.classList.toggle('dark:hover:bg-zinc-800', !isActive);
-                    });
-
-                    panels.forEach((panel) => {
-                        panel.classList.toggle('hidden', panel.dataset.tabPanel !== tabName);
-                    });
-                };
-
-                buttons.forEach((button) => {
-                    inactiveClasses.forEach((className) => button.classList.add(className));
-                    activeClasses.forEach((className) => button.classList.remove(className));
-                    button.addEventListener('click', () => setActiveTab(button.dataset.tabTarget));
-                });
-
-                setActiveTab(tabsRoot.dataset.activeTab);
-            })();
-        </script>
-    @endif
-
-    @if (auth()->user()->canManageChildren())
-        <script>
-            (() => {
                 const form = document.querySelector('form[action="{{ route('children.vaccinations.store', $child) }}"]');
                 if (!form) return;
 
                 const queueKey = 'offline-vaccination-queue-{{ $child->id }}';
-                const notice = document.createElement('p');
-                notice.className = 'text-sm text-slate-600 dark:text-zinc-300 sm:col-span-2 lg:col-span-4';
-                notice.textContent = 'Offline queue ready. If you lose connection, nurse entries are saved in this device and synced when online.';
-                form.prepend(notice);
 
                 const syncQueued = async () => {
                     const queued = JSON.parse(localStorage.getItem(queueKey) || '[]');

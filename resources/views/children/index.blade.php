@@ -55,7 +55,59 @@
                 @endforelse
             </div>
         @else
-        <div class="app-card overflow-visible">
+        <div class="grid gap-3 md:hidden">
+            @forelse ($children as $child)
+                <article class="app-card p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="size-12 shrink-0 overflow-hidden rounded-full bg-teal-100 ring-1 ring-teal-200 dark:bg-teal-950 dark:ring-teal-800">
+                            @if ($child->photo_path)
+                                <img src="{{ route('children.photo', $child) }}" alt="Photo of {{ $child->full_name }}" class="size-full object-cover">
+                            @else
+                                <div class="flex size-full items-center justify-center text-sm font-semibold text-teal-700 dark:text-teal-300" aria-label="No photo available for {{ $child->full_name }}">
+                                    {{ str($child->first_name)->substr(0, 1) }}{{ str($child->last_name)->substr(0, 1) }}
+                                </div>
+                            @endif
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <a href="{{ route('children.show', $child) }}" class="break-words font-semibold text-teal-700 hover:underline dark:text-teal-300" wire:navigate>{{ $child->full_name }}</a>
+                            <p class="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">{{ ucfirst($child->sex) }} <span aria-hidden="true">·</span> Born {{ $child->birthdate->format('M d, Y') }}</p>
+                        </div>
+                        @if (auth()->user()->canArchiveChildren())
+                            <div class="relative shrink-0" x-data="{ open: false }">
+                                <button type="button" class="inline-flex size-8 items-center justify-center rounded-lg text-lg font-bold leading-none text-zinc-500 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-zinc-800 dark:hover:text-white" @click="open = !open" :aria-expanded="open.toString()" aria-label="Actions for {{ $child->full_name }}">•••</button>
+                                <div x-show="open" x-cloak @click.outside="open = false" class="absolute right-0 top-9 z-10 min-w-36 rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                                    <a href="{{ route('children.show', $child) }}" class="block rounded-md px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800" wire:navigate>View profile</a>
+                                    <button type="button" class="block w-full rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40" @click="archiveAction = @js(route('children.archive', $child->id)); archiveName = @js($child->full_name); archiveOpen = true; open = false">Archive</button>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+
+                    <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-slate-100 pt-3 text-sm dark:border-zinc-800">
+                        <div>
+                            <dt class="text-xs text-slate-500 dark:text-zinc-400">Age</dt>
+                            <dd class="mt-0.5 font-medium text-slate-800 dark:text-zinc-100">{{ $child->ageLabel() }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-slate-500 dark:text-zinc-400">Barangay</dt>
+                            <dd class="mt-0.5 break-words font-medium text-slate-800 dark:text-zinc-100">{{ $child->barangay->name }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-slate-500 dark:text-zinc-400">Records</dt>
+                            <dd class="mt-0.5 font-medium text-slate-800 dark:text-zinc-100">{{ $child->vaccinations->count() }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-slate-500 dark:text-zinc-400">Completed doses</dt>
+                            <dd class="mt-0.5 font-medium text-emerald-700 dark:text-emerald-300">{{ $child->completed_doses_count }} of {{ $child->total_doses_count }}</dd>
+                        </div>
+                    </dl>
+                </article>
+            @empty
+                <div class="app-card p-6 text-center text-sm text-zinc-500">{{ $nameSearch !== '' ? 'No child profiles match your search.' : ($selectedVaccineTypeId ? 'No child profiles match the selected vaccination filter.' : 'No child profiles found.') }}</div>
+            @endforelse
+        </div>
+
+        <div class="app-card hidden overflow-x-auto md:block">
             <table class="app-table">
                 <thead>
                     <tr>

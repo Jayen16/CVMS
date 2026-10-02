@@ -5,7 +5,7 @@
         </div>
     @endif
 
-    @if ($role !== 'parent')
+    @if ($role !== 'parent' && $role !== 'nurse')
     <div class="page-heading">
         <div>
             <p class="eyebrow">{{ strtoupper(str_replace('_', ' ', $role)) }}</p>
@@ -14,23 +14,13 @@
         </div>
 
         <div class="flex flex-wrap gap-2">
-            @if (auth()->user()->isNurse())
-                @if (auth()->user()->canViewChildrenRegistry())
-                    <a href="{{ route('children.index') }}" class="app-button-secondary" wire:navigate>Children</a>
-                @endif
-                @if (auth()->user()->canViewVerificationQueue())
-                    <a href="{{ route('verification-queue.index') }}" class="app-button-secondary" wire:navigate>Verification queue</a>
-                @endif
-            @endif
             @if (auth()->user()->isAdmin())
                 <a href="{{ route('sync.index') }}" class="app-button-secondary inline-flex items-center gap-2" wire:navigate>
                     <flux:icon.arrow-path class="size-4" />
                     <span>Sync data</span>
                 </a>
             @endif
-            @if (auth()->user()->isNurse())
-                <a href="{{ route('children.create') }}" class="app-button-primary" wire:navigate>New child</a>
-            @elseif (auth()->user()->canManageBarangayStaff())
+            @if (auth()->user()->canManageBarangayStaff())
                 <a href="{{ route(auth()->user()->canManageBarangayAdmins() ? 'municipal-admins.index' : 'nurses.index') }}" class="app-button-primary" wire:navigate>{{ auth()->user()->canManageBarangayAdmins() ? 'Manage barangay admins' : 'Manage nurses' }}</a>
             @endif
         </div>
@@ -292,12 +282,12 @@
     @else
         <section class="dashboard-hero">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div><p class="eyebrow">Nurse workspace · {{ $stats['barangay'] }}</p><h2 class="mt-1 text-xl font-bold text-slate-950 dark:text-white">Good afternoon, {{ auth()->user()->name }}! 👋</h2><p class="mt-1 max-w-xl text-sm leading-6 text-slate-600 dark:text-zinc-300">Manage child profiles, record vaccinations, and review parent submissions from your barangay.</p></div>
+                <div><p class="eyebrow">Nurse workspace · {{ $stats['barangay'] }}</p><h2 class="mt-1 text-xl font-bold text-slate-950 dark:text-white">Hello, {{ auth()->user()->name }}! 👋</h2><p class="mt-1 max-w-xl text-sm leading-6 text-slate-600 dark:text-zinc-300">Manage child profiles, record vaccinations, and review parent submissions from your barangay.</p></div>
                 <a href="{{ route('children.create') }}" class="app-button-primary shrink-0" wire:navigate><flux:icon.plus class="mr-2 size-4" />Add child</a>
             </div>
         </section>
 
-        <section class="dashboard-stat-grid">
+        <section class="dashboard-stat-grid parent-dashboard-stats">
             <x-stat-card label="Children" :value="$stats['children']" :href="auth()->user()->canViewChildrenRegistry() ? route('children.index') : null" />
             <x-stat-card label="Vaccination records" :value="$stats['vaccinations']" :href="auth()->user()->canViewOversight() ? route('reports.index') : null" />
             <x-stat-card label="Pending verification" :value="$stats['pending']" :href="auth()->user()->canViewVerificationQueue() ? route('verification-queue.index') : null" />
@@ -306,27 +296,56 @@
 
         <section>
             <div class="dashboard-section-title"><h2>Quick actions</h2></div>
-            <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <a href="{{ route('children.create') }}" class="dashboard-action-tile" wire:navigate><flux:icon.user-plus class="size-6 text-teal-600" />Add child</a>
-                <a href="{{ route('verification-queue.index') }}" class="dashboard-action-tile" wire:navigate><flux:icon.clipboard-document-check class="size-6 text-amber-500" />Review records</a>
-                <a href="{{ route('vaccine-schedules.index') }}" class="dashboard-action-tile" wire:navigate><flux:icon.calendar-days class="size-6 text-sky-600" />View schedule</a>
+                <a href="{{ route('verification-queue.index') }}" class="dashboard-action-tile" wire:navigate><flux:icon.clipboard-document-check class="size-6 text-amber-500" />Verify vaccination</a>
                 <a href="{{ route('vaccine-inventory.index') }}" class="dashboard-action-tile" wire:navigate><flux:icon.archive-box class="size-6 text-indigo-500" />Inventory</a>
             </div>
         </section>
 
-        <div class="grid gap-4 lg:grid-cols-2">
-            <x-dashboard-bar-chart title="Children by age" subtitle="Age distribution of children in your barangay." :data="$ageChart" />
-            <x-dashboard-pie-chart title="Children by sex" subtitle="Sex distribution of children in your barangay." :data="$sexChart" />
-        </div>
+        <div
+            x-data="{
+                current: 0,
+                count: 6,
+                next() { this.current = (this.current + 1) % this.count },
+                previous() { this.current = (this.current - 1 + this.count) % this.count },
+            }"
+            class="nurse-chart-carousel"
+        >
+            <div class="nurse-chart-carousel__track">
+                <div class="nurse-chart-carousel__slide" :class="{ 'is-active': current === 0 }">
+                    <x-dashboard-bar-chart title="Children by age" subtitle="Age distribution of children in your barangay." :data="$ageChart" />
+                </div>
+                <div class="nurse-chart-carousel__slide" :class="{ 'is-active': current === 1 }">
+                    <x-dashboard-pie-chart title="Children by sex" subtitle="Sex distribution of children in your barangay." :data="$sexChart" />
+                </div>
+                <div class="nurse-chart-carousel__slide" :class="{ 'is-active': current === 2 }">
+                    <x-dashboard-bar-chart title="Available vaccine stock" subtitle="Available doses by vaccine type in your barangay." orientation="horizontal" :data="$stockChart" />
+                </div>
+                <div class="nurse-chart-carousel__slide" :class="{ 'is-active': current === 3 }">
+                    <x-dashboard-bar-chart title="Vaccination activity" subtitle="Administered records over the last six months in your barangay." :data="$monthlyVaccinationChart" />
+                </div>
+                <div class="nurse-chart-carousel__slide" :class="{ 'is-active': current === 4 }">
+                    <x-dashboard-bar-chart title="Immunization progress" subtitle="Children grouped by their next recommended action." orientation="horizontal" :data="$immunizationStatusChart" />
+                </div>
+                <div class="nurse-chart-carousel__slide" :class="{ 'is-active': current === 5 }">
+                    <x-dashboard-bar-chart title="Verification status" subtitle="Records in your barangay by review status." :data="$statusChart" />
+                </div>
+            </div>
 
-        <div class="grid gap-4 lg:grid-cols-2">
-            <x-dashboard-bar-chart title="Available vaccine stock" subtitle="Available doses by vaccine type in your barangay." orientation="horizontal" :data="$stockChart" />
-            <x-dashboard-bar-chart title="Vaccination activity" subtitle="Administered records over the last six months in your barangay." :data="$monthlyVaccinationChart" />
-        </div>
-
-        <div class="grid gap-4 lg:grid-cols-2">
-            <x-dashboard-bar-chart title="Immunization progress" subtitle="Children grouped by their next recommended action." orientation="horizontal" :data="$immunizationStatusChart" />
-            <x-dashboard-bar-chart title="Verification status" subtitle="Records in your barangay by review status." :data="$statusChart" />
+            <div class="nurse-chart-carousel__controls lg:hidden">
+                <button type="button" class="app-button-secondary" x-on:click="previous" aria-label="Show previous chart">
+                    <span aria-hidden="true">←</span>
+                    <span>Previous</span>
+                </button>
+                <span class="text-xs font-medium text-slate-500 dark:text-zinc-400" aria-live="polite">
+                    Chart <span x-text="current + 1"></span> of <span x-text="count"></span>
+                </span>
+                <button type="button" class="app-button-secondary" x-on:click="next" aria-label="Show next chart">
+                    <span>Next</span>
+                    <span aria-hidden="true">→</span>
+                </button>
+            </div>
         </div>
 
         <section class="app-card">

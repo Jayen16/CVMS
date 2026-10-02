@@ -99,7 +99,7 @@
                                 {{ __('Schedule monitoring') }}
                             </flux:sidebar.item>
                             <flux:sidebar.item icon="chart-bar" :href="route('predictive-analytics.index')" :current="request()->routeIs('predictive-analytics.*')" wire:navigate>
-                                {{ __('Vaccine Demand Forecast') }}
+                                {{ __('Demand Forecast') }}
                             </flux:sidebar.item>
                         @endif
                         @if (auth()->user()->canViewOversight())
