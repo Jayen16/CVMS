@@ -836,6 +836,11 @@
                         <p class="py-4 text-sm text-slate-500">No schedule entries are available for this child.</p>
                     @endforelse
                 </div>
+                <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs dark:border-zinc-800">
+                    <button type="button" wire:click="previousUpcomingPage" wire:loading.attr="disabled" @disabled($upcomingPage <= 1) class="font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-300">Previous</button>
+                    <span class="text-slate-500 dark:text-zinc-400">Page {{ $upcomingPage }} of {{ $upcomingPages }}</span>
+                    <button type="button" wire:click="nextUpcomingPage" wire:loading.attr="disabled" @disabled($upcomingPage >= $upcomingPages) class="font-semibold text-teal-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-teal-300">Next</button>
+                </div>
                 @if ($overdueScheduleItems->isNotEmpty())
                     <button type="button" class="mt-4 flex w-full items-center justify-between rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 dark:bg-rose-950/30 dark:text-rose-300" @click="showOverdue = !showOverdue">
                         <span x-text="showOverdue ? 'Hide Overdue' : 'Show Overdue'">Show Overdue</span>
@@ -849,6 +854,13 @@
                                 <span class="status-pill shrink-0 bg-rose-100 text-[10px] text-rose-700">Overdue</span>
                             </div>
                         @endforeach
+                        @if ($overduePages > 1)
+                            <div class="flex items-center justify-between gap-3 border-t border-rose-100 py-3 text-xs dark:border-rose-900/40">
+                                <button type="button" wire:click="previousOverduePage" wire:loading.attr="disabled" @disabled($overduePage <= 1) class="font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-rose-300">Previous</button>
+                                <span class="text-rose-600 dark:text-rose-300">Page {{ $overduePage }} of {{ $overduePages }}</span>
+                                <button type="button" wire:click="nextOverduePage" wire:loading.attr="disabled" @disabled($overduePage >= $overduePages) class="font-semibold text-rose-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-rose-300">Next</button>
+                            </div>
+                        @endif
                     </div>
                 @endif
                 </div>

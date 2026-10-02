@@ -29,6 +29,12 @@ class ChildShowPage extends Component
     #[Url]
     public ?string $selectedScheduleDate = null;
 
+    #[Url]
+    public int $upcomingPage = 1;
+
+    #[Url]
+    public int $overduePage = 1;
+
     public function mount(ChildProfile $child): void
     {
         $this->child = $child;
@@ -78,13 +84,19 @@ class ChildShowPage extends Component
             }
         }
 
-        $upcomingScheduleItems = collect($scheduleItems)
+        $upcomingAllItems = collect($scheduleItems)
             ->filter(fn (array $item): bool => $item['date']->greaterThanOrEqualTo(today()->subMonths(2)))
-            ->take(8)
             ->values();
-        $overdueScheduleItems = collect($scheduleItems)
+        $upcomingPages = max(1, (int) ceil($upcomingAllItems->count() / 4));
+        $this->upcomingPage = max(1, min($this->upcomingPage, $upcomingPages));
+        $upcomingScheduleItems = $upcomingAllItems->forPage($this->upcomingPage, 4)->values();
+
+        $overdueAllItems = collect($scheduleItems)
             ->filter(fn (array $item): bool => $item['status'] === 'overdue')
             ->values();
+        $overduePages = max(1, (int) ceil($overdueAllItems->count() / 4));
+        $this->overduePage = max(1, min($this->overduePage, $overduePages));
+        $overdueScheduleItems = $overdueAllItems->forPage($this->overduePage, 4)->values();
         $selectedScheduleItems = collect();
 
         if ($selectedScheduleDate !== null) {
@@ -114,7 +126,11 @@ class ChildShowPage extends Component
             'scheduleMonth' => $scheduleMonth,
             'scheduleItems' => $scheduleItems,
             'upcomingScheduleItems' => $upcomingScheduleItems,
+            'upcomingPage' => $this->upcomingPage,
+            'upcomingPages' => $upcomingPages,
             'overdueScheduleItems' => $overdueScheduleItems,
+            'overduePage' => $this->overduePage,
+            'overduePages' => $overduePages,
             'selectedScheduleItems' => $selectedScheduleItems,
             'selectedScheduleDateValue' => $selectedScheduleDate,
         ])->layout('layouts.app', [
@@ -131,6 +147,28 @@ class ChildShowPage extends Component
     public function updatedCalendarMonth(): void
     {
         $this->selectedScheduleDate = null;
+        $this->upcomingPage = 1;
+        $this->overduePage = 1;
+    }
+
+    public function previousUpcomingPage(): void
+    {
+        $this->upcomingPage = max(1, $this->upcomingPage - 1);
+    }
+
+    public function nextUpcomingPage(): void
+    {
+        $this->upcomingPage++;
+    }
+
+    public function previousOverduePage(): void
+    {
+        $this->overduePage = max(1, $this->overduePage - 1);
+    }
+
+    public function nextOverduePage(): void
+    {
+        $this->overduePage++;
     }
 
     public function selectScheduleDate(string $date): void

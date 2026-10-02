@@ -210,7 +210,7 @@
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <p class="eyebrow">Parent account</p>
-                    <h2 class="mt-1 text-xl font-bold text-slate-950 dark:text-white">Good afternoon, {{ auth()->user()->name }}! 👋</h2>
+                    <h2 class="mt-1 text-xl font-bold text-slate-950 dark:text-white">Hello, {{ auth()->user()->name }}! 👋</h2>
                     <p class="mt-1 max-w-xl text-sm leading-6 text-slate-600 dark:text-zinc-300">Keep track of your children’s vaccination records, upcoming doses, and submitted records.</p>
                 </div>
             </div>
@@ -251,11 +251,14 @@
 
         <section>
             <div class="dashboard-section-title"><h2>Quick actions</h2></div>
-            <div class="app-card mt-2 p-4"><div class="grid grid-cols-2 gap-3">
+            <div class="app-card mt-2 p-4"><div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 @if (auth()->user()->canViewChildrenRegistry())
                     <a href="{{ route('children.index') }}" class="dashboard-action-tile" wire:navigate><flux:icon.users class="size-6 text-teal-600" />View children</a>
                 @endif
                 <a href="{{ route('notifications.index') }}" class="dashboard-action-tile" wire:navigate><flux:icon.bell class="size-6 text-amber-500" />Notifications</a>
+                @if (auth()->user()->isParent())
+                    <a href="{{ route('family-schedule.index') }}" class="dashboard-action-tile" wire:navigate><flux:icon.calendar-days class="size-6 text-sky-600" />Schedule</a>
+                @endif
             </div></div>
         </section>
 
