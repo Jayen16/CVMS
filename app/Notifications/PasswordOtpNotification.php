@@ -16,11 +16,21 @@ class PasswordOtpNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
+        $appName = (string) config('app.name');
+        $rhuName = (string) config('rhu.name');
+        $shortName = (string) config('rhu.short_name');
+        $systemName = (string) config('rhu.system_name');
+
         return (new MailMessage)
-            ->subject($this->activation ? 'Your CVMS account activation code' : 'Your CVMS password reset code')
-            ->greeting('Hello '.$notifiable->name.',')
-            ->line($this->activation ? 'Use this code to activate your CVMS account:' : 'Use this code to reset your CVMS password:')
-            ->line($this->code)
-            ->line('This code expires in 10 minutes. If you did not request this, you can ignore this email.');
+            ->subject($this->activation ? "Your {$shortName} account activation code" : "Your {$shortName} password reset code")
+            ->view('mail.account-activation', [
+                'appName' => $appName,
+                'code' => $this->code,
+                'recipientName' => $notifiable->name,
+                'rhuName' => $rhuName,
+                'shortName' => $shortName,
+                'systemName' => $systemName,
+                'mode' => $this->activation ? 'code' : 'reset-code',
+            ]);
     }
 }
