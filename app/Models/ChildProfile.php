@@ -26,6 +26,7 @@ class ChildProfile extends Model
         'guardian_name',
         'guardian_contact',
         'address',
+        'photo_path',
         'vaccine_card_token',
         'sync_uuid',
         'facility_uuid',

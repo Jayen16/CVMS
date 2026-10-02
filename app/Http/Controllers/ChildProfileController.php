@@ -13,8 +13,10 @@ use App\Services\OfflineSyncService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ChildProfileController extends Controller
 {
@@ -153,6 +155,39 @@ class ChildProfileController extends Controller
         $offlineSync->queueUpsert($child->fresh()->load(['barangay', 'creator']));
 
         return to_route('children.show', $child)->with('status', 'Child profile updated.');
+    }
+
+    public function uploadPhoto(Request $request, ChildProfile $child): RedirectResponse
+    {
+        $this->authorizeChildPhotoUpload($child);
+
+        $validated = $request->validate([
+            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $disk = Storage::disk('local');
+        $oldPhoto = $child->photo_path;
+        $photoPath = $validated['photo']->store('child-photos', 'local');
+
+        $child->update(['photo_path' => $photoPath]);
+
+        if (filled($oldPhoto)) {
+            $disk->delete($oldPhoto);
+        }
+
+        return to_route('children.show', $child)->with('status', 'Child profile photo updated.');
+    }
+
+    public function photo(ChildProfile $child): BinaryFileResponse
+    {
+        abort_unless(auth()->user()->canViewChildrenRegistry(), 403);
+        $this->authorizeChild($child);
+        abort_unless(filled($child->photo_path), 404);
+
+        $disk = Storage::disk('local');
+        abort_unless($disk->exists($child->photo_path), 404);
+
+        return response()->file($disk->path($child->photo_path));
     }
 
     public function transfer(Request $request, ChildProfile $child, OfflineSyncService $offlineSync): RedirectResponse
@@ -305,6 +340,15 @@ class ChildProfileController extends Controller
         abort_unless(auth()->user()->canManageChildren(), 403);
         abort_if(auth()->user()->barangay_id === null, 403);
         abort_if($child->barangay_id !== auth()->user()->barangay_id, 403);
+    }
+
+    private function authorizeChildPhotoUpload(ChildProfile $child): void
+    {
+        $user = auth()->user();
+
+        abort_unless($user->isNurse() || $user->isParent(), 403);
+        abort_unless($user->canViewChildrenRegistry(), 403);
+        $this->authorizeChild($child);
     }
 
     private function authorizeChildTransfer(ChildProfile $child): void

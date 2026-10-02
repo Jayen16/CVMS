@@ -103,8 +103,10 @@ Route::middleware(['auth', 'verified', 'parent.privacy'])->group(function () {
     Route::get('children/create', ChildCreatePage::class)->name('children.create');
     Route::post('children', [ChildProfileController::class, 'store'])->name('children.store');
     Route::get('children/{child}', ChildShowPage::class)->name('children.show');
+    Route::get('children/{child}/photo', [ChildProfileController::class, 'photo'])->name('children.photo');
     Route::get('children/{child}/edit', ChildEditPage::class)->name('children.edit');
     Route::put('children/{child}', [ChildProfileController::class, 'update'])->name('children.update');
+    Route::post('children/{child}/photo', [ChildProfileController::class, 'uploadPhoto'])->name('children.photo.upload');
     Route::post('children/{child}/transfer', [ChildProfileController::class, 'transfer'])->name('children.transfer');
     Route::post('children/{childId}/archive', [ChildProfileController::class, 'archive'])->name('children.archive');
     Route::post('children/{childId}/restore', [ChildProfileController::class, 'restore'])->name('children.restore');

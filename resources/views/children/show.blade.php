@@ -45,6 +45,7 @@
             archiveOpen: false,
             archiveAction: '',
             archiveName: @js($child->full_name),
+            photoEditorOpen: false,
             showConfirmModal(actionLabel, message, form) {
                 this.confirmActionLabel = actionLabel;
                 this.confirmMessage = message;
@@ -96,16 +97,8 @@
         </div>
 
         <div class="page-heading">
-            <div>
-                <a href="{{ route('children.index') }}" class="text-sm text-teal-700 hover:underline dark:text-teal-300">Back to children</a>
-                <h1 class="page-title mt-2">{{ $child->full_name }}</h1>
-                <div class="mt-2 flex flex-wrap gap-2 text-sm">
-                    <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">{{ ucfirst($child->sex) }}</span>
-                    <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">{{ $child->ageLabel() }}</span>
-                    <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">{{ $child->barangay->name }}</span>
-                </div>
-            </div>
-            <div class="flex flex-wrap gap-2">
+            <a href="{{ route('children.index') }}" class="text-sm text-teal-700 hover:underline dark:text-teal-300">Back to children</a>
+            <div class="flex w-full flex-wrap gap-2 sm:w-auto">
                 @if (auth()->user()->isParent())
                     <form
                         method="POST"
@@ -141,6 +134,40 @@
                 </form>
             </div>
         </div>
+
+        <section class="app-panel flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex min-w-0 items-center gap-4">
+                <div class="size-24 shrink-0 overflow-hidden rounded-full bg-teal-100 ring-2 ring-teal-200 dark:bg-teal-950 dark:ring-teal-800">
+                    @if ($child->photo_path)
+                        <img src="{{ route('children.photo', $child) }}" alt="Photo of {{ $child->full_name }}" class="size-full object-cover">
+                    @else
+                        <div class="flex size-full items-center justify-center text-3xl font-semibold text-teal-700 dark:text-teal-300">{{ str($child->first_name)->substr(0, 1) }}{{ str($child->last_name)->substr(0, 1) }}</div>
+                    @endif
+                </div>
+                <div class="min-w-0">
+                    <p class="eyebrow">Child profile photo</p>
+                    <h1 class="page-title mt-1">{{ $child->full_name }}</h1>
+                    <div class="mt-2 flex flex-wrap gap-2 text-sm">
+                        <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">{{ ucfirst($child->sex) }}</span>
+                        <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">{{ $child->ageLabel() }}</span>
+                        <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">{{ $child->barangay->name }}</span>
+                    </div>
+                </div>
+            </div>
+            @if (auth()->user()->isNurse() || auth()->user()->isParent())
+                <div class="w-full text-sm lg:w-auto">
+                    <button type="button" class="font-medium text-teal-700 underline-offset-4 hover:underline dark:text-teal-300" @click="photoEditorOpen = true">
+                        Change photo
+                    </button>
+                    <form x-show="photoEditorOpen" x-cloak method="POST" action="{{ route('children.photo.upload', $child) }}" enctype="multipart/form-data" class="mt-2 flex flex-wrap items-center gap-2">
+                        @csrf
+                        <input x-ref="photoInput" type="file" name="photo" accept=".jpg,.jpeg,.png,.webp" required class="app-input w-full !py-1.5 text-sm lg:w-auto">
+                        <button class="font-semibold text-teal-700 underline-offset-4 hover:underline dark:text-teal-300">Save</button>
+                        <button type="button" class="font-semibold text-slate-500 underline-offset-4 hover:text-slate-700 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200" @click="photoEditorOpen = false; $refs.photoInput.value = ''">Remove</button>
+                    </form>
+                </div>
+            @endif
+        </section>
 
         <section class="overflow-hidden rounded-lg border border-teal-200 bg-white shadow-sm shadow-teal-900/10 dark:border-teal-900 dark:bg-zinc-900">
             <div class="border-b border-teal-100 bg-teal-50 px-5 py-4 dark:border-teal-900 dark:bg-teal-950">
