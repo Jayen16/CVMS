@@ -10,6 +10,7 @@
             verificationActionLabel: 'Verify',
             verificationSubject: '',
             verificationRemark: '',
+            profilePhotoOpen: false,
             proofModalOpen: false,
             proofModalImages: [],
             proofModalIndex: 0,
@@ -137,13 +138,15 @@
 
         <section class="app-panel flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
             <div class="flex min-w-0 items-center gap-4">
-                <div class="size-24 shrink-0 overflow-hidden rounded-full bg-teal-100 ring-2 ring-teal-200 dark:bg-teal-950 dark:ring-teal-800">
-                    @if ($child->photo_path)
+                @if ($child->photo_path)
+                    <button type="button" class="size-24 shrink-0 overflow-hidden rounded-full bg-teal-100 ring-2 ring-teal-200 transition hover:ring-4 focus:outline-none focus:ring-4 focus:ring-teal-300 dark:bg-teal-950 dark:ring-teal-800 dark:focus:ring-teal-700" @click="profilePhotoOpen = true" aria-label="View larger photo of {{ $child->full_name }}">
                         <img src="{{ route('children.photo', $child) }}" alt="Photo of {{ $child->full_name }}" class="size-full object-cover">
-                    @else
+                    </button>
+                @else
+                    <div class="size-24 shrink-0 overflow-hidden rounded-full bg-teal-100 ring-2 ring-teal-200 dark:bg-teal-950 dark:ring-teal-800">
                         <div class="flex size-full items-center justify-center text-3xl font-semibold text-teal-700 dark:text-teal-300">{{ str($child->first_name)->substr(0, 1) }}{{ str($child->last_name)->substr(0, 1) }}</div>
-                    @endif
-                </div>
+                    </div>
+                @endif
                 <div class="min-w-0">
                     <p class="eyebrow">Child profile photo</p>
                     <h1 class="page-title mt-1">{{ $child->full_name }}</h1>
@@ -711,6 +714,30 @@
             @csrf
             <input type="hidden" name="remarks" x-model="verificationRemark">
         </form>
+
+        <div
+            x-cloak
+            x-show="profilePhotoOpen"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4"
+            x-transition.opacity
+            @keydown.escape.window="profilePhotoOpen = false"
+        >
+            <div
+                @click.outside="profilePhotoOpen = false"
+                class="w-full max-w-3xl rounded-2xl bg-white p-4 shadow-xl dark:bg-zinc-900 sm:p-6"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="profile-photo-modal-title"
+            >
+                <div class="flex items-center justify-between gap-3">
+                    <h2 id="profile-photo-modal-title" class="text-lg font-semibold text-slate-950 dark:text-white">{{ $child->full_name }} photo</h2>
+                    <button type="button" class="app-button-secondary" @click="profilePhotoOpen = false">Close</button>
+                </div>
+                <div class="mt-4 flex min-h-96 items-center justify-center rounded-lg bg-zinc-950 p-3">
+                    <img src="{{ route('children.photo', $child) }}" alt="Photo of {{ $child->full_name }}" class="max-h-[70vh] max-w-full object-contain">
+                </div>
+            </div>
+        </div>
 
         <div
             x-cloak

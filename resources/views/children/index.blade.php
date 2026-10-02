@@ -50,8 +50,21 @@
                     @forelse ($children as $child)
                         <tr class="app-table-row">
                             <td>
-                                <a href="{{ route('children.show', $child) }}" class="font-semibold text-teal-700 hover:underline dark:text-teal-300">{{ $child->full_name }}</a>
-                                <div class="text-xs text-zinc-500">{{ ucfirst($child->sex) }} | Born {{ $child->birthdate->format('M d, Y') }}</div>
+                                <div class="flex items-center gap-3">
+                                    <div class="size-11 shrink-0 overflow-hidden rounded-full bg-teal-100 ring-1 ring-teal-200 dark:bg-teal-950 dark:ring-teal-800">
+                                        @if ($child->photo_path)
+                                            <img src="{{ route('children.photo', $child) }}" alt="Photo of {{ $child->full_name }}" class="size-full object-cover">
+                                        @else
+                                            <div class="flex size-full items-center justify-center text-sm font-semibold text-teal-700 dark:text-teal-300" aria-label="No photo available for {{ $child->full_name }}">
+                                                {{ str($child->first_name)->substr(0, 1) }}{{ str($child->last_name)->substr(0, 1) }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div class="min-w-0">
+                                        <a href="{{ route('children.show', $child) }}" class="font-semibold text-teal-700 hover:underline dark:text-teal-300">{{ $child->full_name }}</a>
+                                        <div class="text-xs text-zinc-500">{{ ucfirst($child->sex) }} | Born {{ $child->birthdate->format('M d, Y') }}</div>
+                                    </div>
+                                </div>
                             </td>
                             <td>{{ $child->ageLabel() }}</td>
                             <td>{{ $child->barangay->name }}</td>
