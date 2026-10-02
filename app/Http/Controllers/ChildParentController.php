@@ -68,6 +68,7 @@ class ChildParentController extends Controller
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'],
+                'login_channel' => filled($validated['email']) ? 'email' : 'sms',
                 'password' => Str::password(32),
                 'role' => 'parent',
                 'roles' => ['parent'],
@@ -86,6 +87,7 @@ class ChildParentController extends Controller
                 'name' => $parent->name ?: $validated['name'],
                 'email' => $parent->email ?: $validated['email'],
                 'phone' => $parent->phone ?: $validated['phone'],
+                'login_channel' => $parent->login_channel ?: (filled($parent->email ?: $validated['email']) ? 'email' : 'sms'),
             ]);
 
             if ($parent->isDirty(['name', 'email', 'phone'])) {
@@ -115,16 +117,16 @@ class ChildParentController extends Controller
 
         if ($setupChannel !== null && ! $this->usesCentralParentActivation()) {
             try {
-                $recovery->send($parent, $setupChannel);
+                $recovery->sendActivation($parent, $setupChannel);
             } catch (Throwable $exception) {
                 report($exception);
 
                 return to_route('children.show', $child)
-                    ->with('toast_error', 'Parent account linked, but the password setup link could not be sent by '.strtoupper($setupChannel).'. '.$exception->getMessage());
+                    ->with('toast_error', 'Parent account linked, but the activation instructions could not be sent by '.strtoupper($setupChannel).'. '.$exception->getMessage());
             }
 
             $status = $setupChannel === 'email'
-                ? 'Parent account linked to child profile. A password setup link was sent by email.'
+                ? 'Parent account linked to child profile. Activation instructions were sent by email.'
                 : 'Parent account linked to child profile. Activation instructions were sent successfully by SMS.';
         } elseif ($setupChannel !== null) {
             $status = 'Parent account linked. The activation email will be sent after the child record is synchronized to the central system.';
@@ -140,17 +142,18 @@ class ChildParentController extends Controller
         abort_unless($parent->isParent(), 404);
         abort_unless($child->parents()->whereKey($parent->id)->exists(), 404);
         abort_if($parent->invitation_accepted_at !== null, 422, 'Parent has already configured the account.');
-        $channel = filled($parent->email) ? 'email' : 'sms';
-        app(AccountRecoveryService::class)->send($parent, $channel);
+        $channel = $parent->parentLoginChannel();
+        abort_unless($channel !== null, 422, 'This parent account has no registered login contact.');
+        app(AccountRecoveryService::class)->sendActivation($parent, $channel);
 
         if ($request->expectsJson()) {
             return response()->json(['message' => $channel === 'email'
-                ? 'Password setup link sent again.'
+                ? 'Activation instructions sent again by email.'
                 : 'Activation instructions sent again by SMS.']);
         }
 
         return to_route('children.show', $child)->with('status', $channel === 'email'
-            ? 'Password setup link sent again.'
+            ? 'Activation instructions sent again by email.'
             : 'Activation instructions sent again by SMS.');
     }
 
@@ -205,6 +208,7 @@ class ChildParentController extends Controller
         $this->authorizeChildAccess($child);
         abort_unless($parent->isParent() && $child->parents()->whereKey($parent->id)->exists(), 404);
         $channel = $request->validate(['channel' => ['required', 'in:email,sms']])['channel'];
+        abort_unless($channel === $parent->parentLoginChannel(), 422, 'That reset method is not registered for this parent account.');
         try {
             $recovery->send($parent, $channel);
         } catch (Throwable $exception) {

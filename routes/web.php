@@ -74,7 +74,7 @@ Route::get('/', function () {
 })->name('home');
 Route::get('vaccine-cards/{token}', [VaccineCardController::class, 'validateToken'])->name('vaccine-cards.validate');
 Route::get('forgot-password/phone', [PhonePasswordResetController::class, 'create'])->name('password.phone.request');
-Route::get('activate-account', [PhonePasswordResetController::class, 'activation'])->name('account.activation');
+Route::get('activate', [PhonePasswordResetController::class, 'activation'])->name('account.activation');
 Route::get('create-password/{token}', [PhonePasswordResetController::class, 'showCreatePassword'])->name('password.create');
 Route::post('activate-account/otp', [PhonePasswordResetController::class, 'sendOtp'])->name('account.activation.otp.send');
 Route::post('activate-account/otp/verify', [PhonePasswordResetController::class, 'verifyOtp'])->name('account.activation.otp.verify');

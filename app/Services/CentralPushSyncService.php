@@ -14,7 +14,6 @@ use App\Models\VaccineType;
 use App\Models\SyncStatus;
 use App\Notifications\InAppNotification;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Laravel\Passport\Client;
 
@@ -213,12 +212,14 @@ class CentralPushSyncService
         if ($user === null && (filled($data['email'] ?? null) || filled($data['phone'] ?? null))) {
             $user = User::create([
                 'name' => $data['name'], 'email' => $data['email'], 'phone' => $data['phone'] ?? null,
+                'login_channel' => $data['login_channel'] ?? (filled($data['email'] ?? null) ? 'email' : 'sms'),
                 'password' => Str::password(32), 'role' => 'parent', 'roles' => ['parent'],
                 'is_active' => true, 'invitation_accepted_at' => null,
             ]);
         } elseif ($user !== null) {
             $user->fill([
                 'name' => $data['name'], 'email' => $data['email'] ?? $user->email, 'phone' => $data['phone'] ?? $user->phone,
+                'login_channel' => $data['login_channel'] ?? $user->login_channel,
             ])->saveQuietly();
         }
 
@@ -253,8 +254,7 @@ class CentralPushSyncService
         if (filled($guardian->email) && blank($guardian->invitation_sent_at)) {
             $user = User::query()->find($guardian->user_id);
             if ($user && $user->invitation_accepted_at === null) {
-                $status = Password::sendResetLink(['email' => $user->email]);
-                abort_unless($status === Password::RESET_LINK_SENT, 422, __($status));
+                app(AccountRecoveryService::class)->sendActivation($user, 'email');
                 DB::table('facility_guardians')->where('id', $guardian->id)->update(['invitation_sent_at' => now()]);
             }
         }

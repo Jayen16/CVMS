@@ -120,7 +120,7 @@ class OfflineSyncService
             return;
         }
         $this->queueEvent('guardians', $user->id, User::class, 'updated', [
-            'guardian_uuid' => $user->id, 'name' => $user->name, 'email' => $user->email, 'phone' => $user->phone, 'active' => (bool) $user->is_active,
+            'guardian_uuid' => $user->id, 'name' => $user->name, 'email' => $user->email, 'phone' => $user->phone, 'login_channel' => $user->parentLoginChannel(), 'active' => (bool) $user->is_active,
         ]);
     }
 
