@@ -9,7 +9,7 @@
         </div>
     </div>
 
-    <div class="app-panel grid gap-4 md:grid-cols-5">
+    <div class="app-panel grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         @if (auth()->user()->isSuperAdmin())
             <x-form-field label="Barangay" name="barangay_id" type="select" :options="$barangays->pluck('name', 'id')" :value="$barangay_id" wire:model.live.debounce.400ms="barangay_id" />
         @endif

@@ -388,7 +388,7 @@ select:focus[data-flux-control] {
     }
 
     .nurse-chart-carousel__controls {
-        @apply mt-px mb-3 items-center justify-between gap-2;
+        @apply mt-3 mb-3 items-center justify-between gap-2;
     }
 
     .nurse-chart-carousel__controls .app-button-secondary {
@@ -401,6 +401,26 @@ select:focus[data-flux-control] {
 
     .nurse-chart-carousel__slide {
         @apply min-w-0;
+    }
+
+    .schedule-monitoring-chart-carousel__controls {
+        @apply mt-3 mb-3 flex items-center justify-between gap-2;
+    }
+
+    .schedule-monitoring-chart-carousel__controls .app-button-secondary {
+        @apply min-h-9 px-3 py-2 text-xs;
+    }
+
+    .schedule-monitoring-chart-carousel__track {
+        @apply grid gap-4;
+    }
+
+    .schedule-monitoring-chart-carousel__slide {
+        @apply min-w-0;
+    }
+
+    .schedule-monitoring-chart-carousel__slide:not(.is-active) {
+        display: none;
     }
 
     @media (max-width: 1023px) {

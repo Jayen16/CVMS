@@ -12,7 +12,7 @@
 
 
         @if (! auth()->user()->isParent())
-            <form method="GET" action="{{ route('children.index') }}" class="app-panel flex flex-col gap-3 md:flex-row md:items-end md:justify-between" x-data="{ loading: false }" @submit="loading = true">
+            <form method="GET" action="{{ route('children.index') }}" class="app-panel flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between" x-data="{ loading: false }" @submit="loading = true">
                 <label class="grid flex-1 gap-2 text-sm">
                     <span class="font-medium text-slate-800 dark:text-zinc-100">Search child name</span>
                     <input type="search" name="name" value="{{ $nameSearch }}" class="app-input" placeholder="Search first, middle, or last name..." @input.debounce.500ms="loading = true; $el.form.requestSubmit()">
@@ -55,7 +55,7 @@
                 @endforelse
             </div>
         @else
-        <div class="grid gap-3 md:hidden">
+        <div class="grid gap-3 lg:hidden">
             @forelse ($children as $child)
                 <article class="app-card p-4">
                     <div class="flex items-start gap-3">
@@ -107,7 +107,7 @@
             @endforelse
         </div>
 
-        <div class="app-card hidden overflow-x-auto md:block">
+        <div class="app-card hidden overflow-x-auto lg:block">
             <table class="app-table">
                 <thead>
                     <tr>
