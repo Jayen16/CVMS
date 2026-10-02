@@ -36,11 +36,13 @@ class PhonePasswordResetController extends Controller
 
         $identifier = trim($request->validate(['identifier' => ['required', 'string', 'max:255']])['identifier']);
         $mode = $request->validate(['mode' => ['nullable', 'in:reset,activation']])['mode'] ?? 'reset';
+        $otpTtlMinutes = 10;
         $email = filter_var($identifier, FILTER_VALIDATE_EMAIL) ? strtolower($identifier) : null;
         $lookup = $email ?? User::normalizePhone($identifier);
         $throttleKey = 'password-otp-send:'.hash('sha256', $lookup.'|'.$request->ip());
         $cooldownKey = 'password-otp-cooldown:'.hash('sha256', $lookup.'|'.$request->ip());
         $lockKey = 'password-otp-locked:'.hash('sha256', $lookup);
+        $otpKey = $this->otpKey($lookup);
 
         $returnRoute = $mode === 'activation' ? 'account.activation' : 'password.request';
 
@@ -53,12 +55,32 @@ class PhonePasswordResetController extends Controller
         }
 
         if (Cache::has($cooldownKey)) {
-            return to_route($returnRoute)->with([
-                'otp_sent' => (bool) session('otp_sent'),
-                'otp_identifier' => $identifier,
-                'otp_available_at' => session('otp_available_at'),
-                'toast_error' => 'Please wait 5 minutes before requesting another code.',
-            ]);
+            $challenge = Cache::get($otpKey);
+
+            // The cooldown can outlive the OTP when cache entries expire at
+            // slightly different times. Allow a fresh request in that case;
+            // otherwise the user would be left on the identifier-only form.
+            if ($challenge === null) {
+                Cache::forget($cooldownKey);
+            } else {
+                $availableAt = Cache::get($cooldownKey);
+
+                // Keep the code-entry form available when the user returns to this
+                // page and submits the same identifier during the resend cooldown.
+                $availableAt = is_string($availableAt)
+                    ? $availableAt
+                    : now()->addMinutes($otpTtlMinutes)->toIso8601String();
+
+                return to_route($returnRoute)->with([
+                    'otp_sent' => true,
+                    'otp_identifier' => $identifier,
+                    'otp_available_at' => $availableAt,
+                    'otp_mode' => $mode,
+                    'toast_error' => $mode === 'activation'
+                        ? 'Check your email for the activation code.'
+                        : 'Please wait 5 minutes before requesting another code.',
+                ]);
+            }
         }
         if (Cache::has($lockKey)) {
             return to_route($returnRoute)->with([
@@ -87,9 +109,8 @@ class PhonePasswordResetController extends Controller
         }
 
         $code = (string) random_int(100000, 999999);
-        $key = $this->otpKey($lookup);
         $activation = $user->invitation_accepted_at === null;
-        Cache::put($key, ['user_id' => $user->id, 'code' => Hash::make($code), 'attempts' => 0, 'activation' => $activation, 'mode' => $mode], now()->addMinutes(10));
+        Cache::put($otpKey, ['user_id' => $user->id, 'code' => Hash::make($code), 'attempts' => 0, 'activation' => $activation, 'mode' => $mode], now()->addMinutes(10));
 
         try {
             if ($email !== null) {
@@ -100,9 +121,9 @@ class PhonePasswordResetController extends Controller
                     : "CVMS: Your password reset code is {$code} for login verification. It expires in 10 minutes. Ignore if unauthorized.";
                 $sms->make()->send(User::smsRecipient($lookup), $message);
             }
-            Cache::put($cooldownKey, true, now()->addMinutes(5));
+            Cache::put($cooldownKey, now()->addMinutes($otpTtlMinutes)->toIso8601String(), now()->addMinutes($otpTtlMinutes));
         } catch (\Throwable $exception) {
-            Cache::forget($key);
+            Cache::forget($otpKey);
             report($exception);
 
             return to_route($returnRoute)->with('toast_error', 'The verification code could not be sent. Please try again later.');
@@ -112,7 +133,7 @@ class PhonePasswordResetController extends Controller
             'status' => 'If that account exists, a verification code was sent.',
             'otp_sent' => true,
             'otp_identifier' => $identifier,
-            'otp_available_at' => now()->addMinutes(5)->toIso8601String(),
+            'otp_available_at' => now()->addMinutes($otpTtlMinutes)->toIso8601String(),
             'otp_mode' => $mode,
         ]);
     }

@@ -36,7 +36,7 @@
             <flux:input name="password_confirmation" :label="__('Confirm password')" type="password" required autocomplete="new-password" />
             <flux:button variant="primary" type="submit" class="w-full">{{ __('Activate my account') }}</flux:button>
             <p class="text-center text-sm text-zinc-500">
-                <span x-show="remaining > 0">{{ __('Resend OTP available in') }} <span x-text="Math.floor(remaining / 60) + ':' + String(remaining % 60).padStart(2, '0')"></span></span>
+                <span x-show="remaining > 0">{{ __('New code available after the current code expires in') }} <span x-text="Math.floor(remaining / 60) + ':' + String(remaining % 60).padStart(2, '0')"></span></span>
                 <button x-show="remaining === 0" type="submit" form="resend-activation-otp" class="text-teal-700 hover:underline">{{ __('Resend OTP') }}</button>
             </p>
         </form>
