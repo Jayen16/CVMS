@@ -113,14 +113,9 @@
                                 <!-- Password -->
                                 <div class="flex flex-col gap-2">
                                     <flux:input id="login-password" name="password" :label="__('Password')" type="password" required
-                                        autocomplete="current-password" :placeholder="__('Password')" />
+                                        autocomplete="current-password" :placeholder="__('Password')" viewable />
 
                                     <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-sm">
-                                        <label class="inline-flex items-center gap-2 text-slate-600 dark:text-zinc-300" for="show-login-password">
-                                            <input id="show-login-password" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
-                                            <span>{{ __('Show password') }}</span>
-                                        </label>
-
                                         @if (Route::has('password.request') && !(config('system.instance_type') === 'facility' && config('offline.enabled')))
                                         <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                                             <flux:link class="text-slate-700 dark:text-zinc-300" :href="route('password.request')" wire:navigate>
@@ -150,16 +145,7 @@
         </div>
     </div>
 
-    <script>
-        document.getElementById('show-login-password')?.addEventListener('change', function () {
-            const password = document.getElementById('login-password');
-
-            if (password) {
-                password.type = this.checked ? 'text' : 'password';
-            }
-        });
-    </script>
-
+    @fluxScripts
 </body>
 
 </html>
