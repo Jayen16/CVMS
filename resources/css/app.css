@@ -80,6 +80,12 @@ select:focus[data-flux-control] {
             linear-gradient(145deg, #06101a 0%, #0b1220 50%, #111827 100%);
     }
 
+    @media (min-width: 40rem) and (max-width: 63.999rem) {
+        .rhu-auth-card:has([data-login-page]) {
+            max-width: 36rem;
+        }
+    }
+
     .rhu-auth-showcase {
         @apply rounded-[2rem] border border-emerald-200/70 bg-[linear-gradient(135deg,#065f46_0%,#0f766e_52%,#155e75_100%)] p-8 text-white shadow-[0_24px_80px_rgba(6,95,70,0.28)];
     }
@@ -117,7 +123,7 @@ select:focus[data-flux-control] {
     }
 
     .welcome-login-shell {
-        @apply rounded-[2rem] border border-emerald-200/70 bg-[linear-gradient(160deg,#ffffff_0%,#f0fdf4_35%,#ecfeff_100%)] p-6 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[linear-gradient(160deg,#0f172a_0%,#111827_40%,#0b1220_100%)] sm:p-8;
+        @apply rounded-[1.25rem] border border-emerald-200/70 bg-[linear-gradient(160deg,#ffffff_0%,#f0fdf4_35%,#ecfeff_100%)] p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[linear-gradient(160deg,#0f172a_0%,#111827_40%,#0b1220_100%)] sm:rounded-[2rem] sm:p-6 lg:p-8;
     }
 
     .welcome-login-card {
