@@ -42,14 +42,14 @@
                     </button>
                 </div>
 
-                <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-sm">
+                <div class="relative z-20 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-sm pointer-events-auto">
                     @if (Route::has('password.request') && !(config('system.instance_type') === 'facility' && config('offline.enabled')))
-                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            <flux:link :href="route('password.request')" wire:navigate>
+                        <div class="relative z-20 flex flex-wrap items-center gap-x-2 gap-y-1 pointer-events-auto">
+                            <flux:link class="relative z-20 pointer-events-auto" :href="route('password.request')" wire:navigate>
                                 {{ __('Forgot your password?') }}
                             </flux:link>
                             <span class="text-zinc-400">|</span>
-                            <flux:link :href="route('account.activation')" wire:navigate>
+                            <flux:link class="relative z-20 pointer-events-auto" :href="route('account.activation')" wire:navigate>
                                 {{ __('Activate my account') }}
                             </flux:link>
                         </div>
