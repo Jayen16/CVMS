@@ -44,7 +44,7 @@
                     <select x-show="target === 'barangay'" name="barangay_id" x-model="barangay" :required="target === 'barangay'" :disabled="target !== 'barangay'" class="app-input"><option value="">Select barangay</option><template x-for="item in (locations.flatMap(region => region.provinces).flatMap(province => province.municipalities).find(item => item.id === municipality)?.barangays ?? [])" :key="item.id"><option :value="item.id" x-text="item.name"></option></template></select>
                     </div>
                     <input type="hidden" name="municipality_id" x-model="municipality" :disabled="target !== 'municipality'">
-                    <div class="flex gap-3"><flux:spacer /><flux:modal.close><flux:button type="button" variant="ghost">Cancel</flux:button></flux:modal.close><button type="submit" class="app-button-secondary">Save reassignment</button></div>
+                    <div class="flex gap-3 border-t border-slate-100 pt-4 dark:border-zinc-800"><flux:spacer /><flux:modal.close><flux:button type="button" variant="ghost">Cancel</flux:button></flux:modal.close><button type="submit" class="app-button-secondary !border-slate-300 !bg-white !text-slate-700 hover:!border-slate-400 hover:!bg-slate-50 dark:!border-zinc-700 dark:!bg-zinc-900 dark:!text-zinc-100">Save reassignment</button></div>
                 </form>
             </flux:modal>
         @empty
