@@ -14,6 +14,13 @@
             proofModalOpen: false,
             proofModalImages: [],
             proofModalIndex: 0,
+            recordDetailsOpen: false,
+            recordDetails: {},
+            openRecordDetails(record) {
+                this.recordDetails = record;
+                this.recordDetailsOpen = true;
+            },
+            childViewTab: 'schedule',
             openProofModal(images) {
                 this.proofModalImages = images;
                 this.proofModalIndex = 0;
@@ -99,28 +106,6 @@
 
         <div class="page-heading">
             <a href="{{ route('children.index') }}" class="text-sm text-teal-700 hover:underline dark:text-teal-300">Back to children</a>
-            <div class="flex w-full flex-wrap gap-2 sm:w-auto">
-                @if (auth()->user()->isParent())
-                    <form
-                        method="POST"
-                        action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => auth()->user()]) }}"
-                        @submit.prevent="showConfirmModal('Unlink child', 'Unlink this child from your account?', $event.currentTarget)"
-                    >
-                        @csrf
-                        @method('DELETE')
-                        <button class="app-button-danger">Unlink child</button>
-                    </form>
-                @endif
-                @if (auth()->user()->canManageChildren())
-                    <a href="{{ route('children.edit', $child) }}" class="app-button-secondary">Edit child info</a>
-                @endif
-                @if (auth()->user()->canArchiveChildren())
-                    <button type="button" class="app-button-danger" @click="archiveAction = @js(route('children.archive', $child->id)); archiveOpen = true">Archive child</button>
-                @endif
-                <a href="{{ route('children.card', $child) }}" class="app-button-secondary">Digital vaccine card</a>
-                <a href="{{ route('children.timeline', $child) }}" class="app-button-secondary">View timeline chart</a>
-                <a href="{{ route('children.timeline.pdf', $child) }}" class="app-button-secondary" target="_blank" rel="noopener">Timeline PDF</a>
-            </div>
         </div>
 
         <div x-show="archiveOpen" x-cloak x-on:keydown.escape.window="archiveOpen = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="archive-child-title">
@@ -136,7 +121,27 @@
             </div>
         </div>
 
-        <section class="app-panel flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+        <section class="app-panel relative flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+            <div class="absolute right-3 top-3 z-30" x-data="{ open: false }">
+                <button type="button" class="inline-flex size-9 items-center justify-center rounded-xl text-lg font-bold tracking-widest text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white" @click="open = !open" :aria-expanded="open.toString()" aria-label="Child profile actions">•••</button>
+                <div x-show="open" x-cloak @click.outside="open = false" class="absolute right-0 top-11 z-20 min-w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                    @if (auth()->user()->canManageChildren())
+                        <a href="{{ route('children.edit', $child) }}" class="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-zinc-200 dark:hover:bg-zinc-800" wire:navigate>Edit child info</a>
+                    @endif
+                    @if (auth()->user()->canArchiveChildren())
+                        <button type="button" class="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40" @click="archiveAction = @js(route('children.archive', $child->id)); archiveOpen = true; open = false">Archive child</button>
+                    @endif
+                    <a href="{{ route('children.card', $child) }}" class="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-zinc-200 dark:hover:bg-zinc-800" wire:navigate>Digital vaccine card</a>
+                    <a href="{{ route('children.timeline.pdf', $child) }}" class="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-zinc-200 dark:hover:bg-zinc-800" target="_blank" rel="noopener">Timeline PDF</a>
+                    @if (auth()->user()->isParent())
+                        <form method="POST" action="{{ route('children.parents.destroy', ['child' => $child, 'parent' => auth()->user()]) }}" class="mt-1 border-t border-slate-100 pt-1 dark:border-zinc-800" @submit.prevent="showConfirmModal('Unlink child', 'Unlink this child from your account?', $event.currentTarget)">
+                            @csrf
+                            @method('DELETE')
+                            <button class="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40">Unlink child</button>
+                        </form>
+                    @endif
+                </div>
+            </div>
             <div class="flex min-w-0 items-center gap-4">
                 @if ($child->photo_path)
                     <button type="button" class="size-24 shrink-0 overflow-hidden rounded-full bg-teal-100 ring-2 ring-teal-200 transition hover:ring-4 focus:outline-none focus:ring-4 focus:ring-teal-300 dark:bg-teal-950 dark:ring-teal-800 dark:focus:ring-teal-700" @click="profilePhotoOpen = true" aria-label="View larger photo of {{ $child->full_name }}">
@@ -147,12 +152,18 @@
                         <div class="flex size-full items-center justify-center text-3xl font-semibold text-teal-700 dark:text-teal-300">{{ str($child->first_name)->substr(0, 1) }}{{ str($child->last_name)->substr(0, 1) }}</div>
                     </div>
                 @endif
-                <div class="min-w-0">
-                    <p class="eyebrow">Child profile photo</p>
-                    <h1 class="page-title mt-1">{{ $child->full_name }}</h1>
+                <div class="min-w-0 flex-1 pr-10 sm:pr-12">
+                    <h1 class="page-title mt-1 break-words text-xl sm:text-2xl">{{ $child->full_name }}</h1>
                     <div class="mt-2 flex flex-wrap gap-2 text-sm">
                         <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">{{ ucfirst($child->sex) }}</span>
-                        <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">{{ $child->ageLabel() }}</span>
+                        <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">{{ $child->ageLabel() }} old</span>
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">
+                            <svg aria-hidden="true" viewBox="0 0 24 24" class="size-4 text-teal-600 dark:text-teal-300" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 10h14v9H5zM3.5 10h17M7 7v3m5-3v3m5-3v3M8 7a2 2 0 1 1 4 0v0a2 2 0 1 1 4 0v0" />
+                                <path stroke-linecap="round" d="M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01M16 17h.01" />
+                            </svg>
+                            <span>Born {{ $child->birthdate->format('M d, Y') }}</span>
+                        </span>
                         <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">{{ $child->barangay->name }}</span>
                         <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">Profile created {{ $child->created_at->format('M d, Y') }}</span>
                     </div>
@@ -173,7 +184,12 @@
             @endif
         </section>
 
-        <section class="overflow-hidden rounded-lg border border-teal-200 bg-white shadow-sm shadow-teal-900/10 dark:border-teal-900 dark:bg-zinc-900">
+        <nav class="app-card flex gap-1 overflow-x-auto p-1.5" aria-label="Child profile sections">
+            <button type="button" class="min-w-max flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition" :class="childViewTab === 'schedule' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:bg-teal-50 dark:text-zinc-300 dark:hover:bg-zinc-800'" @click="childViewTab = 'schedule'">Schedule</button>
+            <button type="button" class="min-w-max flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition" :class="childViewTab === 'vaccination' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:bg-teal-50 dark:text-zinc-300 dark:hover:bg-zinc-800'" @click="childViewTab = 'vaccination'">Vaccination History</button>
+        </nav>
+
+        <section x-cloak x-show="childViewTab === 'schedule'" class="overflow-hidden rounded-lg border border-teal-200 bg-white shadow-sm shadow-teal-900/10 dark:border-teal-900 dark:bg-zinc-900">
             <div class="border-b border-teal-100 bg-teal-50 px-5 py-4 dark:border-teal-900 dark:bg-teal-950">
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
@@ -201,30 +217,30 @@
                 </div>
             </div>
 
-            <div class="grid gap-5 p-5 lg:grid-cols-[1fr_340px]">
+            <div class="grid gap-3 p-3 sm:gap-5 sm:p-5 lg:grid-cols-[1fr_340px]">
                 <div>
-                    <div class="grid gap-3 sm:grid-cols-3">
-                        <div class="rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200 dark:bg-zinc-950 dark:ring-zinc-800">
-                            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Suggested action</div>
-                            <div class="mt-2 text-lg font-semibold text-slate-950 dark:text-white">
+                    <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                        <div class="min-w-0 rounded-lg bg-slate-50 p-2.5 ring-1 ring-slate-200 dark:bg-zinc-950 dark:ring-zinc-800 sm:p-4">
+                            <div class="truncate text-[9px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">Suggested action</div>
+                            <div class="mt-1 text-xs font-semibold leading-4 text-slate-950 dark:text-white sm:mt-2 sm:text-lg sm:leading-normal">
                                 {{ $suggestion['action_at'] ? $suggestion['action_at']->format('M d, Y') : 'Review only' }}
                             </div>
                         </div>
-                        <div class="rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200 dark:bg-zinc-950 dark:ring-zinc-800">
-                            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Guideline due</div>
-                            <div class="mt-2 text-lg font-semibold text-slate-950 dark:text-white">
+                        <div class="min-w-0 rounded-lg bg-slate-50 p-2.5 ring-1 ring-slate-200 dark:bg-zinc-950 dark:ring-zinc-800 sm:p-4">
+                            <div class="truncate text-[9px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">Guideline due</div>
+                            <div class="mt-1 text-xs font-semibold leading-4 text-slate-950 dark:text-white sm:mt-2 sm:text-lg sm:leading-normal">
                                 {{ $suggestion['due_at'] ? $suggestion['due_at']->format('M d, Y') : 'None' }}
                             </div>
                         </div>
-                        <div class="rounded-lg bg-slate-50 p-4 ring-1 ring-slate-200 dark:bg-zinc-950 dark:ring-zinc-800">
-                            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Schedule age</div>
-                            <div class="mt-2 text-lg font-semibold text-slate-950 dark:text-white">
+                        <div class="min-w-0 rounded-lg bg-slate-50 p-2.5 ring-1 ring-slate-200 dark:bg-zinc-950 dark:ring-zinc-800 sm:p-4">
+                            <div class="truncate text-[9px] font-semibold uppercase tracking-wide text-slate-500 sm:text-xs">Schedule age</div>
+                            <div class="mt-1 text-xs font-semibold leading-4 text-slate-950 dark:text-white sm:mt-2 sm:text-lg sm:leading-normal">
                                 {{ $suggestion['due_label'] ?? 'N/A' }}
                             </div>
                         </div>
                     </div>
 
-                    <p class="mt-4 text-sm leading-6 text-slate-600 dark:text-zinc-300">
+                    <p class="mt-3 text-xs leading-5 text-slate-600 dark:text-zinc-300 sm:mt-4 sm:text-sm sm:leading-6">
                         @if (auth()->user()->isParent())
                             This clinic visit is recommended based on the child’s immunization schedule. Please bring your child and vaccine card or any outside-clinic records so the clinic team can confirm the dose and update the vaccination history.
                         @else
@@ -233,9 +249,9 @@
                     </p>
                 </div>
 
-                <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                    <h3 class="text-sm font-semibold text-slate-950 dark:text-white">{{ auth()->user()->isParent() ? 'Before your clinic visit' : 'Before giving this dose' }}</h3>
-                    <ul class="mt-3 space-y-2 text-sm leading-5 text-slate-600 dark:text-zinc-300">
+                <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-zinc-800 dark:bg-zinc-950 sm:p-4">
+                    <h3 class="text-xs font-semibold text-slate-950 dark:text-white sm:text-sm">{{ auth()->user()->isParent() ? 'Before your clinic visit' : 'Before giving this dose' }}</h3>
+                    <ul class="mt-2 space-y-2 text-xs leading-5 text-slate-600 dark:text-zinc-300 sm:mt-3 sm:text-sm">
                         @if (auth()->user()->isParent())
                             @foreach ([
                                 'Bring your child and vaccine card or outside-clinic proof to the visit.',
@@ -279,7 +295,7 @@
             @endphp
         @endif
 
-        <div class="grid gap-6">
+        <div x-cloak x-show="childViewTab === 'vaccination'" class="grid gap-6">
         <section
                 class="app-card {{ auth()->user()->isParent() ? 'order-2' : '' }} {{ auth()->user()->canManageChildren() && $activeTab !== 'vaccination' ? 'hidden' : '' }}"
                 @if (auth()->user()->canManageChildren()) data-tab-panel="vaccination" @endif
@@ -289,20 +305,27 @@
                         <h2 class="app-card-title">Vaccination history</h2>
                         <p class="mt-1 text-sm text-zinc-500">{{ $vaccinations->total() }} record{{ $vaccinations->total() === 1 ? '' : 's' }}</p>
                     </div>
-                    <label class="flex items-center gap-2 text-sm font-medium">
-                        Rows per page
-                        <select wire:model.live="perPage" class="app-input !w-auto">
-                            <option value="10">10</option>
-                            <option value="15">15</option>
-                            <option value="25">25</option>
-                            <option value="50">50</option>
-                        </select>
-                    </label>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <a href="{{ route('children.timeline', $child) }}" class="app-button-secondary !px-3 !py-2 text-sm" wire:navigate>View timeline chart</a>
+                        <label class="flex items-center gap-2 text-sm font-medium">
+                            Rows per page
+                            <select wire:model.live="perPage" class="app-input !w-auto">
+                                <option value="10">10</option>
+                                <option value="15">15</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
+                        </label>
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="app-table">
                         <thead>
                             <tr>
+                                @if (auth()->user()->isParent())
+                                    <th class="px-4 py-3 font-medium">Vaccine</th>
+                                    <th class="px-4 py-3 font-medium">Status</th>
+                                @else
                                 <th class="px-4 py-3 font-medium">Vaccine</th>
                                 <th class="px-4 py-3 font-medium">Dose</th>
                                 <th class="px-4 py-3 font-medium">Date given</th>
@@ -316,11 +339,31 @@
                                 @if (auth()->user()->canVerifyVaccinations())
                                     <th class="px-4 py-3 font-medium">Action</th>
                                 @endif
+                                @endif
                             </tr>
                         </thead>
                         <tbody>
                             @forelse ($vaccinations as $record)
                                 <tr class="app-table-row">
+                                    @if (auth()->user()->isParent())
+                                        <td class="font-semibold text-slate-950 dark:text-white"><button type="button" class="inline-flex w-full items-center justify-between gap-3 text-left" aria-label="View details for {{ $record->vaccineType->name }}" @click="openRecordDetails(@js([
+                                            'vaccine' => $record->vaccineType->name,
+                                            'dose' => $record->dose_number ? 'Dose '.$record->dose_number : 'Not set',
+                                            'date' => $record->administered_at->format('M d, Y'),
+                                            'source' => str($record->source)->replace('_', ' ')->title(),
+                                            'clinic' => $record->clinic_name,
+                                            'location' => $record->clinic_location,
+                                            'status' => ucfirst($record->verification_status),
+                                            'submitter' => $record->submitter?->name ?? 'Unknown parent',
+                                            'verifier' => $record->verifier?->name ?? $record->recordedByDisplayName(),
+                                            'next' => $record->next_due_at?->format('M d, Y'),
+                                            'suggestion' => $record->suggested_vaccine,
+                                            'remarks' => $record->remarks,
+                                            'proofs' => count($record->proofPaths()),
+                                            'proofImages' => $this->proofImageUrls($record),
+                                        ]))"><span class="min-w-0"><span class="block truncate text-teal-700 dark:text-teal-300">{{ $record->vaccineType->name }}</span><span class="mt-0.5 block text-xs font-normal text-slate-500 dark:text-zinc-400">{{ $record->dose_number ? 'Dose '.$record->dose_number : 'Not set' }}</span></span><flux:icon.chevron-right class="size-4 shrink-0 text-slate-400" /></button></td>
+                                        <td><span class="status-pill @if ($record->verification_status === 'verified') status-verified @elseif ($record->verification_status === 'pending') status-pending @else status-rejected @endif">{{ ucfirst($record->verification_status) }}</span></td>
+                                    @else
                                     <td class="font-semibold text-slate-950 dark:text-white">
                                         <a href="{{ route('children.timeline', ['child' => $child, 'vaccine' => $record->vaccineType->code]) }}" class="text-teal-700 hover:underline dark:text-teal-300">
                                             {{ $record->vaccineType->name }}
@@ -411,9 +454,10 @@
                                             @endif
                                         </td>
                                     @endif
+                                    @endif
                                 </tr>
                             @empty
-                                <tr><td colspan="{{ auth()->user()->isParent() || auth()->user()->canVerifyVaccinations() ? 8 : 7 }}" class="px-4 py-8 text-center text-zinc-500">No vaccination records yet.</td></tr>
+                                <tr><td colspan="{{ auth()->user()->isParent() ? 2 : (auth()->user()->canVerifyVaccinations() ? 8 : 7) }}" class="px-4 py-8 text-center text-zinc-500">No vaccination records yet.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -435,7 +479,7 @@
                         method="POST"
                         action="{{ $editableRecord ? route('vaccinations.update', $editableRecord) : route('children.vaccinations.store', $child) }}"
                         class="app-panel order-1 grid content-start gap-4 sm:grid-cols-2 lg:grid-cols-3 {{ auth()->user()->canManageChildren() && $activeTab !== 'vaccination' ? 'hidden' : '' }}"
-                        x-data="{ submitHistoryOpen: true }"
+                        x-data="{ submitHistoryOpen: @js($editableRecord !== null) }"
                         enctype="multipart/form-data"
                         @if (auth()->user()->canManageChildren()) data-tab-panel="vaccination" @endif
                     >
@@ -453,7 +497,7 @@
                             >
                                 <span class="app-card-title">{{ $editableRecord ? 'Edit pending vaccination history' : 'Submit vaccination history' }}</span>
                                 <span x-show="submitHistoryOpen" x-cloak class="text-sm font-medium text-teal-700 dark:text-teal-300">Hide</span>
-                                <span x-show="!submitHistoryOpen" x-cloak class="text-2xl font-medium leading-none text-teal-700 dark:text-teal-300">+</span>
+                                <span x-show="!submitHistoryOpen" x-cloak class="text-sm font-semibold leading-none text-teal-700 dark:text-teal-300">+ Create</span>
                             </button>
                         </div>
                         <div id="submit-vaccination-history-fields" x-show="submitHistoryOpen" x-cloak class="contents">
@@ -708,6 +752,146 @@
 
                     </section>
                 @endif
+            </div>
+        </div>
+
+        @php
+            $calendarStart = $scheduleMonth->copy()->startOfWeek(\Illuminate\Support\Carbon::SUNDAY);
+            $calendarItemsByDate = collect($scheduleItems)->groupBy(fn (array $item): string => $item['date']->toDateString());
+        @endphp
+        <section x-cloak x-show="childViewTab === 'schedule'" class="app-card min-w-0 overflow-hidden">
+            <div class="app-card-header flex min-w-0 flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="eyebrow">Child schedule</p>
+                    <h2 class="app-card-title mt-1">Immunization Schedule</h2>
+                </div>
+                <label class="flex items-center gap-2 text-sm font-medium text-slate-600 dark:text-zinc-300">
+                    <span class="sr-only">Select month and year</span>
+                    <span class="relative block">
+                        <input type="month" wire:model.live="calendarMonth" wire:loading.attr="disabled" wire:target="calendarMonth" class="app-input !w-auto !py-1.5 disabled:cursor-wait disabled:opacity-60">
+                        <span wire:loading wire:target="calendarMonth" class="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 animate-spin rounded-full border-2 border-teal-200 border-t-teal-600"></span>
+                    </span>
+                </label>
+            </div>
+            <div class="grid min-w-0 lg:grid-cols-[1.35fr_0.65fr]">
+            <div class="min-w-0 p-3 sm:p-5">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                    <p class="text-sm font-semibold text-slate-700 dark:text-zinc-200">Showing schedule for {{ $scheduleMonth->format('F Y') }}</p>
+                    <span class="hidden text-xs text-slate-500 dark:text-zinc-400 sm:inline">Selected month</span>
+                </div>
+                <div class="grid w-full min-w-0 grid-cols-7 auto-cols-fr text-center text-[10px] font-semibold uppercase tracking-wide text-slate-400 sm:text-xs">
+                    @foreach (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as $weekday)
+                        <div class="min-w-0 py-2">{{ $weekday }}</div>
+                    @endforeach
+                </div>
+                <div class="grid w-full min-w-0 grid-cols-7 auto-cols-fr overflow-hidden rounded-xl border border-slate-200 dark:border-zinc-800">
+                    @for ($dayIndex = 0; $dayIndex < 42; $dayIndex++)
+                        @php
+                            $calendarDay = $calendarStart->copy()->addDays($dayIndex);
+                            $dayItems = $calendarItemsByDate->get($calendarDay->toDateString(), collect());
+                            $isCurrentMonth = $calendarDay->month === $scheduleMonth->month;
+                            $isToday = $calendarDay->isToday();
+                        @endphp
+                        <button type="button" wire:click="selectScheduleDate('{{ $calendarDay->toDateString() }}')" wire:loading.attr="disabled" wire:target="selectScheduleDate" class="min-h-16 min-w-0 overflow-hidden border-b border-r border-slate-100 p-1.5 text-left transition hover:bg-teal-50 disabled:cursor-wait disabled:opacity-60 last:border-r-0 dark:border-zinc-800 dark:hover:bg-zinc-800 sm:min-h-24 sm:p-2 {{ $isCurrentMonth ? 'bg-white dark:bg-zinc-900' : 'bg-slate-50/70 text-slate-300 dark:bg-zinc-950/60 dark:text-zinc-700' }} {{ $selectedScheduleDateValue?->isSameDay($calendarDay) ? 'bg-teal-50 ring-2 ring-inset ring-teal-500 dark:bg-teal-950/40' : '' }}" aria-label="Show doses for {{ $calendarDay->format('F j, Y') }}">
+                            <div class="flex justify-end"><span class="{{ $isToday ? 'flex size-6 items-center justify-center rounded-full bg-teal-600 font-bold text-white' : 'text-xs font-medium text-slate-500 dark:text-zinc-400' }}">{{ $calendarDay->day }}</span></div>
+                            <div class="mt-1 space-y-1">
+                                @foreach ($dayItems->take(2) as $item)
+                                    @php
+                                        $eventClass = match ($item['status']) {
+                                            'completed' => 'bg-emerald-100 text-emerald-700',
+                                            'pending' => 'bg-amber-100 text-amber-700',
+                                            'overdue', 'delayed' => 'bg-rose-100 text-rose-700',
+                                            default => 'bg-sky-100 text-sky-700',
+                                        };
+                                    @endphp
+                                    <div class="min-w-0 truncate rounded px-1 py-0.5 text-[9px] font-semibold {{ $eventClass }}" title="{{ $item['vaccine'] }} dose {{ $item['dose'] }}">{{ str($item['vaccine'])->limit(10) }}</div>
+                                @endforeach
+                                @if ($dayItems->count() > 2)
+                                    <div class="text-[9px] font-semibold text-slate-400">+{{ $dayItems->count() - 2 }} more</div>
+                                @endif
+                            </div>
+                        </button>
+                    @endfor
+                </div>
+                <div class="mt-4 flex flex-wrap gap-3 text-xs text-slate-600 dark:text-zinc-300">
+                    <span><i class="mr-1 inline-block size-2 rounded-full bg-sky-500"></i>Due</span>
+                    <span><i class="mr-1 inline-block size-2 rounded-full bg-emerald-500"></i>Completed</span>
+                    <span><i class="mr-1 inline-block size-2 rounded-full bg-amber-500"></i>Pending</span>
+                    <span><i class="mr-1 inline-block size-2 rounded-full bg-rose-500"></i>Overdue</span>
+                </div>
+            </div>
+            <div x-data="{ showOverdue: false }" class="flex min-w-0 flex-col border-t border-slate-100 p-4 dark:border-zinc-800 sm:p-5 lg:border-l lg:border-t-0">
+                <div class="order-2">
+                <div class="rounded-lg bg-slate-100 px-3 py-2 dark:bg-zinc-800">
+                    <h3 class="text-sm font-semibold text-slate-800 dark:text-zinc-100">Upcoming and recent doses</h3>
+                </div>
+                <div class="mt-3 divide-y divide-slate-100 dark:divide-zinc-800">
+                    @forelse ($upcomingScheduleItems as $item)
+                        <div class="flex min-w-0 flex-wrap items-center gap-3 py-3">
+                            <div class="w-24 shrink-0 text-center sm:w-28"><p class="text-xs font-semibold text-teal-700">{{ $item['date']->format('M d, Y') }}</p></div>
+                            <div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold text-slate-950 dark:text-white">{{ $item['vaccine'] }}</p><p class="text-xs text-slate-500">Dose {{ $item['dose'] }} · {{ $item['location'] }}</p></div>
+                            <span class="status-pill w-full justify-center truncate text-[10px] sm:w-auto sm:shrink-0 {{ $item['status'] === 'completed' ? 'status-verified' : ($item['status'] === 'pending' ? 'status-pending' : ($item['status'] === 'overdue' ? 'status-rejected' : 'bg-sky-100 text-sky-700')) }}">{{ str($item['status'])->replace('_', ' ')->headline() }}</span>
+                        </div>
+                    @empty
+                        <p class="py-4 text-sm text-slate-500">No schedule entries are available for this child.</p>
+                    @endforelse
+                </div>
+                @if ($overdueScheduleItems->isNotEmpty())
+                    <button type="button" class="mt-4 flex w-full items-center justify-between rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 dark:bg-rose-950/30 dark:text-rose-300" @click="showOverdue = !showOverdue">
+                        <span x-text="showOverdue ? 'Hide Overdue' : 'Show Overdue'">Show Overdue</span>
+                        <span class="rounded-full bg-rose-100 px-2 py-0.5 text-xs dark:bg-rose-900/50">{{ $overdueScheduleItems->count() }}</span>
+                    </button>
+                    <div x-show="showOverdue" x-cloak class="mt-3 rounded-lg border border-rose-100 bg-rose-50/50 px-3 dark:border-rose-900/50 dark:bg-rose-950/20">
+                        @foreach ($overdueScheduleItems as $item)
+                            <div class="flex min-w-0 flex-wrap items-center gap-3 border-b border-rose-100 py-3 last:border-b-0 dark:border-rose-900/40">
+                                <div class="w-24 shrink-0 text-center"><p class="text-xs font-semibold text-rose-700 dark:text-rose-300">{{ $item['date']->format('M d, Y') }}</p></div>
+                                <div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold text-slate-950 dark:text-white">{{ $item['vaccine'] }}</p><p class="text-xs text-slate-500">Dose {{ $item['dose'] }} · {{ $item['location'] }}</p></div>
+                                <span class="status-pill shrink-0 bg-rose-100 text-[10px] text-rose-700">Overdue</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+                </div>
+                @if ($selectedScheduleDateValue)
+                    <div class="order-1 mb-5 border-b border-slate-100 pb-4 dark:border-zinc-800">
+                        <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-100 px-3 py-2 dark:bg-zinc-800">
+                            <h3 class="text-sm font-semibold text-slate-800 dark:text-zinc-100">Recent doses in this {{ $selectedScheduleDateValue->format('F j, Y') }}</h3>
+                            <button type="button" wire:click="clearScheduleDate" class="text-xs font-semibold text-slate-600 hover:text-slate-800 dark:text-zinc-300 dark:hover:text-white">Clear date</button>
+                        </div>
+                        <div class="mt-3 divide-y divide-slate-100 dark:divide-zinc-800">
+                            @forelse ($selectedScheduleItems as $item)
+                                <div class="flex min-w-0 flex-wrap items-center gap-3 py-3">
+                                    <div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold text-slate-950 dark:text-white">{{ $item['vaccine'] }}</p><p class="text-xs text-slate-500">Dose {{ $item['dose'] }} · {{ $item['location'] }}</p></div>
+                                    <span class="status-pill shrink-0 text-[10px] {{ $item['status'] === 'completed' ? 'status-verified' : ($item['status'] === 'pending' ? 'status-pending' : ($item['status'] === 'overdue' ? 'status-rejected' : 'bg-sky-100 text-sky-700')) }}">{{ str($item['status'])->replace('_', ' ')->headline() }}</span>
+                                </div>
+                            @empty
+                                <p class="py-4 text-sm text-slate-500">No doses are scheduled for this date.</p>
+                            @endforelse
+                        </div>
+                    </div>
+                @endif
+            </div>
+            </div>
+        </section>
+
+        <div x-show="recordDetailsOpen" x-cloak x-on:keydown.escape.window="recordDetailsOpen = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="record-details-title">
+            <div class="app-panel w-full max-w-lg" @click.stop>
+                <div class="flex items-start justify-between gap-4">
+                    <div><p class="eyebrow">Vaccination record</p><h2 id="record-details-title" class="app-card-title mt-1" x-text="recordDetails.vaccine"></h2></div>
+                    <button type="button" class="app-button-secondary !px-3 !py-1.5" @click="recordDetailsOpen = false">Close</button>
+                </div>
+                <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Dose</p><p class="mt-1 text-sm font-semibold" x-text="recordDetails.dose"></p></div>
+                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Status</p><p class="mt-1 text-sm font-semibold" x-text="recordDetails.status"></p></div>
+                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Date given</p><p class="mt-1 text-sm font-semibold" x-text="recordDetails.date"></p></div>
+                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Source</p><p class="mt-1 text-sm font-semibold" x-text="recordDetails.source"></p></div>
+                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Clinic</p><p class="mt-1 text-sm" x-text="recordDetails.clinic || '—'"></p></div>
+                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Location</p><p class="mt-1 text-sm" x-text="recordDetails.location || '—'"></p></div>
+                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Next due</p><p class="mt-1 text-sm" x-text="recordDetails.next || 'None'"></p></div>
+                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Suggested vaccine</p><p class="mt-1 text-sm" x-text="recordDetails.suggestion || 'None'"></p></div>
+                </div>
+                <div x-show="recordDetails.proofImages && recordDetails.proofImages.length" class="mt-4"><p class="text-xs font-semibold uppercase text-slate-500">Uploaded proof</p><div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"><template x-for="image in recordDetails.proofImages" :key="image"><a :href="image" target="_blank" rel="noopener" class="block overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-800 dark:bg-zinc-950"><img :src="image" alt="Uploaded vaccination proof" class="aspect-square size-full object-cover"></a></template></div></div>
+                <div class="mt-4 space-y-2 text-sm text-slate-600 dark:text-zinc-300"><p><span class="font-semibold">Submitted by:</span> <span x-text="recordDetails.submitter"></span></p><p><span class="font-semibold">Recorded or verified by:</span> <span x-text="recordDetails.verifier"></span></p><p x-show="recordDetails.remarks"><span class="font-semibold">Remarks:</span> <span x-text="recordDetails.remarks"></span></p><p x-show="recordDetails.proofs > 0"><span class="font-semibold">Proof photos:</span> <span x-text="recordDetails.proofs"></span></p></div>
             </div>
         </div>
 

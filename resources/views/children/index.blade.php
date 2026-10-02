@@ -32,6 +32,29 @@
                 </div>
             </form>
         @endif
+        @if (auth()->user()->isParent())
+            <div class="grid gap-3">
+                @forelse ($children as $child)
+                    <a href="{{ route('children.show', $child) }}" class="app-card flex items-center gap-3 p-4 transition hover:-translate-y-0.5 hover:border-teal-200 hover:bg-teal-50/40 dark:hover:border-teal-800 dark:hover:bg-zinc-800" wire:navigate>
+                        <div class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-teal-100 font-bold text-teal-700 ring-1 ring-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:ring-teal-800">
+                            @if ($child->photo_path)
+                                <img src="{{ route('children.photo', $child) }}" alt="Photo of {{ $child->full_name }}" class="size-full object-cover">
+                            @else
+                                {{ str($child->first_name)->substr(0, 1) }}{{ str($child->last_name)->substr(0, 1) }}
+                            @endif
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate font-semibold text-slate-950 dark:text-white">{{ $child->full_name }}</p>
+                            <p class="mt-0.5 text-sm text-slate-500 dark:text-zinc-400">{{ $child->ageLabel() }} · {{ $child->vaccinations->count() }} records</p>
+                            <p class="mt-1 text-xs"><span class="font-medium text-emerald-600">● {{ $child->completed_doses_count }} verified</span><span class="ml-3 font-medium text-amber-600">● {{ $child->vaccinations->where('verification_status', 'pending')->count() }} pending</span></p>
+                        </div>
+                        <flux:icon.chevron-right class="size-4 shrink-0 text-slate-400" />
+                    </a>
+                @empty
+                    <div class="app-card p-8 text-center text-sm text-zinc-500">No linked child profiles found.</div>
+                @endforelse
+            </div>
+        @else
         <div class="app-card overflow-visible">
             <table class="app-table">
                 <thead>
@@ -92,6 +115,7 @@
                 </tbody>
             </table>
         </div>
+        @endif
 
         {{ $children->links() }}
 

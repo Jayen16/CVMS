@@ -23,8 +23,12 @@
                 <flux:icon.user-plus class="size-5" />
             @elseif (\Illuminate\Support\Str::contains($normalizedLabel, 'children') || \Illuminate\Support\Str::contains($normalizedLabel, 'child'))
                 <flux:icon.users class="size-5" />
+            @elseif (\Illuminate\Support\Str::contains($normalizedLabel, 'total records'))
+                <flux:icon.beaker class="size-5" />
+            @elseif (\Illuminate\Support\Str::contains($normalizedLabel, 'verified'))
+                <flux:icon.check-circle class="size-5" />
             @elseif (\Illuminate\Support\Str::contains($normalizedLabel, 'vaccination'))
-                <flux:icon.heart class="size-5" />
+                <flux:icon.beaker class="size-5" />
             @elseif (\Illuminate\Support\Str::contains($normalizedLabel, 'pending sync'))
                 <flux:icon.arrow-path class="size-5" />
             @elseif (\Illuminate\Support\Str::contains($normalizedLabel, 'pending'))
