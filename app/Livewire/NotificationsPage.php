@@ -39,6 +39,12 @@ class NotificationsPage extends Component
         $this->resetPage();
     }
 
+    public function clearFilters(): void
+    {
+        $this->reset(['from', 'to', 'unreadOnly']);
+        $this->resetPage();
+    }
+
     public function markRead(string $notificationId): void
     {
         auth()->user()->notifications()->whereKey($notificationId)->update(['read_at' => now()]);
@@ -51,14 +57,15 @@ class NotificationsPage extends Component
 
     public function render(): View
     {
-        $notifications = auth()->user()->notifications()
+        $query = auth()->user()->notifications()
             ->when($this->unreadOnly, fn ($query) => $query->whereNull('read_at'))
             ->when($this->from, fn ($query) => $query->whereDate('created_at', '>=', $this->from))
-            ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to))
-            ->latest()
-            ->paginate(15);
+            ->when($this->to, fn ($query) => $query->whereDate('created_at', '<=', $this->to));
 
-        return view('livewire.notifications-page', compact('notifications'))
+        $notifications = (clone $query)->latest()->paginate(15);
+        $unreadCount = auth()->user()->unreadNotifications()->count();
+
+        return view('livewire.notifications-page', compact('notifications', 'unreadCount'))
             ->layout('layouts.app', ['title' => 'Notifications']);
     }
 }
