@@ -154,6 +154,7 @@
                         <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">{{ ucfirst($child->sex) }}</span>
                         <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">{{ $child->ageLabel() }}</span>
                         <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">{{ $child->barangay->name }}</span>
+                        <span class="rounded-full bg-white px-3 py-1 font-medium text-slate-600 ring-1 ring-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-800">Profile created {{ $child->created_at->format('M d, Y') }}</span>
                     </div>
                 </div>
             </div>
