@@ -32,14 +32,10 @@
                     required
                     autocomplete="current-password"
                     :placeholder="__('Password')"
+                    viewable
                 />
 
                 <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-sm">
-                    <label class="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-300" for="show-login-password">
-                        <input id="show-login-password" type="checkbox" class="h-4 w-4 rounded border-zinc-300 text-accent focus:ring-accent">
-                        <span>{{ __('Show password') }}</span>
-                    </label>
-
                     @if (Route::has('password.request') && !(config('system.instance_type') === 'facility' && config('offline.enabled')))
                         <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <flux:link :href="route('password.request')" wire:navigate>
@@ -70,13 +66,4 @@
         </div>
     </div>
 
-    <script>
-        document.getElementById('show-login-password')?.addEventListener('change', function () {
-            const password = document.getElementById('login-password');
-
-            if (password) {
-                password.type = this.checked ? 'text' : 'password';
-            }
-        });
-    </script>
 </x-layouts::auth>
