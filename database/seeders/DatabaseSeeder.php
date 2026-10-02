@@ -123,7 +123,7 @@ class DatabaseSeeder extends Seeder
         ], [
             'name' => 'Demo Parent',
             'password' => Hash::make('password123'),
-            'phone' => '09171234567',
+            'phone' => null,
             'role' => 'parent',
             'roles' => ['parent'],
             'is_active' => true,

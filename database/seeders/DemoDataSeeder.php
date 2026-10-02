@@ -222,7 +222,7 @@ class DemoDataSeeder extends Seeder
         $this->users['starter_parent'] = $this->upsertUser(
             'Demo Parent',
             'parent@example.com',
-            '09171234567',
+            null,
             'parent',
         );
 
@@ -312,63 +312,63 @@ class DemoDataSeeder extends Seeder
         $this->users['maria_lopez'] = $this->upsertUser(
             'Maria Lopez',
             'maria.lopez@example.com',
-            '09171111111',
+            null,
             'parent',
         );
 
         $this->users['rafael_lopez'] = $this->upsertUser(
             'Rafael Lopez',
             'rafael.lopez@example.com',
-            '09171111112',
+            null,
             'parent',
         );
 
         $this->users['ana_santos'] = $this->upsertUser(
             'Ana Santos',
             'ana.santos@example.com',
-            '09172222221',
+            null,
             'parent',
         );
 
         $this->users['paolo_rivera'] = $this->upsertUser(
             'Paolo Rivera',
             'paolo.rivera@example.com',
-            '09173333331',
+            null,
             'parent',
         );
 
         $this->users['jessa_cruz'] = $this->upsertUser(
             'Jessa Cruz',
             'jessa.cruz@example.com',
-            '09174444441',
+            null,
             'parent',
         );
 
         $this->users['maricar_dela_cruz'] = $this->upsertUser(
             'Maricar Dela Cruz',
             'maricar.delacruz@example.com',
-            '09175555551',
+            null,
             'parent',
         );
 
         $this->users['oliver_reyes'] = $this->upsertUser(
             'Oliver Reyes',
             'oliver.reyes@example.com',
-            '09176666661',
+            null,
             'parent',
         );
 
         $this->users['sylvia_garcia'] = $this->upsertUser(
             'Sylvia Garcia',
             'sylvia.garcia@example.com',
-            '09177777771',
+            null,
             'parent',
         );
 
         $this->users['buna_cerca_parent'] = $this->upsertUser(
             'Carla Bautista',
             'carla.bautista@example.com',
-            '09178888881',
+            null,
             'parent',
         );
     }
