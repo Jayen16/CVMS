@@ -1,5 +1,5 @@
 <x-layouts::auth :title="__('Log in')">
-    <div class="flex flex-col gap-6">
+    <div data-login-page class="flex flex-col gap-5 sm:gap-6">
         <x-auth-header :title="__('Log in to your account')" :description="__('Enter your email address or phone number and password below to log in')" />
 
         <!-- Session Status -->
@@ -7,7 +7,7 @@
 
         <x-passkey-verify />
 
-        <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
+        <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-5 sm:gap-6">
             @csrf
 
             <!-- Login -->
@@ -48,7 +48,7 @@
                             <flux:link class="relative z-20 pointer-events-auto" :href="route('password.request')" wire:navigate>
                                 {{ __('Forgot your password?') }}
                             </flux:link>
-                            <span class="text-zinc-400">|</span>
+                            <span class="hidden text-zinc-400 sm:inline">|</span>
                             <flux:link class="relative z-20 pointer-events-auto" :href="route('account.activation')" wire:navigate>
                                 {{ __('Activate my account') }}
                             </flux:link>
@@ -61,7 +61,7 @@
             <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
 
             <div class="flex items-center justify-end">
-                <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
+                <flux:button variant="primary" type="submit" class="min-h-11 w-full" data-test="login-button">
                     {{ __('Log in') }}
                 </flux:button>
             </div>

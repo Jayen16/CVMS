@@ -272,7 +272,7 @@ class VaccineInventoryController extends Controller
             return back()->withErrors(['movement' => 'A stock receipt must add stock.'])->withInput();
         }
 
-        if (in_array($validated['transaction_type'], ['usage', 'expired', 'damaged'], true) && $validated['movement'] !== 'out') {
+        if (in_array($validated['transaction_type'], ['usage', 'expired', 'damaged', 'adjustment'], true) && $validated['movement'] !== 'out') {
             return back()->withErrors(['movement' => 'This transaction type must remove stock.'])->withInput();
         }
 

@@ -43,6 +43,9 @@
                     <flux:sidebar.item icon="users" :href="route('children.index')" :current="request()->routeIs('children.*')" wire:navigate>
                         {{ __('Children') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="calendar-days" :href="route('family-schedule.index')" :current="request()->routeIs('family-schedule.*')" wire:navigate>
+                        {{ __('Family schedule') }}
+                    </flux:sidebar.item>
                 @elseif (auth()->user()->canViewChildrenRegistry()
                     || auth()->user()->canViewVerificationQueue())
                     <flux:sidebar.group expandable :heading="__('Child Records')" class="grid">
@@ -96,7 +99,7 @@
                                 {{ __('Schedule monitoring') }}
                             </flux:sidebar.item>
                             <flux:sidebar.item icon="chart-bar" :href="route('predictive-analytics.index')" :current="request()->routeIs('predictive-analytics.*')" wire:navigate>
-                                {{ __('Vaccine Demand Forecast') }}
+                                {{ __('Demand Forecast') }}
                             </flux:sidebar.item>
                         @endif
                         @if (auth()->user()->canViewOversight())

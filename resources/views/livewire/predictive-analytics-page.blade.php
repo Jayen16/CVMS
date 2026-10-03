@@ -59,7 +59,25 @@
                 </div>
             </div>
             <div wire:loading.flex class="absolute inset-0 z-20 items-center justify-center bg-white/70 dark:bg-zinc-900/70"><div class="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-medium text-zinc-700 shadow dark:bg-zinc-800 dark:text-zinc-200"><span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-teal-700"></span> Recalculating forecast…</div></div>
-            <div x-show="view === 'table'" x-cloak class="overflow-x-auto">
+            <div x-show="view === 'table'" x-cloak>
+                <div class="grid gap-3 p-3 md:hidden">
+                    @forelse ($demand as $row)
+                        <article class="rounded-xl border border-slate-200 p-4 dark:border-zinc-700">
+                            <div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-white">{{ $row['vaccine']->name }}</h3><span class="status-pill {{ $row['stock_status'] === 'shortage' ? 'status-rejected' : 'status-verified' }}">{{ ucfirst($row['stock_status']) }}</span></div>
+                            <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-slate-100 pt-3 text-sm dark:border-zinc-800">
+                                <div><dt class="text-xs text-zinc-500">Scheduled due</dt><dd class="mt-0.5">{{ $row['scheduled_due'] }}</dd></div>
+                                <div><dt class="text-xs text-zinc-500">Catch-up backlog</dt><dd class="mt-0.5">{{ $row['catch_up_backlog'] }}</dd></div>
+                                <div><dt class="text-xs text-zinc-500">Recent history</dt><dd class="mt-0.5">{{ $row['recent_three_months'] }}</dd></div>
+                                <div><dt class="text-xs text-zinc-500">Estimated demand</dt><dd class="mt-0.5 font-semibold">{{ $row['estimated_demand'] }}</dd></div>
+                                <div><dt class="text-xs text-zinc-500">Available stock</dt><dd class="mt-0.5">{{ $row['available_stock'] }}</dd></div>
+                                <div><dt class="text-xs text-zinc-500">Projected balance</dt><dd class="mt-0.5 font-semibold {{ $row['projected_balance'] < 0 ? 'text-red-600' : 'text-emerald-700' }}">{{ $row['projected_balance'] >= 0 ? '+' : '' }}{{ $row['projected_balance'] }}</dd></div>
+                            </dl>
+                        </article>
+                    @empty
+                        <div class="app-card p-6 text-center text-sm text-zinc-500">No demand data available.</div>
+                    @endforelse
+                </div>
+                <div class="hidden overflow-x-auto md:block">
                 <table class="app-table">
                     <thead><tr><th>Vaccine</th><th>Scheduled due</th><th>Catch-up backlog</th><th>Recent history</th><th>Estimated demand</th><th>Available stock</th><th>Projected balance</th></tr></thead>
                     <tbody>
@@ -70,6 +88,7 @@
                         @endforelse
                     </tbody>
                 </table>
+                </div>
             </div>
         </section>
         <div x-show="view === 'graph'" x-cloak>

@@ -31,6 +31,7 @@ use App\Livewire\AuditLogsPage;
 use App\Livewire\ChildCreatePage;
 use App\Livewire\ChildEditPage;
 use App\Livewire\ChildrenIndexPage;
+use App\Livewire\ChildrenScheduleCalendar;
 use App\Livewire\ChildShowPage;
 use App\Livewire\ChildTimelinePage;
 use App\Livewire\DashboardPage;
@@ -94,6 +95,7 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
 Route::middleware(['auth', 'verified', 'parent.privacy'])->group(function () {
     Route::get('dashboard', DashboardPage::class)->name('dashboard');
     Route::get('children', ChildrenIndexPage::class)->name('children.index');
+    Route::get('family-schedule', ChildrenScheduleCalendar::class)->name('family-schedule.index');
     Route::get('children/archive', [ChildProfileController::class, 'archiveIndex'])->name('children.archive.index');
     Route::prefix('archives')->name('archives.')->group(function (): void {
         Route::get('/', [ArchiveController::class, 'index'])->name('index');

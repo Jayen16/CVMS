@@ -103,6 +103,25 @@ test('inventory cannot remove more stock than is available', function () {
     expect(VaccineInventoryTransaction::count())->toBe(0);
 });
 
+test('stock adjustments always remove stock', function () {
+    $barangay = Barangay::create(['name' => 'Adjustment Barangay']);
+    $admin = User::factory()->create(['role' => 'barangay_admin', 'barangay_id' => $barangay->id]);
+    $vaccine = VaccineType::query()->firstOrFail();
+
+    $this->actingAs($admin)
+        ->post(route('vaccine-inventory.store'), [
+            'barangay_id' => $barangay->id,
+            'vaccine_type_id' => $vaccine->id,
+            'transaction_type' => 'adjustment',
+            'movement' => 'in',
+            'quantity' => 1,
+            'transaction_date' => today()->toDateString(),
+        ])
+        ->assertSessionHasErrors('movement');
+
+    expect(VaccineInventoryTransaction::count())->toBe(0);
+});
+
 test('recording a clinic vaccination can consume and link one inventory dose', function () {
     $barangay = Barangay::create(['name' => 'Linked Inventory Barangay']);
     $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);

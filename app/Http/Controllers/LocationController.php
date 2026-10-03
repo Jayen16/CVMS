@@ -88,12 +88,20 @@ class LocationController extends Controller
     public function reassignUser(Request $request, User $user): RedirectResponse
     {
         $this->authorizeAdmin();
-        $data = $request->validate(['municipality_id' => ['nullable', 'exists:municipalities,id'], 'barangay_id' => ['nullable', 'exists:barangays,id']]);
-        if (filled($data['barangay_id'] ?? null)) {
-            $data['municipality_id'] = Barangay::whereKey($data['barangay_id'])->value('municipality_id');
-        }
-        abort_if(blank($data['municipality_id'] ?? null), 422, 'Select a municipality or barangay.');
-        $user->update(['municipality_id' => $data['municipality_id'], 'barangay_id' => $data['barangay_id'] ?? null]);
+        $data = $request->validate([
+            'target' => ['required', 'in:municipality,barangay'],
+            'municipality_id' => ['required_if:target,municipality', 'nullable', 'exists:municipalities,id'],
+            'barangay_id' => ['required_if:target,barangay', 'nullable', 'exists:barangays,id'],
+        ]);
+        $barangay = ($data['target'] ?? null) === 'barangay'
+            ? Barangay::findOrFail($data['barangay_id'])
+            : null;
+        $municipalityId = $barangay?->municipality_id ?? $data['municipality_id'];
+
+        $user->update([
+            'municipality_id' => $municipalityId,
+            'barangay_id' => $barangay?->id,
+        ]);
 
         return back()->with('status', 'User reassigned.');
     }

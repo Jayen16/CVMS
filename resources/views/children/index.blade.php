@@ -12,7 +12,7 @@
 
 
         @if (! auth()->user()->isParent())
-            <form method="GET" action="{{ route('children.index') }}" class="app-panel flex flex-col gap-3 md:flex-row md:items-end md:justify-between" x-data="{ loading: false }" @submit="loading = true">
+            <form method="GET" action="{{ route('children.index') }}" class="app-panel flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between" x-data="{ loading: false }" @submit="loading = true">
                 <label class="grid flex-1 gap-2 text-sm">
                     <span class="font-medium text-slate-800 dark:text-zinc-100">Search child name</span>
                     <input type="search" name="name" value="{{ $nameSearch }}" class="app-input" placeholder="Search first, middle, or last name..." @input.debounce.500ms="loading = true; $el.form.requestSubmit()">
@@ -32,7 +32,82 @@
                 </div>
             </form>
         @endif
-        <div class="app-card overflow-visible">
+        @if (auth()->user()->isParent())
+            <div class="grid gap-3">
+                @forelse ($children as $child)
+                    <a href="{{ route('children.show', $child) }}" class="app-card flex items-center gap-3 p-4 transition hover:-translate-y-0.5 hover:border-teal-200 hover:bg-teal-50/40 dark:hover:border-teal-800 dark:hover:bg-zinc-800" wire:navigate>
+                        <div class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-teal-100 font-bold text-teal-700 ring-1 ring-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:ring-teal-800">
+                            @if ($child->photo_path)
+                                <img src="{{ route('children.photo', $child) }}" alt="Photo of {{ $child->full_name }}" class="size-full object-cover">
+                            @else
+                                {{ str($child->first_name)->substr(0, 1) }}{{ str($child->last_name)->substr(0, 1) }}
+                            @endif
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate font-semibold text-slate-950 dark:text-white">{{ $child->full_name }}</p>
+                            <p class="mt-0.5 text-sm text-slate-500 dark:text-zinc-400">{{ $child->ageLabel() }} · {{ $child->vaccinations->count() }} records</p>
+                            <p class="mt-1 text-xs"><span class="font-medium text-emerald-600">● {{ $child->completed_doses_count }} verified</span><span class="ml-3 font-medium text-amber-600">● {{ $child->vaccinations->where('verification_status', 'pending')->count() }} pending</span></p>
+                        </div>
+                        <flux:icon.chevron-right class="size-4 shrink-0 text-slate-400" />
+                    </a>
+                @empty
+                    <div class="app-card p-8 text-center text-sm text-zinc-500">No linked child profiles found.</div>
+                @endforelse
+            </div>
+        @else
+        <div class="grid gap-3 lg:hidden">
+            @forelse ($children as $child)
+                <article class="app-card p-4">
+                    <div class="flex items-start gap-3">
+                        <div class="size-12 shrink-0 overflow-hidden rounded-full bg-teal-100 ring-1 ring-teal-200 dark:bg-teal-950 dark:ring-teal-800">
+                            @if ($child->photo_path)
+                                <img src="{{ route('children.photo', $child) }}" alt="Photo of {{ $child->full_name }}" class="size-full object-cover">
+                            @else
+                                <div class="flex size-full items-center justify-center text-sm font-semibold text-teal-700 dark:text-teal-300" aria-label="No photo available for {{ $child->full_name }}">
+                                    {{ str($child->first_name)->substr(0, 1) }}{{ str($child->last_name)->substr(0, 1) }}
+                                </div>
+                            @endif
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <a href="{{ route('children.show', $child) }}" class="break-words font-semibold text-teal-700 hover:underline dark:text-teal-300" wire:navigate>{{ $child->full_name }}</a>
+                            <p class="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">{{ ucfirst($child->sex) }} <span aria-hidden="true">·</span> Born {{ $child->birthdate->format('M d, Y') }}</p>
+                        </div>
+                        @if (auth()->user()->canArchiveChildren())
+                            <div class="relative shrink-0" x-data="{ open: false }">
+                                <button type="button" class="inline-flex size-8 items-center justify-center rounded-lg text-lg font-bold leading-none text-zinc-500 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-zinc-800 dark:hover:text-white" @click="open = !open" :aria-expanded="open.toString()" aria-label="Actions for {{ $child->full_name }}">•••</button>
+                                <div x-show="open" x-cloak @click.outside="open = false" class="absolute right-0 top-9 z-10 min-w-36 rounded-lg border border-slate-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+                                    <a href="{{ route('children.show', $child) }}" class="block rounded-md px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-zinc-800" wire:navigate>View profile</a>
+                                    <button type="button" class="block w-full rounded-md px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40" @click="archiveAction = @js(route('children.archive', $child->id)); archiveName = @js($child->full_name); archiveOpen = true; open = false">Archive</button>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+
+                    <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-slate-100 pt-3 text-sm dark:border-zinc-800">
+                        <div>
+                            <dt class="text-xs text-slate-500 dark:text-zinc-400">Age</dt>
+                            <dd class="mt-0.5 font-medium text-slate-800 dark:text-zinc-100">{{ $child->ageLabel() }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-slate-500 dark:text-zinc-400">Barangay</dt>
+                            <dd class="mt-0.5 break-words font-medium text-slate-800 dark:text-zinc-100">{{ $child->barangay->name }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-slate-500 dark:text-zinc-400">Records</dt>
+                            <dd class="mt-0.5 font-medium text-slate-800 dark:text-zinc-100">{{ $child->vaccinations->count() }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-slate-500 dark:text-zinc-400">Completed doses</dt>
+                            <dd class="mt-0.5 font-medium text-emerald-700 dark:text-emerald-300">{{ $child->completed_doses_count }} of {{ $child->total_doses_count }}</dd>
+                        </div>
+                    </dl>
+                </article>
+            @empty
+                <div class="app-card p-6 text-center text-sm text-zinc-500">{{ $nameSearch !== '' ? 'No child profiles match your search.' : ($selectedVaccineTypeId ? 'No child profiles match the selected vaccination filter.' : 'No child profiles found.') }}</div>
+            @endforelse
+        </div>
+
+        <div class="app-card hidden overflow-x-auto lg:block">
             <table class="app-table">
                 <thead>
                     <tr>
@@ -92,6 +167,7 @@
                 </tbody>
             </table>
         </div>
+        @endif
 
         {{ $children->links() }}
 
