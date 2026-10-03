@@ -4,10 +4,11 @@ use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\User;
 use App\Notifications\AccountAccessNotification;
+use App\Notifications\AccountActivationNotification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
-test('linking a new parent sends a password setup link', function () {
+test('linking a new parent sends account activation instructions by email', function () {
     Notification::fake();
 
     $barangay = Barangay::create(['name' => 'Invite Barangay']);
@@ -31,7 +32,7 @@ test('linking a new parent sends a password setup link', function () {
             'relationship' => 'mother',
         ])
         ->assertRedirect(route('children.show', $child, absolute: false))
-        ->assertSessionHas('status', 'Parent account linked to child profile. A password setup link was sent by email.');
+        ->assertSessionHas('status', 'Parent account linked to child profile. Activation instructions were sent by email.');
 
     $parent = User::where('email', 'parent.lopez@example.com')->firstOrFail();
 
@@ -39,10 +40,11 @@ test('linking a new parent sends a password setup link', function () {
         ->and($parent->invitation_accepted_at)->toBeNull()
         ->and($child->parents()->whereKey($parent->id)->exists())->toBeTrue();
 
-    Notification::assertSentTo($parent, AccountAccessNotification::class);
+    Notification::assertSentTo($parent, AccountActivationNotification::class);
+    Notification::assertNotSentTo($parent, AccountAccessNotification::class);
 });
 
-test('linking a phone-only parent sends a password setup link by SMS', function () {
+test('linking a phone-only parent sends activation instructions by SMS', function () {
     Notification::fake();
     Log::spy();
 
@@ -116,7 +118,7 @@ test('linking another parent keeps the first parent linked', function () {
         ->and($child->parents->firstWhere('email', 'second.parent@example.com')->pivot->relationship)->toBe('father');
 });
 
-test('resending setup link works for linked parent accounts that are still pending', function () {
+test('resending activation instructions works for linked parent accounts that are still pending', function () {
     Notification::fake();
 
     $barangay = Barangay::create(['name' => 'Pending Barangay']);
@@ -141,12 +143,12 @@ test('resending setup link works for linked parent accounts that are still pendi
     $this->actingAs($nurse)
         ->post(route('children.parents.setup-link', ['child' => $child, 'parent' => $parent]))
         ->assertRedirect(route('children.show', $child, absolute: false))
-        ->assertSessionHas('status', 'Password setup link sent again.');
+        ->assertSessionHas('status', 'Activation instructions sent again by email.');
 
-    Notification::assertSentTo($parent, AccountAccessNotification::class);
+    Notification::assertSentTo($parent, AccountActivationNotification::class);
 });
 
-test('resending setup link returns json for ajax requests', function () {
+test('resending activation instructions returns json for ajax requests', function () {
     Notification::fake();
 
     $barangay = Barangay::create(['name' => 'Ajax Barangay']);
@@ -170,7 +172,7 @@ test('resending setup link returns json for ajax requests', function () {
         ->withHeader('Accept', 'application/json')
         ->post(route('children.parents.setup-link', ['child' => $child, 'parent' => $parent]))
         ->assertOk()
-        ->assertJson(['message' => 'Password setup link sent again.']);
+        ->assertJson(['message' => 'Activation instructions sent again by email.']);
 });
 
 test('unlinking a parent detaches the parent from the child', function () {

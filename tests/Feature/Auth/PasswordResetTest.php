@@ -109,3 +109,26 @@ test('changing the email in a reset link cannot reset the password', function ()
 
     expect(Hash::check('original-password', $user->fresh()->password))->toBeTrue();
 });
+
+test('activation code form remains available when the same email is submitted during cooldown', function () {
+    Notification::fake();
+
+    $user = User::factory()->create([
+        'email' => 'mackulangkaya@gmail.com',
+        'invitation_accepted_at' => null,
+    ]);
+
+    $this->post(route('account.activation.otp.send'), [
+        'identifier' => $user->email,
+        'mode' => 'activation',
+    ])->assertRedirect(route('account.activation', absolute: false));
+
+    $this->followingRedirects()
+        ->post(route('account.activation.otp.send'), [
+            'identifier' => $user->email,
+            'mode' => 'activation',
+        ])
+        ->assertOk()
+        ->assertSee('Activation code')
+        ->assertSee('Check your email for the activation code.');
+});

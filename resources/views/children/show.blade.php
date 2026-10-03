@@ -644,16 +644,16 @@
                                                         class="fixed z-[100] grid min-w-44 gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-xl dark:border-zinc-700 dark:bg-zinc-900"
                                                     >
                                                     <button type="button" class="w-full cursor-pointer rounded px-3 py-2 text-left text-sm font-medium text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-zinc-800" @click="openParentEditor(@js(route('children.parents.update', ['child' => $child, 'parent' => $parent])), @js($parent->name), @js($parent->email), @js($parent->phone), @js($parent->pivot->relationship)); open = false">Edit parent</button>
-                                                    @if (! $parent->invitation_accepted_at && $parent->email)
+                                                    @if (! $parent->invitation_accepted_at && ($parent->email || $parent->phone))
                                                         <form method="POST" action="{{ route('children.parents.setup-link', ['child' => $child, 'parent' => $parent]) }}" @submit.prevent="fetch($event.currentTarget.action, { method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: new FormData($event.currentTarget) }).then(response => response.json().then(data => { if (! response.ok) throw new Error(data.message || 'Unable to send the setup link.'); window.Flux?.toast({ variant: 'success', text: data.message }); })).catch(error => window.Flux?.toast({ variant: 'danger', text: error.message }))">
                                                             @csrf
-                                                            <button type="submit" class="w-full cursor-pointer rounded px-3 py-2 text-left text-sm font-medium text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-zinc-800">Resend setup link</button>
+                                                            <button type="submit" class="w-full cursor-pointer rounded px-3 py-2 text-left text-sm font-medium text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-zinc-800">Resend activation instructions</button>
                                                         </form>
                                                     @endif
-                                                    @if ($parent->email)
+                                                    @if ($parent->parentLoginChannel() === 'email')
                                                         <form method="POST" action="{{ route('children.parents.password-link', [$child, $parent]) }}" @submit.prevent="fetch($event.currentTarget.action, { method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: new FormData($event.currentTarget) }).then(response => response.json().then(data => { if (! response.ok) throw new Error(data.message || 'Unable to send the reset link.'); window.Flux?.toast({ variant: 'success', text: data.message }); })).catch(error => window.Flux?.toast({ variant: 'danger', text: error.message }))">@csrf<input type="hidden" name="channel" value="email"><button type="submit" class="w-full cursor-pointer rounded px-3 py-2 text-left text-sm font-medium text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-zinc-800">Reset by email</button></form>
                                                     @endif
-                                                        @if ($parent->phone)
+                                                        @if ($parent->parentLoginChannel() === 'sms')
                                                         <form method="POST" action="{{ route('children.parents.password-link', [$child, $parent]) }}" @submit.prevent="fetch($event.currentTarget.action, { method: 'POST', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }, body: new FormData($event.currentTarget) }).then(response => response.json().then(data => { if (! response.ok) throw new Error(data.message || 'Unable to send the reset link.'); window.Flux?.toast({ variant: 'success', text: data.message }); })).catch(error => window.Flux?.toast({ variant: 'danger', text: error.message }))">@csrf<input type="hidden" name="channel" value="sms"><button type="submit" class="w-full cursor-pointer rounded px-3 py-2 text-left text-sm font-medium text-teal-700 hover:bg-teal-50 dark:text-teal-300 dark:hover:bg-zinc-800">Reset by text</button></form>
                                                     @endif
                                                     <form
@@ -681,7 +681,7 @@
                                 @csrf
                                 <div class="sm:col-span-2 lg:col-span-4">
                                     <h3 class="text-sm font-semibold text-slate-950 dark:text-white">Invite parent</h3>
-                                    <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Link the parent using either an email address or a phone number. Email can receive a password setup link, while phone-only parents can finish sign up using that phone number and a password.</p>
+                                    <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300">Link the parent using either an email address or a phone number. Email parents receive activation instructions by email, while phone-only parents can finish sign up using that phone number and a password.</p>
                                 </div>
                                 <x-form-field label="Parent name" name="name" />
                                 <x-form-field label="Parent email" name="email" type="email" />
