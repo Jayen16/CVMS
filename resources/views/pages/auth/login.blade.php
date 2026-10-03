@@ -24,16 +24,23 @@
 
             <!-- Password -->
             <div class="flex flex-col gap-2">
-                <flux:input
-                    id="login-password"
-                    name="password"
-                    :label="__('Password')"
-                    type="password"
-                    required
-                    autocomplete="current-password"
-                    :placeholder="__('Password')"
-                    viewable
-                />
+                <div class="relative">
+                    <flux:input
+                        id="login-password"
+                        name="password"
+                        :label="__('Password')"
+                        type="password"
+                        required
+                        autocomplete="current-password"
+                        :placeholder="__('Password')"
+                    />
+                    <button type="button" data-password-toggle aria-controls="login-password"
+                        aria-label="{{ __('Show password') }}"
+                        class="absolute end-2 top-8 rounded p-1 text-zinc-500 hover:text-zinc-700">
+                        <flux:icon.eye class="size-5" data-password-eye />
+                        <flux:icon.eye-slash class="hidden size-5" data-password-eye-slash />
+                    </button>
+                </div>
 
                 <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-sm">
                     @if (Route::has('password.request') && !(config('system.instance_type') === 'facility' && config('offline.enabled')))
@@ -65,5 +72,19 @@
             <flux:link :href="route('register')" wire:navigate>{{ __('Sign up') }}</flux:link>
         </div>
     </div>
+
+    <script>
+        document.querySelectorAll('[data-password-toggle]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const password = document.getElementById(button.getAttribute('aria-controls'));
+                const visible = password.type === 'text';
+
+                password.type = visible ? 'password' : 'text';
+                button.setAttribute('aria-label', visible ? @json(__('Show password')) : @json(__('Hide password')));
+                button.querySelector('[data-password-eye]').classList.toggle('hidden', !visible);
+                button.querySelector('[data-password-eye-slash]').classList.toggle('hidden', visible);
+            });
+        });
+    </script>
 
 </x-layouts::auth>
