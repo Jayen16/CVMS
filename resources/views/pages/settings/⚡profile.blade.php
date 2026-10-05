@@ -8,14 +8,17 @@ use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new #[Title('Profile settings')] class extends Component {
     use ProfileValidationRules;
+    use WithFileUploads;
 
     public string $name = '';
     public string $email = '';
     public string $phone = '';
     public string $current_password = '';
+    public $photo = null;
 
     /**
      * Mount the component.
@@ -60,6 +63,26 @@ new #[Title('Profile settings')] class extends Component {
         Flux::toast(variant: 'success', text: __('Profile updated.'));
     }
 
+    public function updateProfilePhoto(): void
+    {
+        abort_unless(Auth::user()->isParent() || Auth::user()->isNurse(), 403);
+
+        $this->validate([
+            'photo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $user = Auth::user();
+        $oldPhoto = $user->photo_path;
+        $user->update(['photo_path' => $this->photo->store('profile-photos', 'local')]);
+
+        if (filled($oldPhoto)) {
+            \Illuminate\Support\Facades\Storage::disk('local')->delete($oldPhoto);
+        }
+
+        $this->photo = null;
+        Flux::toast(variant: 'success', text: __('Profile photo updated.'));
+    }
+
     /**
      * Send an email verification notification to the current user.
      */
@@ -84,12 +107,6 @@ new #[Title('Profile settings')] class extends Component {
         return Auth::user() instanceof MustVerifyEmail && ! Auth::user()->hasVerifiedEmail();
     }
 
-    #[Computed]
-    public function showDeleteUser(): bool
-    {
-        return ! Auth::user() instanceof MustVerifyEmail
-            || (Auth::user() instanceof MustVerifyEmail && Auth::user()->hasVerifiedEmail());
-    }
 }; ?>
 
 <section class="w-full">
@@ -98,6 +115,31 @@ new #[Title('Profile settings')] class extends Component {
     <flux:heading class="sr-only">{{ __('Profile settings') }}</flux:heading>
 
     <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your name and account contact details')">
+        @if (Auth::user()->isParent() || Auth::user()->isNurse())
+            <div class="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/60">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-teal-100 text-xl font-bold text-teal-700 dark:bg-teal-950 dark:text-teal-300">
+                        @if ($photo)
+                            <img src="{{ $photo->temporaryUrl() }}" alt="Profile photo preview" class="size-full object-cover">
+                        @elseif (Auth::user()->photo_path)
+                            <img src="{{ route('profile.photo') }}" alt="Profile photo of {{ Auth::user()->name }}" class="size-full object-cover">
+                        @else
+                            {{ str(Auth::user()->name)->substr(0, 1)->upper() }}
+                        @endif
+                    </div>
+                    <div class="min-w-56 flex-1">
+                        <flux:heading size="sm">{{ __('Profile photo') }}</flux:heading>
+                        <flux:text class="mt-1">{{ __('Add a photo so your profile is recognizable on the dashboard.') }}</flux:text>
+                        <input wire:model="photo" type="file" accept="image/jpeg,image/png,image/webp" class="mt-3 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-600 file:px-3 file:py-2 file:font-semibold file:text-white hover:file:bg-teal-700 dark:text-zinc-300" />
+                        @error('photo') <flux:text class="mt-2 text-sm !text-red-600 dark:!text-red-400">{{ $message }}</flux:text> @enderror
+                    </div>
+                    <flux:button wire:click="updateProfilePhoto" wire:loading.attr="disabled" wire:target="photo,updateProfilePhoto" variant="primary" type="button">
+                        {{ __('Save photo') }}
+                    </flux:button>
+                </div>
+            </div>
+        @endif
+
         <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
             <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
 
@@ -141,8 +183,5 @@ new #[Title('Profile settings')] class extends Component {
             </div>
         </form>
 
-        @if ($this->showDeleteUser)
-            <livewire:pages::settings.delete-user-form />
-        @endif
     </x-pages::settings.layout>
 </section>

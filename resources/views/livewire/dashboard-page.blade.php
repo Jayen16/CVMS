@@ -197,13 +197,24 @@
             $verifiedCount = $children->sum(fn ($child) => $child->vaccinations->where('verification_status', 'verified')->count());
             $pendingCount = $children->sum(fn ($child) => $child->vaccinations->where('verification_status', 'pending')->count());
             $overdueCount = $children->filter(fn ($child) => ($suggestion = app(\App\Services\ImmunizationSuggestionService::class)->suggestNextDose($child)) && ($suggestion['status'] ?? null) === 'overdue')->count();
+            $greeting = now()->hour < 12 ? 'Good morning' : (now()->hour < 18 ? 'Good afternoon' : 'Good evening');
         @endphp
         <div class="parent-dashboard">
             <section class="parent-welcome-panel">
-                <div>
+                <div class="flex min-w-0 items-center gap-4">
+                    <a href="{{ route('profile.edit') }}" wire:navigate class="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-teal-400/60 bg-teal-100 text-2xl font-bold text-teal-700 shadow-sm dark:bg-teal-950 dark:text-teal-300" title="Update profile photo">
+                        @if (auth()->user()->photo_path)
+                            <img src="{{ route('profile.photo') }}" alt="Profile photo of {{ auth()->user()->name }}" class="size-full object-cover">
+                        @else
+                            {{ str(auth()->user()->name)->substr(0, 1)->upper() }}
+                        @endif
+                    </a>
+                    <div class="min-w-0">
                     <p class="eyebrow">ImmuniCare · Parent dashboard</p>
-                    <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Good morning, {{ auth()->user()->name }}! <span aria-hidden="true">👋</span></h1>
+                    <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">{{ $greeting }}, {{ auth()->user()->name }}! <span aria-hidden="true">👋</span></h1>
                     <p class="mt-1 max-w-xl text-sm leading-6 text-slate-600 dark:text-zinc-300">Here’s an overview of your children’s immunization status.</p>
+                    <a href="{{ route('profile.edit') }}" wire:navigate class="mt-2 inline-block text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300">Update profile photo</a>
+                    </div>
                 </div>
                 <div class="parent-welcome-art" aria-hidden="true"><span>✦</span><span>✚</span><span>♥</span></div>
             </section>
@@ -256,7 +267,21 @@
         <div class="nurse-dashboard">
         <section class="nurse-welcome-panel">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div><p class="eyebrow">Nurse workspace · {{ $stats['barangay'] }}</p><h2 class="mt-1 text-xl font-bold text-slate-950 dark:text-white">Hello, {{ auth()->user()->name }}! 👋</h2><p class="mt-1 max-w-xl text-sm leading-6 text-slate-600 dark:text-zinc-300">Manage child profiles, record vaccinations, and review parent submissions from your barangay.</p></div>
+            <div class="flex min-w-0 items-center gap-4">
+                <a href="{{ route('profile.edit') }}" wire:navigate class="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-teal-400/60 bg-teal-100 text-2xl font-bold text-teal-700 shadow-sm dark:bg-teal-950 dark:text-teal-300" title="Update profile photo">
+                    @if (auth()->user()->photo_path)
+                        <img src="{{ route('profile.photo') }}" alt="Profile photo of {{ auth()->user()->name }}" class="size-full object-cover">
+                    @else
+                        {{ str(auth()->user()->name)->substr(0, 1)->upper() }}
+                    @endif
+                </a>
+                <div class="min-w-0">
+                    <p class="eyebrow">Nurse workspace · {{ $stats['barangay'] }}</p>
+                    <h2 class="mt-1 text-xl font-bold text-slate-950 dark:text-white">Hello, {{ auth()->user()->name }}! 👋</h2>
+                    <p class="mt-1 max-w-xl text-sm leading-6 text-slate-600 dark:text-zinc-300">Manage child profiles, record vaccinations, and review parent submissions from your barangay.</p>
+                    <a href="{{ route('profile.edit') }}" wire:navigate class="mt-2 inline-block text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300">Update profile photo</a>
+                </div>
+            </div>
                 @if (auth()->user()->canViewChildrenRegistry())
                     <a href="{{ route('children.create') }}" class="app-button-primary shrink-0" wire:navigate><flux:icon.plus class="mr-2 size-4" />Add child</a>
                 @endif
