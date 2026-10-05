@@ -36,7 +36,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-    #[Fillable(['name', 'email', 'phone', 'login_channel', 'password', 'role', 'roles', 'permissions', 'barangay_id', 'municipality_id', 'is_active', 'invitation_accepted_at', 'privacy_notice_version', 'privacy_acknowledged_at', 'privacy_acknowledged_ip', 'archived_at', 'archived_by', 'archive_reason'])]
+    #[Fillable(['name', 'email', 'phone', 'photo_path', 'login_channel', 'password', 'role', 'roles', 'permissions', 'barangay_id', 'municipality_id', 'is_active', 'invitation_accepted_at', 'privacy_notice_version', 'privacy_acknowledged_at', 'privacy_acknowledged_ip', 'archived_at', 'archived_by', 'archive_reason'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {

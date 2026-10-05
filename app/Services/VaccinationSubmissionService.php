@@ -92,6 +92,7 @@ class VaccinationSubmissionService
             'verification_status' => $user->isParent() ? 'pending' : 'verified',
             'proof_path' => $proofPaths[0] ?? null,
             'proof_paths' => $proofPaths === [] ? null : $proofPaths,
+            'proof_uploaders' => $proofPaths === [] ? null : array_fill(0, count($proofPaths), $user->isParent() ? 'Parent · '.$user->name : 'Nurse · '.$user->name),
         ]);
 
         $record->load(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier']);
@@ -110,6 +111,7 @@ class VaccinationSubmissionService
     public function updatePendingParentRecord(VaccinationRecord $record, array $validated): VaccinationRecord
     {
         $proofPaths = $record->proofPaths();
+        $proofUploaders = $record->proofUploaderLabels();
 
         if (array_key_exists('proof_files', $validated)) {
             $newProofPaths = $this->storeProofs($validated['proof_files'] ?? []);
@@ -117,6 +119,7 @@ class VaccinationSubmissionService
             if ($newProofPaths !== []) {
                 $this->deleteProofs($proofPaths);
                 $proofPaths = $newProofPaths;
+                $proofUploaders = array_fill(0, count($newProofPaths), 'Parent · '.$record->submitter?->name);
             }
         }
 
@@ -124,6 +127,7 @@ class VaccinationSubmissionService
             ...$validated,
             'proof_path' => $proofPaths[0] ?? null,
             'proof_paths' => $proofPaths === [] ? null : $proofPaths,
+            'proof_uploaders' => $proofPaths === [] ? null : $proofUploaders,
             'verified_by' => null,
             'verified_at' => null,
             'verification_status' => 'pending',

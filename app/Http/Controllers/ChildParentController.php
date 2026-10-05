@@ -9,10 +9,12 @@ use App\Services\OfflineSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Throwable;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ChildParentController extends Controller
 {
@@ -24,6 +26,7 @@ class ChildParentController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255', 'required_without:phone'],
             'phone' => ['nullable', 'string', 'max:32', 'required_without:email'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'relationship' => ['required', 'string', 'max:255', Rule::in([
                 'mother',
                 'father',
@@ -103,6 +106,16 @@ class ChildParentController extends Controller
 
         // Keep every existing parent link. `sync()` replaces the current set of
         // pivot rows, so only touch this parent's row when linking an account.
+        if ($request->hasFile('photo')) {
+            $disk = Storage::disk('local');
+            $oldPhoto = $parent->photo_path;
+            $parent->update(['photo_path' => $request->file('photo')->store('parent-photos', 'local')]);
+
+            if (filled($oldPhoto)) {
+                $disk->delete($oldPhoto);
+            }
+        }
+
         if ($child->parents()->whereKey($parent->id)->exists()) {
             $child->parents()->updateExistingPivot($parent->id, [
                 'relationship' => $validated['relationship'],
@@ -166,6 +179,7 @@ class ChildParentController extends Controller
             'edit_name' => ['required', 'string', 'max:255'],
             'edit_email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($parent->id)],
             'edit_phone' => ['nullable', 'string', 'max:32', Rule::unique('users', 'phone')->ignore($parent->id)],
+            'edit_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'edit_relationship' => ['required', 'string', 'max:255', Rule::in([
                 'mother', 'father', 'guardian', 'aunt', 'uncle', 'grandmother', 'grandfather', 'other',
             ])],
@@ -195,12 +209,34 @@ class ChildParentController extends Controller
             'email' => $validated['email'],
             'phone' => $validated['phone'],
         ]);
+
+        if ($request->hasFile('edit_photo')) {
+            $disk = Storage::disk('local');
+            $oldPhoto = $parent->photo_path;
+            $parent->update(['photo_path' => $request->file('edit_photo')->store('parent-photos', 'local')]);
+
+            if (filled($oldPhoto)) {
+                $disk->delete($oldPhoto);
+            }
+        }
         $child->parents()->updateExistingPivot($parent->id, ['relationship' => $validated['edit_relationship']]);
 
         app(OfflineSyncService::class)->queueGuardian($parent->fresh());
         app(OfflineSyncService::class)->queueRelationship($child, $parent, $validated['edit_relationship']);
 
         return to_route('children.show', [$child, 'tab' => 'parents'])->with('status', 'Parent information updated.');
+    }
+
+    public function photo(ChildProfile $child, User $parent): BinaryFileResponse
+    {
+        $this->authorizeChildAccess($child);
+        abort_unless($parent->isParent() && $child->parents()->whereKey($parent->id)->exists(), 404);
+        abort_unless(filled($parent->photo_path), 404);
+
+        $disk = Storage::disk('local');
+        abort_unless($disk->exists($parent->photo_path), 404);
+
+        return response()->file($disk->path($parent->photo_path));
     }
 
     public function sendPasswordLink(Request $request, ChildProfile $child, User $parent, AccountRecoveryService $recovery): RedirectResponse|JsonResponse

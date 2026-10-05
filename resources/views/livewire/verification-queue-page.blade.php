@@ -20,7 +20,7 @@
     </div>
 
     <section class="app-card">
-        <div class="grid gap-3 p-3 lg:hidden">
+        <div class="grid gap-4 p-3 sm:p-4 lg:grid-cols-2 xl:grid-cols-3">
             @forelse ($records as $record)
                 <article class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
                     <div class="flex items-start justify-between gap-3">
@@ -44,7 +44,7 @@
                 <div class="app-card p-6 text-center text-sm text-zinc-500">No pending records found.</div>
             @endforelse
         </div>
-        <div class="hidden overflow-x-auto lg:block">
+        <div class="hidden">
             <table class="app-table">
                 <thead>
                     <tr>
@@ -146,15 +146,20 @@
                     </dl>
                 </div>
 
-                @if ($pendingAction === 'reject')
-                    <div class="mt-5">
-                        <label for="rejection-remark" class="mb-2 block text-sm font-medium text-slate-800 dark:text-zinc-100">Rejection remark <span class="text-red-600">*</span></label>
-                        <textarea id="rejection-remark" wire:model="rejectionRemark" rows="4" maxlength="1000" class="app-input w-full" placeholder="Explain why this vaccination record was rejected so the parent can correct it."></textarea>
-                        @error('rejectionRemark')
-                            <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                        @enderror
-                    </div>
-                @endif
+                <div class="mt-5">
+                    <label for="review-remark" class="mb-2 block text-sm font-medium text-slate-800 dark:text-zinc-100">{{ $pendingAction === 'reject' ? 'Rejection remark' : 'Nurse review note' }} @if ($pendingAction === 'reject')<span class="text-red-600">*</span>@else<span class="text-xs font-normal text-slate-500">(optional)</span>@endif</label>
+                    <textarea id="review-remark" wire:model="rejectionRemark" rows="4" maxlength="1000" class="app-input w-full" placeholder="{{ $pendingAction === 'reject' ? 'Explain why this vaccination record was rejected so the parent can correct it.' : 'Add a note about the proof or verification decision.' }}"></textarea>
+                    @error('rejectionRemark')
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div class="mt-4">
+                    <label for="review-photos" class="mb-2 block text-sm font-medium text-slate-800 dark:text-zinc-100">Additional supporting photos <span class="text-xs font-normal text-slate-500">(optional)</span></label>
+                    <input id="review-photos" type="file" wire:model="reviewPhotos" accept="image/*" multiple class="app-input w-full">
+                    <p class="mt-1 text-xs text-slate-500 dark:text-zinc-400">Attach up to 5 additional photos. The parent’s original proof will be preserved.</p>
+                    @error('reviewPhotos')<p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>@enderror
+                    @error('reviewPhotos.*')<p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>@enderror
+                </div>
 
                 <div class="mt-6 flex justify-end gap-2">
                     <button type="button" class="app-button-secondary" wire:click="cancelConfirmation">Cancel</button>

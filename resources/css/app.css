@@ -303,6 +303,8 @@ select:focus[data-flux-control] {
     .record-section-heading-muted > span { @apply bg-slate-300 text-white dark:bg-zinc-700; }
     .record-section-heading-pending { @apply text-amber-700 dark:text-amber-300; }
     .record-section-heading-pending > span { @apply bg-amber-400; }
+    .record-section-heading-rejected { @apply text-rose-700 dark:text-rose-300; }
+    .record-section-heading-rejected > span { @apply bg-rose-500; }
 
     .app-table {
         @apply min-w-full divide-y divide-slate-200 text-sm dark:divide-zinc-800;
