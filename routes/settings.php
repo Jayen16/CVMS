@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\UserProfilePhotoController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
 
     Route::livewire('settings/profile', 'pages::settings.profile')->name('profile.edit');
+    Route::get('profile/photo', UserProfilePhotoController::class)->name('profile.photo');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

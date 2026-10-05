@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -38,10 +39,12 @@ class VaccinationRecordController extends Controller
         $record->update($suggestions->suggestionForRecord($child));
 
         if (auth()->user()->isParent()) {
-            return to_route('children.show', $child)->with('status', 'Vaccination history submitted. It will stay pending until the clinic verifies it.');
+            return to_route('children.show', ['child' => $child, 'tab' => 'vaccination'])
+                ->with('status', 'Vaccination history submitted. It will stay pending until the clinic verifies it.');
         }
 
-        return to_route('children.show', $child)->with('status', 'Vaccination record saved with next-dose suggestion.');
+        return to_route('children.show', ['child' => $child, 'tab' => 'vaccination'])
+            ->with('status', 'Vaccination record saved with next-dose suggestion.');
     }
 
     private function validateInventorySelection(ChildProfile $child, string $vaccineTypeId, mixed $inventoryItemId): ?VaccineInventoryItem
@@ -110,7 +113,7 @@ class VaccinationRecordController extends Controller
 
         $record->update($suggestions->suggestionForRecord($record->child));
 
-        return to_route('children.show', ['child' => $record->child, 'edit_record' => null])
+        return to_route('children.show', ['child' => $record->child, 'edit_record' => null, 'tab' => 'vaccination'])
             ->with('status', 'Pending vaccination history updated.');
     }
 
@@ -139,12 +142,17 @@ class VaccinationRecordController extends Controller
             'remarks.required' => 'Please provide a reason for rejecting this vaccination record.',
         ]);
 
-        $record->update([
+        $attributes = [
             'verification_status' => 'rejected',
             'verified_by' => auth()->id(),
             'verified_at' => now(),
-            'remarks' => trim($validated['remarks']),
-        ]);
+        ];
+
+        if (Schema::hasColumn('vaccination_records', 'nurse_remarks')) {
+            $attributes['nurse_remarks'] = trim($validated['remarks']);
+        }
+
+        $record->update($attributes);
         $offlineSync->queueUpsert($record->fresh(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier']));
         $notifications->vaccinationRejected($record);
 

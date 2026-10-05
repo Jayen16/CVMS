@@ -28,6 +28,7 @@ class VaccinationRecord extends Model
         'clinic_location',
         'proof_path',
         'proof_paths',
+        'proof_uploaders',
         'client_submission_id',
         'sync_uuid',
         'facility_uuid',
@@ -42,6 +43,7 @@ class VaccinationRecord extends Model
         'suggested_schedule_version_id',
         'suggestion_note',
         'remarks',
+        'nurse_remarks',
         'archived_at',
         'archived_by',
         'archive_reason',
@@ -54,6 +56,7 @@ class VaccinationRecord extends Model
             'next_due_at' => 'date',
             'verified_at' => 'datetime',
             'proof_paths' => 'array',
+            'proof_uploaders' => 'array',
             'archived_at' => 'datetime',
             'sync_version' => 'integer',
         ];
@@ -89,6 +92,16 @@ class VaccinationRecord extends Model
         $staff = $uuid ? FacilityStaff::query()->where('staff_uuid', $uuid)->when($this->facility_uuid, fn ($query) => $query->where('facility_id', $this->facility_uuid))->value('name') : null;
 
         return $staff ?: $this->recorded_by_name ?: $this->recorder?->name ?: 'Unknown staff';
+    }
+
+    public function nurseReviewRemarks(): ?string
+    {
+        if (filled($this->nurse_remarks)) {
+            return $this->nurse_remarks;
+        }
+
+        // Older records stored the nurse's review text in remarks.
+        return $this->verification_status === 'pending' ? null : $this->remarks;
     }
 
     /**
@@ -159,6 +172,70 @@ class VaccinationRecord extends Model
         }
 
         return array_values(array_filter($paths, fn ($path) => is_string($path) && $path !== ''));
+    }
+
+    /** @return list<string> */
+    public function proofUploaderLabels(): array
+    {
+        $labels = array_values(array_filter($this->proof_uploaders ?? [], fn ($label) => is_string($label) && $label !== ''));
+        $paths = $this->proofPaths();
+
+        if (count($labels) < count($paths)) {
+            $fallback = $this->submitter?->name ? 'Parent · '.$this->submitter->name : 'Parent';
+            $labels = array_pad($labels, count($paths), $fallback);
+        }
+
+        return array_slice($labels, 0, count($paths));
+    }
+
+    public function proofUploaderSummary(): string
+    {
+        return collect($this->proofUploaderLabels())->unique()->implode(' · ');
+    }
+
+    public function parentProofUploaderSummary(): string
+    {
+        return collect($this->proofUploaderLabels())
+            ->reject(fn (string $label): bool => str_starts_with($label, 'Nurse ·'))
+            ->unique()
+            ->implode(' · ');
+    }
+
+    public function nurseProofUploaderSummary(): string
+    {
+        return collect($this->proofUploaderLabels())
+            ->filter(fn (string $label): bool => str_starts_with($label, 'Nurse ·'))
+            ->unique()
+            ->implode(' · ');
+    }
+
+    public function nurseProofCount(): int
+    {
+        return collect($this->proofUploaderLabels())
+            ->filter(fn (string $label): bool => str_starts_with($label, 'Nurse ·'))
+            ->count();
+    }
+
+    /** @return list<int> */
+    public function parentProofIndexes(): array
+    {
+        return collect($this->proofUploaderLabels())
+            ->values()
+            ->filter(fn (string $label): bool => ! str_starts_with($label, 'Nurse ·'))
+            ->keys()
+            ->map(fn (int|string $index): int => (int) $index)
+            ->all();
+    }
+
+    /** @return list<int> */
+    public function nurseProofIndexes(): array
+    {
+        return collect($this->proofUploaderLabels())
+            ->values()
+            ->filter(fn (string $label): bool => str_starts_with($label, 'Nurse ·'))
+            ->keys()
+            ->map(fn (int|string $index): int => (int) $index)
+            ->all();
     }
 
     protected static function booted(): void

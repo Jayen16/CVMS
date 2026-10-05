@@ -178,6 +178,7 @@
             <flux:dropdown position="top" align="end">
                 <flux:profile
                     :initials="auth()->user()->initials()"
+                    :avatar="auth()->user()->photo_path ? route('profile.photo') : null"
                     icon-trailing="chevron-down"
                 />
 
@@ -188,6 +189,7 @@
                                 <flux:avatar
                                     :name="auth()->user()->name"
                                     :initials="auth()->user()->initials()"
+                                    :src="auth()->user()->photo_path ? route('profile.photo') : null"
                                 />
 
                                 <div class="grid flex-1 text-start text-sm leading-tight">
@@ -206,14 +208,6 @@
                             <flux:radio value="dark" icon="moon">Night</flux:radio>
                         </flux:radio.group>
                     </div>
-
-                    <flux:menu.separator />
-
-                    <flux:menu.radio.group>
-                        <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
-                            {{ __('Settings') }}
-                        </flux:menu.item>
-                    </flux:menu.radio.group>
 
                     <flux:menu.separator />
 

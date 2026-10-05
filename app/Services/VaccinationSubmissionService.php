@@ -8,6 +8,7 @@ use App\Models\VaccinationRecord;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -81,7 +82,7 @@ class VaccinationSubmissionService
     {
         $proofPaths = $user->isParent() ? $this->storeProofs($validated['proof_files'] ?? []) : [];
 
-        $record = VaccinationRecord::create([
+        $attributes = [
             ...$validated,
             'child_profile_id' => $child->id,
             'recorded_by' => $user->id,
@@ -92,7 +93,15 @@ class VaccinationSubmissionService
             'verification_status' => $user->isParent() ? 'pending' : 'verified',
             'proof_path' => $proofPaths[0] ?? null,
             'proof_paths' => $proofPaths === [] ? null : $proofPaths,
-        ]);
+        ];
+
+        if ($this->supportsProofUploaderAttribution()) {
+            $attributes['proof_uploaders'] = $proofPaths === []
+                ? null
+                : array_fill(0, count($proofPaths), $user->isParent() ? 'Parent · '.$user->name : 'Nurse · '.$user->name);
+        }
+
+        $record = VaccinationRecord::create($attributes);
 
         $record->load(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier']);
         $this->offlineSync->queueUpsert($record);
@@ -110,6 +119,7 @@ class VaccinationSubmissionService
     public function updatePendingParentRecord(VaccinationRecord $record, array $validated): VaccinationRecord
     {
         $proofPaths = $record->proofPaths();
+        $proofUploaders = $record->proofUploaderLabels();
 
         if (array_key_exists('proof_files', $validated)) {
             $newProofPaths = $this->storeProofs($validated['proof_files'] ?? []);
@@ -117,17 +127,24 @@ class VaccinationSubmissionService
             if ($newProofPaths !== []) {
                 $this->deleteProofs($proofPaths);
                 $proofPaths = $newProofPaths;
+                $proofUploaders = array_fill(0, count($newProofPaths), 'Parent · '.$record->submitter?->name);
             }
         }
 
-        $record->update([
+        $attributes = [
             ...$validated,
             'proof_path' => $proofPaths[0] ?? null,
             'proof_paths' => $proofPaths === [] ? null : $proofPaths,
             'verified_by' => null,
             'verified_at' => null,
             'verification_status' => 'pending',
-        ]);
+        ];
+
+        if ($this->supportsProofUploaderAttribution()) {
+            $attributes['proof_uploaders'] = $proofPaths === [] ? null : $proofUploaders;
+        }
+
+        $record->update($attributes);
 
         $fresh = $record->fresh(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier']);
         $this->offlineSync->queueUpsert($fresh);
@@ -193,5 +210,10 @@ class VaccinationSubmissionService
         }
 
         Storage::disk(config('filesystems.proof_disk', 'local'))->delete($proofPaths);
+    }
+
+    private function supportsProofUploaderAttribution(): bool
+    {
+        return Schema::hasColumn('vaccination_records', 'proof_uploaders');
     }
 }

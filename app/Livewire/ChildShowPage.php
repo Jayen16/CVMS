@@ -8,17 +8,45 @@ use App\Models\VaccineInventoryItem;
 use App\Models\VaccineType;
 use App\Services\ImmunizationSuggestionService;
 use App\Services\VaccineScheduleVersionResolver;
+use App\Services\VaccinationSubmissionService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 class ChildShowPage extends Component
 {
-    use WithPagination;
+    use WithFileUploads, WithPagination;
 
     public ChildProfile $child;
+
+    public ?string $submissionVaccineTypeId = null;
+
+    public $submissionDoseNumber = null;
+
+    public ?string $submissionAdministeredAt = null;
+
+    public ?string $submissionClinicName = null;
+
+    public ?string $submissionClinicLocation = null;
+
+    public ?string $submissionRemarks = null;
+
+    /** @var list<\Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
+    public array $submissionProofFiles = [];
+
+    public ?string $editingRecordId = null;
+
+    public string $childTab = 'schedule';
+
+    public bool $submitHistoryOpen = false;
+
+    public int $submissionStep = 1;
+
+    public bool $submissionSubmitted = false;
 
     #[Url]
     public int $perPage = 10;
@@ -38,7 +66,97 @@ class ChildShowPage extends Component
     public function mount(ChildProfile $child): void
     {
         $this->child = $child;
+        $this->child->loadMissing('barangay');
         $this->calendarMonth = $this->calendarMonth !== '' ? $this->calendarMonth : Carbon::today()->format('Y-m');
+        $this->childTab = in_array(request()->string('tab')->toString(), ['vaccination', 'parents'], true)
+            ? request()->string('tab')->toString()
+            : 'schedule';
+        $this->submissionClinicName = $this->child->barangay?->name ?? 'Current clinic barangay';
+        $this->submissionClinicLocation = 'Indang, Cavite, Barangay 4 (pob.), Indang, Cavite, 4122';
+        $this->editingRecordId = request()->string('edit_record')->toString() ?: null;
+        $this->submitHistoryOpen = $this->editingRecordId !== null;
+        $this->submissionStep = $this->editingRecordId !== null ? 2 : 1;
+
+        if ($this->editingRecordId !== null && auth()->user()->isParent()) {
+            $record = VaccinationRecord::query()
+                ->where('child_profile_id', $child->id)
+                ->whereKey($this->editingRecordId)
+                ->first();
+
+            if ($record) {
+                $this->submissionVaccineTypeId = $record->vaccine_type_id;
+                $this->submissionDoseNumber = $record->dose_number;
+                $this->submissionAdministeredAt = $record->administered_at?->toDateString();
+                $this->submissionClinicName = $record->clinic_name;
+                $this->submissionClinicLocation = $record->clinic_location;
+                $this->submissionRemarks = $record->remarks;
+            }
+        }
+    }
+
+    public function submitVaccinationHistory(VaccinationSubmissionService $submissions, ImmunizationSuggestionService $suggestions): void
+    {
+        abort_unless(auth()->user()->isParent(), 403);
+        abort_unless($this->child->parents()->whereKey(auth()->id())->exists(), 403);
+        $this->childTab = 'vaccination';
+
+        $record = $this->editingRecordId
+            ? VaccinationRecord::query()->where('child_profile_id', $this->child->id)->findOrFail($this->editingRecordId)
+            : null;
+
+        if ($record) {
+            abort_unless($record->submitted_by === auth()->id() && $record->isParentEditable(), 403);
+        }
+
+        $input = [
+            'vaccine_type_id' => $this->submissionVaccineTypeId,
+            'dose_number' => $this->submissionDoseNumber,
+            'administered_at' => $this->submissionAdministeredAt,
+            'clinic_name' => $this->submissionClinicName,
+            'clinic_location' => $this->submissionClinicLocation,
+            'remarks' => $this->submissionRemarks,
+            'proof_files' => $this->submissionProofFiles,
+        ];
+
+        try {
+            $validated = $submissions->validate(auth()->user(), $this->child, $input, $record);
+        } catch (ValidationException $exception) {
+            $this->submitHistoryOpen = true;
+            $this->submissionStep = isset($exception->errors()['proof_files']) || isset($exception->errors()['proof_files.*']) ? 2 : 1;
+            $this->dispatch(
+                'vaccination-validation-failed',
+                step: $this->submissionStep,
+            );
+
+            throw $exception;
+        }
+
+        if ($record) {
+            $record = $submissions->updatePendingParentRecord($record, $validated);
+            $message = 'Pending vaccination history updated.';
+        } else {
+            $record = $submissions->create($this->child, auth()->user(), $validated);
+            $message = 'Vaccination history submitted. It will stay pending until the clinic verifies it.';
+        }
+
+        $record->update($suggestions->suggestionForRecord($this->child));
+        $this->submitHistoryOpen = true;
+        $this->submissionStep = 4;
+        $this->submissionSubmitted = true;
+        $this->resetSubmissionForm();
+        $this->dispatch('vaccination-submitted', message: $message);
+    }
+
+    private function resetSubmissionForm(): void
+    {
+        $this->submissionVaccineTypeId = null;
+        $this->submissionDoseNumber = null;
+        $this->submissionAdministeredAt = null;
+        $this->submissionClinicName = $this->child->barangay?->name ?? 'Current clinic barangay';
+        $this->submissionClinicLocation = 'Indang, Cavite, Barangay 4 (pob.), Indang, Cavite, 4122';
+        $this->submissionRemarks = null;
+        $this->submissionProofFiles = [];
+        $this->editingRecordId = null;
     }
 
     public function render(ImmunizationSuggestionService $suggestions, VaccineScheduleVersionResolver $scheduleVersions): View
@@ -110,6 +228,7 @@ class ChildShowPage extends Component
             'vaccinations' => VaccinationRecord::query()
                 ->with(['vaccineType', 'recorder', 'submitter', 'verifier'])
                 ->where('child_profile_id', $this->child->id)
+                ->latest('administered_at')
                 ->latest('created_at')
                 ->paginate($this->perPage),
             'suggestion' => $suggestions->suggestNextDose($this->child),
