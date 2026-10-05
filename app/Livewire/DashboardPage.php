@@ -358,6 +358,12 @@ class DashboardPage extends Component
             ->take(8)
             ->get();
         $nurseBarangayVaccinations = VaccinationRecord::whereHas('child', fn ($query) => $query->where('barangay_id', $user->barangay_id));
+        $nursePendingRecords = (clone $nurseBarangayVaccinations)
+            ->where('verification_status', 'pending')
+            ->with(['child', 'vaccineType'])
+            ->latest('created_at')
+            ->take(5)
+            ->get();
         $nurseBarangayChildren = ChildProfile::query()
             ->where('barangay_id', $user->barangay_id)
             ->with('vaccinations.vaccineType')
@@ -394,6 +400,7 @@ class DashboardPage extends Component
                 'pendingSync' => $pendingSync,
             ],
             'children' => $children,
+            'pendingRecords' => $nursePendingRecords,
             'statusChart' => $this->statusChart(VaccinationRecord::whereHas('child', fn ($query) => $query->where('barangay_id', $user->barangay_id))),
             'ageChart' => $this->ageChart($nurseBarangayChildren),
             'stockChart' => $nurseStockChart,

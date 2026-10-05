@@ -4,7 +4,7 @@
         @include('partials.head')
     </head>
     <body class="app-shell">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-slate-200 bg-white/95 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/95">
+        <flux:sidebar sticky collapsible="mobile" class="app-sidebar border-e border-slate-200 bg-white/95 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/95">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />

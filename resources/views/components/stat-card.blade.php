@@ -14,7 +14,7 @@
             <p class="text-sm font-medium text-slate-500 dark:text-zinc-400">{{ $label }}</p>
             <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{{ $value }}</p>
         </div>
-        <div class="flex size-10 items-center justify-center rounded-lg bg-teal-50 text-teal-700 ring-1 ring-teal-100 dark:bg-teal-950 dark:text-teal-300 dark:ring-teal-900">
+        <div class="stat-card-icon flex size-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100 dark:bg-teal-950 dark:text-teal-300 dark:ring-teal-900">
             @if (\Illuminate\Support\Str::contains($normalizedLabel, 'barangay admin'))
                 <flux:icon.shield-check class="size-5" />
             @elseif (\Illuminate\Support\Str::contains($normalizedLabel, 'barangay'))
