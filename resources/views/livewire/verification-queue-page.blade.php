@@ -22,26 +22,23 @@
     <section class="app-card">
         <div class="grid gap-3 p-3 lg:hidden">
             @forelse ($records as $record)
-                <article class="rounded-xl border border-slate-200 p-4 dark:border-zinc-700">
+                <article class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <a href="{{ route('children.show', $record->child) }}" class="break-words font-semibold text-slate-900 hover:text-teal-700 dark:text-white dark:hover:text-teal-300" wire:navigate>{{ $record->child->full_name }}</a>
                             <p class="mt-0.5 text-xs text-zinc-500">{{ $record->child->barangay?->name ?? 'No barangay' }}</p>
                         </div>
-                        <span class="shrink-0 text-sm text-zinc-500">{{ $record->administered_at->format('M d, Y') }}</span>
+                        <span class="status-pill status-pending shrink-0">Pending</span>
                     </div>
-                    <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-slate-100 pt-3 text-sm dark:border-zinc-800">
+                    <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading"><span>✓</span><strong>Information submitted</strong></div></div>
+                    <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
                         <div><dt class="text-xs text-zinc-500">Vaccine</dt><dd class="mt-0.5 font-medium">{{ $record->vaccineType->name }}</dd></div>
+                        <div><dt class="text-xs text-zinc-500">Date given</dt><dd class="mt-0.5">{{ $record->administered_at->format('M d, Y') }}</dd></div>
                         <div><dt class="text-xs text-zinc-500">Source</dt><dd class="mt-0.5">{{ str($record->source)->replace('_', ' ')->title() }}</dd></div>
-                        <div class="col-span-2"><dt class="text-xs text-zinc-500">Submitted by</dt><dd class="mt-0.5 break-words">{{ $record->submitter?->name ?? 'N/A' }}</dd></div>
-                        <div class="col-span-2"><dt class="text-xs text-zinc-500">Proof</dt><dd class="mt-0.5">@if ($record->proofPaths() !== [])<x-proof-photo-viewer :record="$record" />@else<span class="text-zinc-500">No proof attached</span>@endif</dd></div>
+                        <div><dt class="text-xs text-zinc-500">Submitted by</dt><dd class="mt-0.5 break-words">{{ $record->submitter?->name ?? 'N/A' }}</dd></div>
                     </dl>
-                    @if (auth()->user()->canVerifyVaccinations())
-                        <div class="mt-4 flex gap-2 border-t border-slate-100 pt-3 dark:border-zinc-800">
-                            <button type="button" wire:click="promptVerify('{{ $record->id }}')" class="app-button-primary flex-1 justify-center !px-3 !py-2 !text-xs">Verify</button>
-                            <button type="button" wire:click="promptReject('{{ $record->id }}')" class="app-button-danger flex-1 justify-center !px-3 !py-2 !text-xs">Reject</button>
-                        </div>
-                    @endif
+                    <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading"><span>✓</span><strong>Proof attached</strong></div><div class="mt-2 text-xs">@if ($record->proofPaths() !== [])<x-proof-photo-viewer :record="$record" />@else<span class="text-zinc-500">No proof attached</span>@endif</div></div>
+                    <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading record-section-heading-pending"><span>◷</span><strong>Waiting for approval</strong></div><p class="mt-1 pl-7 text-xs text-slate-500">Review the submitted information and proof before making a decision.</p>@if (auth()->user()->canVerifyVaccinations())<div class="mt-3 grid grid-cols-2 gap-2"><button type="button" wire:click="promptVerify('{{ $record->id }}')" class="app-button-primary w-full justify-center !px-3 !py-2 !text-xs">Verify</button><button type="button" wire:click="promptReject('{{ $record->id }}')" class="app-button-danger w-full justify-center !px-3 !py-2 !text-xs">Reject</button></div>@endif</div>
                 </article>
             @empty
                 <div class="app-card p-6 text-center text-sm text-zinc-500">No pending records found.</div>

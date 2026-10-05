@@ -23,11 +23,13 @@
             proofModalOpen: false,
             proofModalImages: [],
             proofModalIndex: 0,
-            recordDetailsOpen: false,
+            expandedRecordId: null,
             recordDetails: {},
-            openRecordDetails(record) {
+            recordStep: 'details',
+            toggleRecordDetails(id, record) {
+                this.expandedRecordId = this.expandedRecordId === id ? null : id;
                 this.recordDetails = record;
-                this.recordDetailsOpen = true;
+                this.recordStep = 'details';
             },
             childViewTab: @js($initialChildViewTab),
             openProofModal(images) {
@@ -315,6 +317,38 @@
                         </label>
                     </div>
                 </div>
+                <div class="border-b border-slate-100 px-5 py-4 dark:border-zinc-800">
+                    <div class="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Vaccination timeline</h3>
+                            <p class="mt-0.5 text-xs text-slate-500 dark:text-zinc-400">A quick view of completed, pending, and upcoming doses.</p>
+                        </div>
+                        <span class="hidden rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-semibold text-teal-700 sm:inline-flex dark:bg-teal-950 dark:text-teal-300">{{ $vaccinations->total() }} records</span>
+                    </div>
+                    <div class="vaccination-mini-timeline">
+                        @forelse ($vaccinations->take(6) as $record)
+                            @php
+                                $timelineStatus = match ($record->verification_status) {
+                                    'verified' => 'verified',
+                                    'pending' => 'pending',
+                                    default => 'rejected',
+                                };
+                            @endphp
+                            <div class="vaccination-mini-item">
+                                <span class="vaccination-mini-dot vaccination-mini-dot-{{ $timelineStatus }}"><span></span></span>
+                                <div class="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 dark:border-zinc-800 dark:bg-zinc-950/50">
+                                    <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                                        <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ $record->vaccineType->name }} <span class="font-normal text-slate-500">· Dose {{ $record->dose_number ?: '—' }}</span></p>
+                                        <span class="status-pill !px-2 !py-0.5 !text-[10px] @if($timelineStatus === 'verified') status-verified @elseif($timelineStatus === 'pending') status-pending @else status-rejected @endif">{{ $timelineStatus === 'verified' ? 'Verified' : ucfirst($timelineStatus) }}</span>
+                                    </div>
+                                    <p class="mt-1 text-xs text-slate-500 dark:text-zinc-400">{{ $record->administered_at->format('M d, Y') }} · {{ str($record->source)->replace('_', ' ')->title() }}</p>
+                                </div>
+                            </div>
+                        @empty
+                            <p class="py-3 text-sm text-slate-500">No vaccination records yet.</p>
+                        @endforelse
+                    </div>
+                </div>
                 @unless (auth()->user()->isParent())
                 <div class="grid gap-3 p-3 lg:hidden">
                     @forelse ($vaccinations as $record)
@@ -324,34 +358,63 @@
                                     <a href="{{ route('children.timeline', ['child' => $child, 'vaccine' => $record->vaccineType->code]) }}" class="font-semibold text-teal-700 hover:underline dark:text-teal-300">{{ $record->vaccineType->name }}</a>
                                     <p class="mt-0.5 text-xs text-zinc-500">{{ $record->dose_number ? 'Dose '.$record->dose_number : 'Not set' }} · {{ $record->administered_at->format('M d, Y') }}</p>
                                 </div>
-                                <span class="status-pill shrink-0 @if ($record->verification_status === 'verified') status-verified @elseif ($record->verification_status === 'pending') status-pending @else status-rejected @endif">{{ ucfirst($record->verification_status) }}</span>
+                                <span class="inline-flex shrink-0 items-center gap-1.5"><span class="status-pill @if ($record->verification_status === 'verified') status-verified @elseif ($record->verification_status === 'pending') status-pending @else status-rejected @endif">{{ ucfirst($record->verification_status) }}</span><span class="text-[11px] text-slate-500 dark:text-zinc-400">{{ $record->administered_at->format('M d, Y') }}</span></span>
                             </div>
-                            <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-slate-100 pt-3 text-sm dark:border-zinc-800">
+                            <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading"><span>✓</span><strong>Information submitted</strong></div></div>
+                            <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 pt-1 text-sm">
                                 <div><dt class="text-xs text-zinc-500">Source</dt><dd class="mt-0.5">{{ str($record->source)->replace('_', ' ')->title() }}@if ($record->clinic_name)<span class="block text-xs text-zinc-500">{{ $record->clinic_name }}</span>@endif</dd></div>
                                 <div><dt class="text-xs text-zinc-500">Review</dt><dd class="mt-0.5 text-xs text-zinc-600 dark:text-zinc-300">@if ($record->verification_status === 'pending')Submitted by {{ $record->submitter?->name ?? 'Unknown parent' }}@elseif ($record->verification_status === 'verified')Approved by {{ $record->verifier?->name ?? $record->recordedByDisplayName() }}@else Rejected by {{ $record->verifier?->name ?? $record->recordedByDisplayName() }}@endif</dd></div>
                                 <div><dt class="text-xs text-zinc-500">Next suggestion</dt><dd class="mt-0.5">{{ $record->suggested_vaccine ?? 'None' }}@if ($record->next_due_at)<span class="block text-xs text-zinc-500">{{ $record->next_due_at->format('M d, Y') }}</span>@endif</dd></div>
                                 <div><dt class="text-xs text-zinc-500">Remarks</dt><dd class="mt-0.5 whitespace-pre-line">{{ $record->remarks ?? '—' }}</dd></div>
                             </dl>
                             @if ($record->proofPaths() !== [])
-                                <a href="#" @click.prevent="openProofModal(@js($this->proofImageUrls($record)))" class="mt-3 inline-block text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300">View submitted {{ count($record->proofPaths()) }} photo{{ count($record->proofPaths()) === 1 ? '' : 's' }}</a>
+                                <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading"><span>✓</span><strong>Proof attached</strong></div><a href="#" @click.prevent="openProofModal(@js($this->proofImageUrls($record)))" class="mt-2 inline-block text-xs font-semibold text-teal-700 hover:underline dark:text-teal-300">View submitted {{ count($record->proofPaths()) }} photo{{ count($record->proofPaths()) === 1 ? '' : 's' }}</a></div>
+                            @else
+                                <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading record-section-heading-muted"><span>2</span><strong>No proof attached</strong></div></div>
                             @endif
-                            @if (auth()->user()->canVerifyVaccinations())
-                                <div class="mt-3 flex gap-2 border-t border-slate-100 pt-3 dark:border-zinc-800">
-                                    @if ($record->isPendingVerification())
-                                        <form method="POST" action="{{ route('vaccinations.verify', $record) }}" class="flex-1">@csrf<button type="button" class="app-button-primary w-full !px-3 !py-2 !text-xs" @click="openVerificationModal = true; verificationActionUrl = @js(route('vaccinations.verify', $record)); verificationActionLabel = 'Verify'; verificationSubject = @js($child->full_name.' - '.$record->vaccineType->name)">Verify</button></form>
-                                        <form method="POST" action="{{ route('vaccinations.reject', $record) }}" class="flex-1">@csrf<button type="button" class="app-button-danger w-full !px-3 !py-2 !text-xs" @click="openVerificationModal = true; verificationActionUrl = @js(route('vaccinations.reject', $record)); verificationActionLabel = 'Reject'; verificationSubject = @js($child->full_name.' - '.$record->vaccineType->name); verificationRemark = ''">Reject</button></form>
-                                    @else
-                                        <span class="text-xs text-zinc-500">{{ $record->verifier ? 'Reviewed by '.$record->verifier->name : 'No action' }}</span>
-                                    @endif
-                                </div>
-                            @endif
+                            <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading @if ($record->verification_status === 'pending') record-section-heading-pending @endif"><span>@if ($record->verification_status === 'verified')✓ @elseif ($record->verification_status === 'pending')◷ @else ! @endif</span><strong>@if ($record->verification_status === 'pending')Waiting for approval @elseif ($record->verification_status === 'verified')Verified by nurse @else Review required @endif</strong></div>@if ($record->isPendingVerification() && auth()->user()->canVerifyVaccinations())<div class="mt-3 grid grid-cols-2 gap-2"><form method="POST" action="{{ route('vaccinations.verify', $record) }}">@csrf<button type="button" class="app-button-primary w-full !px-3 !py-2 !text-xs" @click="openVerificationModal = true; verificationActionUrl = @js(route('vaccinations.verify', $record)); verificationActionLabel = 'Verify'; verificationSubject = @js($child->full_name.' - '.$record->vaccineType->name)">Verify</button></form><form method="POST" action="{{ route('vaccinations.reject', $record) }}">@csrf<button type="button" class="app-button-danger w-full !px-3 !py-2 !text-xs" @click="openVerificationModal = true; verificationActionUrl = @js(route('vaccinations.reject', $record)); verificationActionLabel = 'Reject'; verificationSubject = @js($child->full_name.' - '.$record->vaccineType->name); verificationRemark = ''">Reject</button></form></div>@elseif ($record->verification_status === 'pending')<p class="mt-1 text-xs text-slate-500">Submitted by {{ $record->submitter?->name ?? 'Parent' }}. Check the details and proof before verifying.</p>@endif</div>
                         </article>
                     @empty
                         <div class="app-card p-6 text-center text-sm text-zinc-500">No vaccination records yet.</div>
                     @endforelse
                 </div>
                 @endunless
-                <div class="{{ auth()->user()->isParent() ? '' : 'hidden lg:block' }} overflow-x-auto">
+                @if (auth()->user()->isParent())
+                    <div class="grid gap-3 p-3 lg:hidden">
+                        @forelse ($vaccinations as $record)
+                            <article class="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                                <button type="button" class="flex w-full items-center gap-3 p-4 text-left" aria-label="View steps for {{ $record->vaccineType->name }}" @click="toggleRecordDetails(@js($record->id), @js([
+                                    'id' => $record->id,
+                                    'vaccine' => $record->vaccineType->name,
+                                    'dose' => $record->dose_number ? 'Dose '.$record->dose_number : 'Not set',
+                                    'date' => $record->administered_at->format('M d, Y'),
+                                    'source' => str($record->source)->replace('_', ' ')->title(),
+                                    'clinic' => $record->clinic_name,
+                                    'location' => $record->clinic_location,
+                                    'next' => $record->next_due_at?->format('M d, Y'),
+                                    'proofs' => count($record->proofPaths()),
+                                ]))">
+                                    <span class="dose-vaccine-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 4.5 5 5M13 6l5 5M4 20l5.5-5.5M7 13l4 4M5 19l-1 1M15 3l6 6"/><path d="m9 15 6-6"/></svg></span>
+                                    <span class="min-w-0 flex-1"><span class="block truncate text-sm font-semibold text-teal-700 dark:text-teal-300">{{ $record->vaccineType->name }}</span><span class="mt-0.5 block text-xs text-slate-500">{{ $record->dose_number ? 'Dose '.$record->dose_number : 'Not set' }} · {{ $record->administered_at->format('M d, Y') }}</span></span>
+                                    <span class="status-pill shrink-0 @if ($record->verification_status === 'verified') status-verified @elseif ($record->verification_status === 'pending') status-pending @else status-rejected @endif">{{ ucfirst($record->verification_status) }}</span>
+                                    <flux:icon.chevron-down class="size-4 shrink-0 text-slate-400 transition-transform" x-bind:class="expandedRecordId === @js($record->id) ? 'rotate-180' : ''" />
+                                </button>
+                                <div x-show="expandedRecordId === @js($record->id)" x-cloak x-transition class="border-t border-slate-100 bg-slate-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/50">
+                                    <div class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                                        <div class="flex items-start justify-between gap-3"><div><p class="eyebrow">Vaccination record</p><h3 class="mt-1 text-base font-semibold text-slate-950 dark:text-white" x-text="recordDetails.vaccine"></h3><p class="mt-1 text-xs text-slate-500" x-text="recordDetails.date + ' · ' + recordDetails.source"></p></div><span class="status-pill @if ($record->verification_status === 'verified') status-verified @elseif ($record->verification_status === 'pending') status-pending @else status-rejected @endif">{{ ucfirst($record->verification_status) }}</span></div>
+                                        <div class="mt-4 border-t border-slate-100 pt-4 dark:border-zinc-800"><div class="record-section-heading"><span>✓</span><strong>Information submitted</strong></div><dl class="mt-3 grid gap-3 text-xs text-slate-600 dark:text-zinc-300"><div><dt class="font-semibold text-slate-500">Vaccine</dt><dd class="mt-1 text-sm font-medium text-slate-900 dark:text-white" x-text="recordDetails.vaccine"></dd></div><div><dt class="font-semibold text-slate-500">Dose</dt><dd class="mt-1 text-sm font-medium text-slate-900 dark:text-white" x-text="recordDetails.dose"></dd></div><div><dt class="font-semibold text-slate-500">Date given</dt><dd class="mt-1 text-sm font-medium text-slate-900 dark:text-white" x-text="recordDetails.date"></dd></div><div><dt class="font-semibold text-slate-500">Source</dt><dd class="mt-1 text-sm font-medium text-slate-900 dark:text-white" x-text="recordDetails.source"></dd></div></dl></div>
+                                        <div class="mt-4 grid gap-3 border-t border-slate-100 pt-4 text-xs text-slate-600 dark:border-zinc-800 dark:text-zinc-300 sm:grid-cols-3"><p><strong class="block text-slate-500">Clinic</strong><span x-text="recordDetails.clinic || '—'"></span></p><p><strong class="block text-slate-500">Location</strong><span x-text="recordDetails.location || '—'"></span></p><p><strong class="block text-slate-500">Next due</strong><span x-text="recordDetails.next || 'None'"></span></p></div>
+                                        @if ($record->proofPaths() !== [])<div class="mt-4 border-t border-slate-100 pt-4 dark:border-zinc-800"><div class="record-section-heading"><span>✓</span><strong>Proof attached</strong></div><div class="mt-2 flex flex-wrap gap-2">@foreach ($this->proofImageUrls($record) as $proofUrl)<a href="{{ $proofUrl }}" target="_blank" rel="noopener" class="block size-20 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-zinc-700 dark:bg-zinc-800"><img src="{{ $proofUrl }}" alt="Vaccination proof" class="size-full object-cover" loading="lazy"></a>@endforeach</div></div>@else<div class="mt-4 border-t border-slate-100 pt-4 text-xs text-slate-500 dark:border-zinc-800 dark:text-zinc-400"><div class="record-section-heading record-section-heading-muted"><span>2</span><strong>No proof photo attached</strong></div></div>@endif
+                                        <div class="mt-4 border-t border-slate-100 pt-4"><div class="record-section-heading @if ($record->verification_status === 'pending') record-section-heading-pending @endif"><span>@if ($record->verification_status === 'verified')✓ @else◷ @endif</span><strong>@if ($record->verification_status === 'pending')Wait for approval @elseif ($record->verification_status === 'verified')Verified by nurse @else Review required @endif</strong></div><p class="mt-1 pl-7 text-xs text-slate-500 dark:text-zinc-400">@if ($record->verification_status === 'pending')The clinic team is checking your submitted details and proof.@elseif ($record->verification_status === 'verified')Your vaccination record is confirmed and included in the timeline.@else Please review the clinic feedback and update your submission.@endif</p></div>
+                                    </div>
+                                </div>
+                            </article>
+                        @empty
+                            <div class="p-6 text-center text-sm text-slate-500">No vaccination records yet.</div>
+                        @endforelse
+                    </div>
+                @endif
+                <div class="hidden overflow-x-auto lg:block">
                     <table class="app-table">
                         <thead>
                             <tr>
@@ -379,7 +442,8 @@
                             @forelse ($vaccinations as $record)
                                 <tr class="app-table-row">
                                     @if (auth()->user()->isParent())
-                                        <td class="font-semibold text-slate-950 dark:text-white"><button type="button" class="inline-flex w-full items-center justify-between gap-3 text-left" aria-label="View details for {{ $record->vaccineType->name }}" @click="openRecordDetails(@js([
+                                        <td class="font-semibold text-slate-950 dark:text-white"><button type="button" class="inline-flex w-full items-center justify-between gap-3 text-left" aria-label="View details for {{ $record->vaccineType->name }}" @click="toggleRecordDetails(@js($record->id), @js([
+                                            'id' => $record->id,
                                             'vaccine' => $record->vaccineType->name,
                                             'dose' => $record->dose_number ? 'Dose '.$record->dose_number : 'Not set',
                                             'date' => $record->administered_at->format('M d, Y'),
@@ -395,8 +459,8 @@
                                             'proofs' => count($record->proofPaths()),
                                             'proofImages' => $this->proofImageUrls($record),
                                             'informationUrl' => auth()->user()->isParent() ? route('vaccine-information.show', $record->vaccineType) : null,
-                                        ]))"><span class="min-w-0"><span class="block truncate text-teal-700 dark:text-teal-300">{{ $record->vaccineType->name }}</span><span class="mt-0.5 block text-xs font-normal text-slate-500 dark:text-zinc-400">{{ $record->dose_number ? 'Dose '.$record->dose_number : 'Not set' }}</span></span><flux:icon.chevron-right class="size-4 shrink-0 text-slate-400" /></button></td>
-                                        <td><span class="status-pill @if ($record->verification_status === 'verified') status-verified @elseif ($record->verification_status === 'pending') status-pending @else status-rejected @endif">{{ ucfirst($record->verification_status) }}</span></td>
+                                        ]))"><span class="min-w-0"><span class="block truncate text-teal-700 dark:text-teal-300">{{ $record->vaccineType->name }}</span><span class="mt-0.5 block text-xs font-normal text-slate-500 dark:text-zinc-400">{{ $record->dose_number ? 'Dose '.$record->dose_number : 'Not set' }}</span></span><flux:icon.chevron-right class="size-4 shrink-0 text-slate-400 transition-transform" x-bind:class="expandedRecordId === @js($record->id) ? 'rotate-90' : ''" /></button></td>
+                                        <td><span class="inline-flex items-center gap-1.5"><span class="status-pill @if ($record->verification_status === 'verified') status-verified @elseif ($record->verification_status === 'pending') status-pending @else status-rejected @endif">{{ ucfirst($record->verification_status) }}</span><span class="text-xs text-slate-500 dark:text-zinc-400">{{ $record->administered_at->format('M d, Y') }}</span></span></td>
                                     @else
                                     <td class="font-semibold text-slate-950 dark:text-white">
                                         <a href="{{ route('children.timeline', ['child' => $child, 'vaccine' => $record->vaccineType->code]) }}" class="text-teal-700 hover:underline dark:text-teal-300">
@@ -490,6 +554,23 @@
                                     @endif
                                     @endif
                                 </tr>
+                                @if (auth()->user()->isParent())
+                                    <tr x-show="expandedRecordId === @js($record->id)" x-cloak x-transition>
+                                        <td colspan="2" class="bg-slate-50/70 px-4 py-4 dark:bg-zinc-950/50">
+                                            <div class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                                                <div class="flex flex-wrap items-start justify-between gap-3">
+                                                    <div><p class="eyebrow">Vaccination record</p><h3 class="mt-1 text-base font-semibold text-slate-950 dark:text-white" x-text="recordDetails.vaccine"></h3><p class="mt-1 text-xs text-slate-500" x-text="recordDetails.date + ' · ' + recordDetails.source"></p></div>
+                                                    <span class="status-pill @if ($record->verification_status === 'verified') status-verified @elseif ($record->verification_status === 'pending') status-pending @else status-rejected @endif">{{ ucfirst($record->verification_status) }}</span>
+                                                </div>
+                                                <div class="mt-4 border-t border-slate-100 pt-4 dark:border-zinc-800"><div class="record-section-heading"><span>✓</span><strong>Information submitted</strong></div><dl class="mt-3 grid gap-3 text-xs text-slate-600 dark:text-zinc-300 sm:grid-cols-2 lg:grid-cols-4"><div><dt class="font-semibold text-slate-500">Vaccine</dt><dd class="mt-1 text-sm font-medium text-slate-900 dark:text-white" x-text="recordDetails.vaccine"></dd></div><div><dt class="font-semibold text-slate-500">Dose</dt><dd class="mt-1 text-sm font-medium text-slate-900 dark:text-white" x-text="recordDetails.dose"></dd></div><div><dt class="font-semibold text-slate-500">Date given</dt><dd class="mt-1 text-sm font-medium text-slate-900 dark:text-white" x-text="recordDetails.date"></dd></div><div><dt class="font-semibold text-slate-500">Source</dt><dd class="mt-1 text-sm font-medium text-slate-900 dark:text-white" x-text="recordDetails.source"></dd></div></dl></div>
+                                                <div class="mt-4 grid gap-3 border-t border-slate-100 pt-4 text-xs text-slate-600 dark:border-zinc-800 dark:text-zinc-300 sm:grid-cols-3"><p><strong class="block text-slate-500">Clinic</strong><span x-text="recordDetails.clinic || '—'"></span></p><p><strong class="block text-slate-500">Location</strong><span x-text="recordDetails.location || '—'"></span></p><p><strong class="block text-slate-500">Next due</strong><span x-text="recordDetails.next || 'None'"></span></p></div>
+                                                @if ($record->proofPaths() !== [])<div class="mt-4 border-t border-slate-100 pt-4 dark:border-zinc-800"><div class="record-section-heading"><span>✓</span><strong>Proof attached</strong></div><div class="mt-2 flex flex-wrap gap-2">@foreach ($this->proofImageUrls($record) as $proofUrl)<a href="{{ $proofUrl }}" target="_blank" rel="noopener" class="group relative block size-20 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-zinc-700 dark:bg-zinc-800"><img src="{{ $proofUrl }}" alt="Vaccination proof" class="size-full object-cover" loading="lazy"><span class="absolute inset-x-0 bottom-0 bg-slate-950/70 px-1 py-1 text-center text-[10px] font-semibold text-white opacity-0 transition group-hover:opacity-100">Open photo</span></a>@endforeach</div></div>@else<div class="mt-4 border-t border-slate-100 pt-4 text-xs text-slate-500 dark:border-zinc-800 dark:text-zinc-400"><div class="record-section-heading record-section-heading-muted"><span>2</span><strong>No proof photo attached</strong></div></div>@endif
+                                                <div class="mt-4 border-t border-slate-100 pt-4"><div class="record-section-heading @if ($record->verification_status === 'pending') record-section-heading-pending @endif"><span>@if ($record->verification_status === 'verified')✓ @else◷ @endif</span><strong>@if ($record->verification_status === 'pending')Wait for approval @elseif ($record->verification_status === 'verified')Verified by nurse @else Review required @endif</strong></div><p class="mt-1 pl-7 text-xs text-slate-500 dark:text-zinc-400">@if ($record->verification_status === 'pending')The clinic team is checking your submitted details and proof.@elseif ($record->verification_status === 'verified')Your vaccination record is confirmed and included in the timeline.@else Please review the clinic feedback and update your submission.@endif</p></div>
+                                                <div class="mt-4 border-t border-slate-100 pt-4 text-xs text-slate-600 dark:border-zinc-800 dark:text-zinc-300" x-show="recordDetails.remarks"><strong class="text-slate-500">Remarks</strong><p class="mt-1 whitespace-pre-line" x-text="recordDetails.remarks"></p></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endif
                             @empty
                                 <tr><td colspan="{{ auth()->user()->isParent() ? 2 : (auth()->user()->canVerifyVaccinations() ? 8 : 7) }}" class="px-4 py-8 text-center text-zinc-500">No vaccination records yet.</td></tr>
                             @endforelse
@@ -512,8 +593,8 @@
                     <form
                         method="POST"
                         action="{{ $editableRecord ? route('vaccinations.update', $editableRecord) : route('children.vaccinations.store', $child) }}"
-                        class="app-panel order-1 grid content-start gap-4 sm:grid-cols-2 lg:grid-cols-3"
-                        x-data="{ submitHistoryOpen: @js($editableRecord !== null) }"
+                        class="app-panel order-1 grid content-start gap-4"
+                        x-data="{ submitHistoryOpen: @js($editableRecord !== null), submitStep: @js($editableRecord ? 2 : 1), proofReady: @js($editableRecord && $editableRecord->proofPaths() !== []) }"
                         enctype="multipart/form-data"
                     >
                         @csrf
@@ -533,19 +614,35 @@
                                 <span x-show="!submitHistoryOpen" x-cloak class="text-sm font-semibold leading-none text-teal-700 dark:text-teal-300">+ Create</span>
                             </button>
                         </div>
-                        <div id="submit-vaccination-history-fields" x-show="submitHistoryOpen" x-cloak class="contents">
-                            <p class="mt-1 text-sm text-slate-600 dark:text-zinc-300 sm:col-span-2 lg:col-span-3">
+                        <div id="submit-vaccination-history-fields" x-show="submitHistoryOpen" x-cloak class="grid gap-5">
+                            <p class="text-sm text-slate-600 dark:text-zinc-300">
                                 {{ $editableRecord ? 'You can correct this record until it is synchronized to Central. After synchronization, submit a new request if the facility rejects it.' : 'Records given outside the barangay clinic will stay pending until the clinic verifies them.' }}
                             </p>
-                            <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" :value="$editableRecord?->vaccine_type_id" />
-                            <x-form-field label="Dose number" name="dose_number" type="number" :value="$editableRecord?->dose_number" />
-                            <x-form-field label="Date given" name="administered_at" type="date" :value="$editableRecord?->administered_at?->toDateString()" />
-                            <x-form-field label="Facility or clinic name" name="clinic_name" :value="$defaultClinicName" />
-                            <x-form-field label="Facility or clinic location" name="clinic_location" :value="$defaultClinicLocation" />
-                            <label class="grid gap-2 text-sm sm:col-span-2 lg:col-span-3">
-                                <span class="font-medium text-slate-800 dark:text-zinc-100">Photo proof of vaccine card or record</span>
-                                <input type="file" name="proof_files[]" accept="image/*" multiple class="app-input" {{ ! $editableRecord || $editableRecord->proofPaths() === [] ? 'required' : '' }}>
-                                <span class="text-xs text-zinc-500">At least 1 photo is required. You can upload up to 5 photos.</span>
+                            <div class="vaccination-stepper" aria-label="Vaccination submission steps">
+                                @foreach ([1 => ['Fill out details', 'Vaccine and date'], 2 => ['Upload proof', 'Card or document'], 3 => ['Submit record', 'Send to clinic'], 4 => ['Wait for approval', 'Nurse review']] as $step => $stepInfo)
+                                    <button type="button" class="vaccination-step" :class="submitStep >= {{ $step }} ? 'vaccination-step-active' : ''" @click="submitStep = {{ $step }}">
+                                        <span class="vaccination-step-number"><span x-show="submitStep < {{ $step }}">{{ $step }}</span><span x-show="submitStep >= {{ $step }}" x-cloak>✓</span></span>
+                                        <span class="hidden text-left sm:block"><strong>{{ $stepInfo[0] }}</strong><small>{{ $stepInfo[1] }}</small></span>
+                                    </button>
+                                    @if ($step < 4)<span class="vaccination-step-line" :class="submitStep > {{ $step }} ? 'vaccination-step-line-active' : ''"></span>@endif
+                                @endforeach
+                            </div>
+                            <div x-show="submitStep === 1" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                <div class="sm:col-span-2 lg:col-span-3"><p class="text-sm font-semibold text-slate-900 dark:text-white">When and what was given?</p><p class="mt-1 text-xs text-slate-500">Use the information exactly as it appears on the vaccine card.</p></div>
+                                <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" :value="$editableRecord?->vaccine_type_id" />
+                                <x-form-field label="Dose number" name="dose_number" type="number" :value="$editableRecord?->dose_number" />
+                                <x-form-field label="Date given" name="administered_at" type="date" :value="$editableRecord?->administered_at?->toDateString()" />
+                                <x-form-field label="Facility or clinic name" name="clinic_name" :value="$defaultClinicName" />
+                                <x-form-field label="Facility or clinic location" name="clinic_location" :value="$defaultClinicLocation" />
+                            </div>
+                            <div x-show="submitStep === 2" x-cloak class="grid gap-4">
+                                <div><p class="text-sm font-semibold text-slate-900 dark:text-white">Add your proof</p><p class="mt-1 text-xs text-slate-500">Take a clear photo of the vaccine card, receipt, or clinic record.</p></div>
+                                <label class="vaccination-upload-zone">
+                                    <span class="flex size-11 items-center justify-center rounded-2xl bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300"><flux:icon.arrow-up-tray class="size-5" /></span>
+                                    <span><strong>Choose document or photos</strong><small>JPG, PNG · up to 5 files · max 5 MB each</small></span>
+                                    <input type="file" name="proof_files[]" accept="image/*" multiple class="sr-only" @change="proofReady = $event.target.files.length > 0 || {{ $editableRecord && $editableRecord->proofPaths() !== [] ? 'true' : 'false' }}">
+                                </label>
+                                <div class="flex items-center gap-2 text-xs" :class="proofReady ? 'text-emerald-700' : 'text-slate-500'"><span class="size-2 rounded-full" :class="proofReady ? 'bg-emerald-500' : 'bg-slate-300'"></span><span x-text="proofReady ? 'Proof attached and ready' : 'No new proof selected yet'"></span></div>
                                 @if ($editableRecord && $editableRecord->proofPaths() !== [])
                                     <div class="text-xs">
                                         <a href="#" @click.prevent="openProofModal(@js($this->proofImageUrls($editableRecord)))" class="text-teal-700 hover:underline dark:text-teal-300">
@@ -559,12 +656,23 @@
                                 @error('proof_files.*')
                                     <span class="text-xs font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
                                 @enderror
-                            </label>
-                            <div class="sm:col-span-2 lg:col-span-3">
+                            </div>
+                            <div x-show="submitStep === 3" x-cloak class="grid gap-4">
+                                <div><p class="text-sm font-semibold text-slate-900 dark:text-white">Review before sending</p><p class="mt-1 text-xs text-slate-500">Check your details and attached proof. You can still go back to make changes.</p></div>
+                                <div class="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 ring-1 ring-slate-200 dark:bg-zinc-950 dark:text-zinc-300 dark:ring-zinc-800"><div class="grid gap-2 sm:grid-cols-2"><span>Child <strong class="block text-slate-950 dark:text-white">{{ $child->full_name }}</strong></span><span>Clinic <strong class="block text-slate-950 dark:text-white">{{ $defaultClinicName }}</strong></span><span>After submission <strong class="block text-slate-950 dark:text-white">Pending nurse verification</strong></span><span>Proof <strong class="block text-slate-950 dark:text-white" x-text="proofReady ? 'Attached' : 'Required'">Required</strong></span></div></div>
+                            </div>
+                            <div x-show="submitStep === 4" x-cloak class="grid gap-4">
+                                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40"><p class="text-sm font-semibold text-amber-900 dark:text-amber-100">What happens next?</p><p class="mt-1 text-sm leading-6 text-amber-800 dark:text-amber-200">A nurse will compare your details with the uploaded proof. Your record will appear as <strong>Pending</strong> until it is verified.</p></div>
+                                <div class="grid gap-3 sm:grid-cols-3"><div class="rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-zinc-950 dark:text-zinc-300"><strong class="block text-slate-900 dark:text-white">Submitted</strong>We received your record.</div><div class="rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-zinc-950 dark:text-zinc-300"><strong class="block text-slate-900 dark:text-white">Under review</strong>Nurse checks your proof.</div><div class="rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-zinc-950 dark:text-zinc-300"><strong class="block text-slate-900 dark:text-white">Verified</strong>Timeline is updated.</div></div>
+                            </div>
+                            <div>
                                 <x-form-field label="Remarks" name="remarks" type="textarea" :value="$editableRecord?->remarks" />
                             </div>
-                            <div class="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-3">
-                                <button class="app-button-primary">{{ $editableRecord ? 'Save changes' : 'Submit for clinic verification' }}</button>
+                            <div class="flex flex-wrap justify-between gap-2">
+                                <button type="button" class="app-button-secondary" x-show="submitStep > 1" @click="submitStep--">Back</button>
+                                <span x-show="submitStep === 1"></span>
+                                <button type="button" class="app-button-primary" x-show="submitStep < 3" @click="submitStep++">Continue <span aria-hidden="true">→</span></button>
+                                <button type="submit" class="app-button-primary" x-show="submitStep === 3">{{ $editableRecord ? 'Save changes' : 'Submit for clinic verification' }}</button>
                                 @if ($editableRecord)
                                     <a href="{{ route('children.show', $child) }}" class="app-button-secondary">Cancel</a>
                                 @endif
@@ -781,7 +889,7 @@
 
                             </section>
 
-                            <form method="POST" action="{{ route('children.parents.store', $child) }}" class="app-card order-first overflow-hidden" x-data="{ inviteParentOpen: @js($errors->hasAny(['name', 'email', 'phone', 'relationship'])) }">
+                            <form method="POST" action="{{ route('children.parents.store', $child) }}" class="app-card order-first overflow-hidden" x-show="childViewTab === 'parents'" x-data="{ inviteParentOpen: @js($errors->hasAny(['name', 'email', 'phone', 'relationship'])) }">
                                 @csrf
                                 <div class="app-card-header flex items-center justify-between gap-3">
                                     <h2 class="app-card-title">Invite Parent</h2>
@@ -882,35 +990,38 @@
             <div x-data="{ showOverdue: false }" class="flex min-w-0 flex-col border-t border-slate-100 p-4 dark:border-zinc-800 sm:p-5 lg:border-l lg:border-t-0">
                 <div class="order-2">
                 <div class="rounded-lg bg-slate-100 px-3 py-2 dark:bg-zinc-800">
-                    <h3 class="text-sm font-semibold text-slate-800 dark:text-zinc-100">Upcoming and recent doses</h3>
+                    <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-zinc-100"><span class="dose-section-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 4.5 5 5M13 6l5 5M4 20l5.5-5.5M7 13l4 4M5 19l-1 1M15 3l6 6"/><path d="m9 15 6-6"/></svg></span>Upcoming and recent doses</h3>
                 </div>
                 <div class="mt-3 divide-y divide-slate-100 dark:divide-zinc-800">
                     @forelse ($upcomingScheduleItems as $item)
                         <div class="flex min-w-0 flex-wrap items-center gap-3 py-3">
                             <div class="w-24 shrink-0 text-center sm:w-28"><p class="text-xs font-semibold text-teal-700">{{ $item['date']->format('M d, Y') }}</p></div>
-                            <div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold text-slate-950 dark:text-white">{{ $item['vaccine'] }}</p><p class="text-xs text-slate-500">Dose {{ $item['dose'] }} · {{ $item['location'] }}</p></div>
-                            <span class="status-pill w-full justify-center truncate text-[10px] sm:w-auto sm:shrink-0 {{ $item['status'] === 'completed' ? 'status-verified' : ($item['status'] === 'pending' ? 'status-pending' : ($item['status'] === 'overdue' ? 'status-rejected' : 'bg-sky-100 text-sky-700')) }}">{{ str($item['status'])->replace('_', ' ')->headline() }}</span>
+                            <div class="dose-vaccine-info"><span class="dose-vaccine-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 4.5 5 5M13 6l5 5M4 20l5.5-5.5M7 13l4 4M5 19l-1 1M15 3l6 6"/><path d="m9 15 6-6"/></svg></span><div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold text-slate-950 dark:text-white">{{ $item['vaccine'] }}</p><p class="text-xs text-slate-500">Dose {{ $item['dose'] }} · {{ $item['location'] }}</p></div></div>
+                            <span class="status-pill flex w-full items-center justify-center gap-1.5 truncate text-[10px] sm:w-auto sm:shrink-0 {{ $item['status'] === 'completed' ? 'status-verified' : ($item['status'] === 'pending' ? 'status-pending' : ($item['status'] === 'overdue' ? 'status-rejected' : 'bg-sky-100 text-sky-700')) }}">
+                                @if ($item['status'] === 'completed')<svg class="dose-status-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>@elseif ($item['status'] === 'overdue')<svg class="dose-status-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5m0 4h.01M10.3 3.8 2.7 18a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0Z"/></svg>@else<svg class="dose-status-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>@endif
+                                {{ str($item['status'])->replace('_', ' ')->headline() }}
+                            </span>
                         </div>
                     @empty
                         <p class="py-4 text-sm text-slate-500">No schedule entries are available for this child.</p>
                     @endforelse
                 </div>
                 <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs dark:border-zinc-800">
-                    <button type="button" wire:click="previousUpcomingPage" wire:loading.attr="disabled" @disabled($upcomingPage <= 1) class="font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-300">Previous</button>
+                    <button type="button" wire:click="previousUpcomingPage" wire:loading.attr="disabled" @disabled($upcomingPage <= 1) class="inline-flex items-center gap-1 font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-300"><span aria-hidden="true">←</span> Previous</button>
                     <span class="text-slate-500 dark:text-zinc-400">Page {{ $upcomingPage }} of {{ $upcomingPages }}</span>
-                    <button type="button" wire:click="nextUpcomingPage" wire:loading.attr="disabled" @disabled($upcomingPage >= $upcomingPages) class="font-semibold text-teal-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-teal-300">Next</button>
+                    <button type="button" wire:click="nextUpcomingPage" wire:loading.attr="disabled" @disabled($upcomingPage >= $upcomingPages) class="inline-flex items-center gap-1 font-semibold text-teal-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-teal-300">Next <span aria-hidden="true">→</span></button>
                 </div>
                 @if ($overdueScheduleItems->isNotEmpty())
                     <button type="button" class="mt-4 flex w-full items-center justify-between rounded-lg bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 dark:bg-rose-950/30 dark:text-rose-300" @click="showOverdue = !showOverdue">
-                        <span x-text="showOverdue ? 'Hide Overdue' : 'Show Overdue'">Show Overdue</span>
-                        <span class="rounded-full bg-rose-100 px-2 py-0.5 text-xs dark:bg-rose-900/50">{{ $overdueScheduleItems->count() }}</span>
+                        <span class="inline-flex items-center gap-2"><svg class="dose-status-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5m0 4h.01M10.3 3.8 2.7 18a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0Z"/></svg><span x-text="showOverdue ? 'Hide Overdue' : 'Show Overdue'">Show Overdue</span></span>
+                        <span class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-xs dark:bg-rose-900/50"><span>{{ $overdueScheduleItems->count() }}</span><span aria-hidden="true">›</span></span>
                     </button>
                     <div x-show="showOverdue" x-cloak class="mt-3 rounded-lg border border-rose-100 bg-rose-50/50 px-3 dark:border-rose-900/50 dark:bg-rose-950/20">
                         @foreach ($overdueScheduleItems as $item)
                             <div class="flex min-w-0 flex-wrap items-center gap-3 border-b border-rose-100 py-3 last:border-b-0 dark:border-rose-900/40">
                                 <div class="w-24 shrink-0 text-center"><p class="text-xs font-semibold text-rose-700 dark:text-rose-300">{{ $item['date']->format('M d, Y') }}</p></div>
-                                <div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold text-slate-950 dark:text-white">{{ $item['vaccine'] }}</p><p class="text-xs text-slate-500">Dose {{ $item['dose'] }} · {{ $item['location'] }}</p></div>
-                                <span class="status-pill shrink-0 bg-rose-100 text-[10px] text-rose-700">Overdue</span>
+                                <div class="dose-vaccine-info"><span class="dose-vaccine-icon dose-vaccine-icon-overdue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 4.5 5 5M13 6l5 5M4 20l5.5-5.5M7 13l4 4M5 19l-1 1M15 3l6 6"/><path d="m9 15 6-6"/></svg></span><div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold text-slate-950 dark:text-white">{{ $item['vaccine'] }}</p><p class="text-xs text-slate-500">Dose {{ $item['dose'] }} · {{ $item['location'] }}</p></div></div>
+                                <span class="status-pill inline-flex shrink-0 items-center gap-1.5 bg-rose-100 text-[10px] text-rose-700"><svg class="dose-status-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5m0 4h.01M10.3 3.8 2.7 18a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0Z"/></svg>Overdue</span>
                             </div>
                         @endforeach
                         @if ($overduePages > 1)
@@ -944,28 +1055,6 @@
             </div>
             </div>
         </section>
-
-        <div x-show="recordDetailsOpen" x-cloak x-on:keydown.escape.window="recordDetailsOpen = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="record-details-title">
-            <div class="app-panel w-full max-w-lg" @click.stop>
-                <div class="flex items-start justify-between gap-4">
-                    <div><p class="eyebrow">Vaccination record</p><h2 id="record-details-title" class="app-card-title mt-1" x-text="recordDetails.vaccine"></h2></div>
-                    <button type="button" class="app-button-secondary !px-3 !py-1.5" @click="recordDetailsOpen = false">Close</button>
-                </div>
-                <div class="mt-5 grid gap-3 sm:grid-cols-2">
-                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Dose</p><p class="mt-1 text-sm font-semibold" x-text="recordDetails.dose"></p></div>
-                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Status</p><p class="mt-1 text-sm font-semibold" x-text="recordDetails.status"></p></div>
-                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Date given</p><p class="mt-1 text-sm font-semibold" x-text="recordDetails.date"></p></div>
-                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Source</p><p class="mt-1 text-sm font-semibold" x-text="recordDetails.source"></p></div>
-                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Clinic</p><p class="mt-1 text-sm" x-text="recordDetails.clinic || '—'"></p></div>
-                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Location</p><p class="mt-1 text-sm" x-text="recordDetails.location || '—'"></p></div>
-                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Next due</p><p class="mt-1 text-sm" x-text="recordDetails.next || 'None'"></p></div>
-                    <div class="rounded-xl bg-slate-50 p-3 dark:bg-zinc-950"><p class="text-xs font-semibold uppercase text-slate-500">Suggested vaccine</p><p class="mt-1 text-sm" x-text="recordDetails.suggestion || 'None'"></p></div>
-                </div>
-                <div x-show="recordDetails.proofImages && recordDetails.proofImages.length" class="mt-4"><p class="text-xs font-semibold uppercase text-slate-500">Uploaded proof</p><div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"><template x-for="image in recordDetails.proofImages" :key="image"><a :href="image" target="_blank" rel="noopener" class="block overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-800 dark:bg-zinc-950"><img :src="image" alt="Uploaded vaccination proof" class="aspect-square size-full object-cover"></a></template></div></div>
-                <div class="mt-4 space-y-2 text-sm text-slate-600 dark:text-zinc-300"><p><span class="font-semibold">Submitted by:</span> <span x-text="recordDetails.submitter"></span></p><p><span class="font-semibold">Recorded or verified by:</span> <span x-text="recordDetails.verifier"></span></p><p x-show="recordDetails.remarks"><span class="font-semibold">Remarks:</span> <span x-text="recordDetails.remarks"></span></p><p x-show="recordDetails.proofs > 0"><span class="font-semibold">Proof photos:</span> <span x-text="recordDetails.proofs"></span></p></div>
-                <a x-show="recordDetails.informationUrl" :href="recordDetails.informationUrl" class="app-button-primary mt-5 w-full text-center" wire:navigate>Learn about this vaccine</a>
-            </div>
-        </div>
 
         <form method="POST" x-ref="verificationForm" class="hidden">
             @csrf
