@@ -4,9 +4,14 @@
     </div>
     <div class="page-heading">
         <div>
-            <h1 class="page-title">Pending verification queue</h1>
-            <p class="page-subtitle">Review parent-submitted records by barangay, vaccine, date, and source.</p>
+            <h1 class="page-title">{{ $view === 'history' ? 'Verification history' : 'Pending verification queue' }}</h1>
+            <p class="page-subtitle">{{ $view === 'history' ? 'Review verified and rejected vaccination records.' : 'Review parent-submitted records by barangay, vaccine, date, and source.' }}</p>
         </div>
+    </div>
+
+    <div class="app-card flex flex-wrap gap-1 p-1">
+        <button type="button" wire:click="setView('pending')" class="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition sm:flex-none" :class="$wire.view === 'pending' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:bg-teal-50 dark:text-zinc-300 dark:hover:bg-zinc-800'">Pending review</button>
+        <button type="button" wire:click="setView('history')" class="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition sm:flex-none" :class="$wire.view === 'history' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:bg-teal-50 dark:text-zinc-300 dark:hover:bg-zinc-800'">Verification history</button>
     </div>
 
     <div class="app-panel grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -20,7 +25,7 @@
     </div>
 
     <section class="app-card">
-        <div class="grid gap-4 p-3 sm:p-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div class="grid gap-4 p-3 sm:p-4">
             @forelse ($records as $record)
                 <article class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
                     <div class="flex items-start justify-between gap-3">
@@ -28,7 +33,7 @@
                             <a href="{{ route('children.show', $record->child) }}" class="break-words font-semibold text-slate-900 hover:text-teal-700 dark:text-white dark:hover:text-teal-300" wire:navigate>{{ $record->child->full_name }}</a>
                             <p class="mt-0.5 text-xs text-zinc-500">{{ $record->child->barangay?->name ?? 'No barangay' }}</p>
                         </div>
-                        <span class="status-pill status-pending shrink-0">Pending</span>
+                        <span class="status-pill shrink-0 @if ($record->verification_status === 'verified') status-verified @elseif ($record->verification_status === 'rejected') status-rejected @else status-pending @endif">{{ ucfirst($record->verification_status) }}</span>
                     </div>
                     <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading"><span>✓</span><strong>Information submitted</strong></div></div>
                     <dl class="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
@@ -38,10 +43,22 @@
                         <div><dt class="text-xs text-zinc-500">Submitted by</dt><dd class="mt-0.5 break-words">{{ $record->submitter?->name ?? 'N/A' }}</dd></div>
                     </dl>
                     <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading"><span>✓</span><strong>Proof attached</strong></div><div class="mt-2 text-xs">@if ($record->proofPaths() !== [])<x-proof-photo-viewer :record="$record" />@else<span class="text-zinc-500">No proof attached</span>@endif</div></div>
-                    <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading record-section-heading-pending"><span>◷</span><strong>Waiting for approval</strong></div><p class="mt-1 pl-7 text-xs text-slate-500">Review the submitted information and proof before making a decision.</p>@if (auth()->user()->canVerifyVaccinations())<div class="mt-3 grid grid-cols-2 gap-2"><button type="button" wire:click="promptVerify('{{ $record->id }}')" class="app-button-primary w-full justify-center !px-3 !py-2 !text-xs">Verify</button><button type="button" wire:click="promptReject('{{ $record->id }}')" class="app-button-danger w-full justify-center !px-3 !py-2 !text-xs">Reject</button></div>@endif</div>
+                    @if ($record->verification_status === 'pending')
+                        <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading record-section-heading-pending"><span>◷</span><strong>Waiting for approval</strong></div><p class="mt-1 pl-7 text-xs text-slate-500">Review the submitted information and proof before making a decision.</p>@if (auth()->user()->canVerifyVaccinations())<div class="mt-3 grid grid-cols-2 gap-2"><button type="button" wire:click="promptVerify('{{ $record->id }}')" class="app-button-primary w-full justify-center !px-3 !py-2 !text-xs">Verify</button><button type="button" wire:click="promptReject('{{ $record->id }}')" class="app-button-danger w-full justify-center !px-3 !py-2 !text-xs">Reject</button></div>@endif</div>
+                    @else
+                        <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading @if ($record->verification_status === 'rejected') record-section-heading-rejected @endif"><span>@if ($record->verification_status === 'verified')✓ @else! @endif</span><strong>{{ $record->verification_status === 'verified' ? 'Verified by Nurse' : 'Rejected by Nurse' }}</strong></div><p class="mt-1 pl-7 text-xs text-slate-500">{{ $record->verifier?->name ?? $record->recordedByDisplayName() }}@if ($record->verified_at) · {{ $record->verified_at->format('M d, Y g:i A') }}@endif</p>@if ($record->remarks)<p class="mt-3 pl-7 whitespace-pre-line text-sm text-slate-700 dark:text-zinc-200"><strong class="text-slate-500">Remarks:</strong> {{ $record->remarks }}</p>@endif</div>
+                    @endif
                 </article>
             @empty
-                <div class="app-card p-6 text-center text-sm text-zinc-500">No pending records found.</div>
+                <div class="col-span-full flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 px-6 py-10 text-center dark:border-zinc-700 dark:bg-zinc-950/40">
+                    <span class="flex size-12 items-center justify-center rounded-full bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300">
+                        <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-6 4h3m6-11v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-7 0h10"/>
+                        </svg>
+                    </span>
+                    <p class="mt-3 font-semibold text-slate-900 dark:text-white">{{ $view === 'history' ? 'No verification history yet' : 'No pending vaccinations' }}</p>
+                    <p class="mt-1 max-w-md text-sm text-slate-500 dark:text-zinc-400">{{ $view === 'history' ? 'Verified and rejected records will appear here after a nurse reviews them.' : 'New parent-submitted vaccination records will appear here when they are ready for nurse review.' }}</p>
+                </div>
             @endforelse
         </div>
         <div class="hidden">
