@@ -245,6 +245,14 @@ select:focus[data-flux-control] {
     .vaccination-step small { @apply mt-0.5 text-[10px] font-normal text-slate-500 dark:text-zinc-500; }
     .vaccination-step-active .vaccination-step-number { @apply bg-teal-600 text-white shadow-sm; }
     .vaccination-step-active strong { @apply text-teal-800 dark:text-teal-300; }
+    .vaccination-step-current { @apply bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300; }
+    .vaccination-step-current .vaccination-step-number { @apply border-2 border-teal-500 bg-transparent text-teal-700 dark:text-teal-300; }
+    .vaccination-step-current strong { @apply text-teal-800 dark:text-teal-300; }
+    .vaccination-step-error { @apply bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300; }
+    .vaccination-step-error .vaccination-step-number { @apply border-2 border-amber-500 bg-amber-400 text-white; }
+    .vaccination-step-error strong { @apply text-amber-800 dark:text-amber-300; }
+    .vaccination-step-complete .vaccination-step-number { @apply bg-teal-600 text-white shadow-sm; }
+    .vaccination-step-complete strong { @apply text-teal-800 dark:text-teal-300; }
 
     .vaccination-step-number {
         @apply flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-500 dark:bg-zinc-800 dark:text-zinc-400;
@@ -270,7 +278,7 @@ select:focus[data-flux-control] {
     .vaccination-mini-item:not(:last-child)::before { content: ''; @apply absolute bottom-[-0.5rem] left-[0.45rem] top-7 w-px bg-slate-200 dark:bg-zinc-800; }
     .vaccination-mini-dot { @apply relative z-10 mt-3 flex size-2.5 shrink-0 rounded-full ring-4 ring-white dark:ring-zinc-900; }
     .vaccination-mini-dot-verified { @apply bg-emerald-500; }
-    .vaccination-mini-dot-pending { @apply bg-amber-400; }
+    .vaccination-mini-dot-pending { @apply bg-slate-400; dark:bg-zinc-500; }
     .vaccination-mini-dot-rejected { @apply bg-red-500; }
 
     .dose-section-icon,
@@ -301,8 +309,8 @@ select:focus[data-flux-control] {
     .record-section-heading > span { @apply flex size-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white; }
     .record-section-heading-muted { @apply text-slate-500 dark:text-zinc-400; }
     .record-section-heading-muted > span { @apply bg-slate-300 text-white dark:bg-zinc-700; }
-    .record-section-heading-pending { @apply text-amber-700 dark:text-amber-300; }
-    .record-section-heading-pending > span { @apply bg-amber-400; }
+    .record-section-heading-pending { @apply text-slate-600 dark:text-zinc-300; }
+    .record-section-heading-pending > span { @apply bg-slate-400 dark:bg-zinc-500; }
     .record-section-heading-rejected { @apply text-rose-700 dark:text-rose-300; }
     .record-section-heading-rejected > span { @apply bg-rose-500; }
 
@@ -545,7 +553,31 @@ select:focus[data-flux-control] {
     }
 
     .parent-action-card {
-        @apply rounded-[1.25rem] border border-amber-200/80 bg-[linear-gradient(145deg,#fffdf7_0%,#fff9ec_100%)] p-5 shadow-[0_10px_28px_rgba(245,158,11,0.08)] dark:border-amber-900/70 dark:bg-amber-950/20;
+        @apply rounded-[1.25rem] border border-amber-200/80 bg-[linear-gradient(145deg,#fffdf7_0%,#fff9ec_100%)] p-5 shadow-[0_10px_28px_rgba(245,158,11,0.08)] dark:border-amber-900/70 dark:bg-amber-950/30 dark:bg-none;
+    }
+
+    .parent-action-card .parent-card-heading h2 {
+        @apply text-amber-950 dark:text-amber-100;
+    }
+
+    .parent-action-card .parent-card-heading p {
+        @apply text-amber-800 dark:text-amber-200;
+    }
+
+    .parent-action-card .parent-count-badge {
+        @apply bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100;
+    }
+
+    .parent-action-card .parent-list-row {
+        @apply text-amber-950 dark:text-amber-50;
+    }
+
+    .parent-action-card .parent-list-row .text-slate-500 {
+        @apply text-amber-800 dark:text-amber-200;
+    }
+
+    .parent-action-card .parent-list-icon {
+        @apply dark:bg-amber-900 dark:text-amber-200;
     }
 
     .parent-card-heading {
@@ -633,7 +665,19 @@ select:focus[data-flux-control] {
     }
 
     .nurse-action-card {
-        @apply rounded-[1.25rem] border border-amber-200/80 bg-[linear-gradient(145deg,#fffdf7_0%,#fff9ec_100%)] p-5 shadow-[0_10px_28px_rgba(245,158,11,0.08)] dark:border-amber-900/70 dark:bg-amber-950/20;
+        @apply rounded-[1.25rem] border border-amber-200/80 bg-[linear-gradient(145deg,#fffdf7_0%,#fff9ec_100%)] p-5 shadow-[0_10px_28px_rgba(245,158,11,0.08)] dark:border-amber-900/70 dark:bg-amber-950/30 dark:bg-none;
+    }
+
+    .nurse-action-card .parent-card-heading h2 {
+        @apply text-amber-950 dark:text-amber-100;
+    }
+
+    .nurse-action-card .parent-card-heading p {
+        @apply text-amber-800 dark:text-amber-200;
+    }
+
+    .nurse-action-card .parent-count-badge {
+        @apply bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100;
     }
 
     .nurse-pending-item {
@@ -645,7 +689,19 @@ select:focus[data-flux-control] {
     }
 
     .nurse-recent-children .app-card-header {
-        @apply bg-[linear-gradient(90deg,#ffffff,#f8fbff)] dark:bg-zinc-900;
+        @apply bg-[linear-gradient(90deg,#ffffff,#f8fbff)] dark:bg-zinc-900 dark:bg-none;
+    }
+
+    .nurse-recent-children .app-card-header .app-card-title {
+        @apply text-slate-950 dark:text-white;
+    }
+
+    .nurse-recent-children .app-card-header p {
+        @apply text-slate-500 dark:text-zinc-400;
+    }
+
+    .nurse-recent-children .app-card-header a {
+        @apply text-teal-700 dark:text-teal-300;
     }
 
     .vaccine-info-hero {
@@ -759,7 +815,7 @@ select:focus[data-flux-control] {
     }
 
     .status-pending {
-        @apply bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200;
+        @apply bg-slate-100 text-slate-700 dark:bg-zinc-800 dark:text-zinc-300;
     }
 
     .status-rejected {

@@ -14,7 +14,8 @@
         <button type="button" wire:click="setView('history')" class="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition sm:flex-none" :class="$wire.view === 'history' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:bg-teal-50 dark:text-zinc-300 dark:hover:bg-zinc-800'">Verification history</button>
     </div>
 
-    <div class="app-panel grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+    <div class="app-panel grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+        <x-form-field label="Search child" name="child_search" placeholder="Child name" :value="$childSearch" wire:model.live.debounce.400ms="childSearch" />
         @if (auth()->user()->isSuperAdmin())
             <x-form-field label="Barangay" name="barangay_id" type="select" :options="$barangays->pluck('name', 'id')" :value="$barangay_id" wire:model.live.debounce.400ms="barangay_id" />
         @endif
@@ -46,7 +47,7 @@
                     @if ($record->verification_status === 'pending')
                         <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading record-section-heading-pending"><span>◷</span><strong>Waiting for approval</strong></div><p class="mt-1 pl-7 text-xs text-slate-500">Review the submitted information and proof before making a decision.</p>@if (auth()->user()->canVerifyVaccinations())<div class="mt-3 grid grid-cols-2 gap-2"><button type="button" wire:click="promptVerify('{{ $record->id }}')" class="app-button-primary w-full justify-center !px-3 !py-2 !text-xs">Verify</button><button type="button" wire:click="promptReject('{{ $record->id }}')" class="app-button-danger w-full justify-center !px-3 !py-2 !text-xs">Reject</button></div>@endif</div>
                     @else
-                        <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading @if ($record->verification_status === 'rejected') record-section-heading-rejected @endif"><span>@if ($record->verification_status === 'verified')✓ @else! @endif</span><strong>{{ $record->verification_status === 'verified' ? 'Verified by Nurse' : 'Rejected by Nurse' }}</strong></div><p class="mt-1 pl-7 text-xs text-slate-500">{{ $record->verifier?->name ?? $record->recordedByDisplayName() }}@if ($record->verified_at) · {{ $record->verified_at->format('M d, Y g:i A') }}@endif</p>@if ($record->remarks)<p class="mt-3 pl-7 whitespace-pre-line text-sm text-slate-700 dark:text-zinc-200"><strong class="text-slate-500">Remarks:</strong> {{ $record->remarks }}</p>@endif</div>
+                        <div class="mt-4 border-t border-slate-100 pt-3 dark:border-zinc-800"><div class="record-section-heading @if ($record->verification_status === 'rejected') record-section-heading-rejected @endif"><span>@if ($record->verification_status === 'verified')✓ @else! @endif</span><strong>{{ $record->verification_status === 'verified' ? 'Verified by Nurse' : 'Rejected by Nurse' }}</strong></div><p class="mt-1 pl-7 text-xs text-slate-500">{{ $record->verifier?->name ?? $record->recordedByDisplayName() }}@if ($record->verified_at) · {{ $record->verified_at->format('M d, Y g:i A') }}@endif</p>@if ($record->nurseReviewRemarks())<p class="mt-3 pl-7 whitespace-pre-line text-sm text-slate-700 dark:text-zinc-200"><strong class="text-slate-500">Nurse remarks:</strong> {{ $record->nurseReviewRemarks() }}</p>@endif</div>
                     @endif
                 </article>
             @empty

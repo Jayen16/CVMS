@@ -43,6 +43,7 @@ class VaccinationRecord extends Model
         'suggested_schedule_version_id',
         'suggestion_note',
         'remarks',
+        'nurse_remarks',
         'archived_at',
         'archived_by',
         'archive_reason',
@@ -91,6 +92,16 @@ class VaccinationRecord extends Model
         $staff = $uuid ? FacilityStaff::query()->where('staff_uuid', $uuid)->when($this->facility_uuid, fn ($query) => $query->where('facility_id', $this->facility_uuid))->value('name') : null;
 
         return $staff ?: $this->recorded_by_name ?: $this->recorder?->name ?: 'Unknown staff';
+    }
+
+    public function nurseReviewRemarks(): ?string
+    {
+        if (filled($this->nurse_remarks)) {
+            return $this->nurse_remarks;
+        }
+
+        // Older records stored the nurse's review text in remarks.
+        return $this->verification_status === 'pending' ? null : $this->remarks;
     }
 
     /**

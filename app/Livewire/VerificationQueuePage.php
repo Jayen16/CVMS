@@ -11,6 +11,7 @@ use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -29,6 +30,9 @@ class VerificationQueuePage extends Component
     public ?string $vaccine_type_id = null;
 
     #[Url]
+    public string $childSearch = '';
+
+    #[Url]
     public string $source = '';
 
     #[Url]
@@ -36,6 +40,9 @@ class VerificationQueuePage extends Component
 
     #[Url]
     public string $to = '';
+
+    #[Url]
+    public string $view = 'pending';
 
     public bool $confirmingAction = false;
 
@@ -52,9 +59,17 @@ class VerificationQueuePage extends Component
 
     public function updating($name): void
     {
-        if (in_array($name, ['barangay_id', 'vaccine_type_id', 'source', 'from', 'to'], true)) {
+        if (in_array($name, ['barangay_id', 'vaccine_type_id', 'childSearch', 'source', 'from', 'to', 'view'], true)) {
             $this->resetPage();
         }
+    }
+
+    public function setView(string $view): void
+    {
+        abort_unless(in_array($view, ['pending', 'history'], true), 422);
+
+        $this->view = $view;
+        $this->resetPage();
     }
 
     public function promptVerify(string $recordId): void
@@ -105,12 +120,15 @@ class VerificationQueuePage extends Component
 
         app(OfflineSyncService::class)->queueUpsert(
             tap($record, function ($model) use ($validated): void {
-                $model->update([
+                $attributes = [
                     'verification_status' => 'verified',
                     'verified_by' => auth()->id(),
                     'verified_at' => now(),
-                    'remarks' => filled($validated['rejectionRemark']) ? trim($validated['rejectionRemark']) : $model->remarks,
-                ]);
+                ];
+                if (Schema::hasColumn('vaccination_records', 'nurse_remarks') && filled($validated['rejectionRemark'])) {
+                    $attributes['nurse_remarks'] = trim($validated['rejectionRemark']);
+                }
+                $model->update($attributes);
                 $this->attachReviewPhotos($model);
             })->fresh(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier'])
         );
@@ -131,12 +149,15 @@ class VerificationQueuePage extends Component
 
         app(OfflineSyncService::class)->queueUpsert(
             tap($record, function ($model) use ($validated): void {
-                $model->update([
+                $attributes = [
                     'verification_status' => 'rejected',
                     'verified_by' => auth()->id(),
                     'verified_at' => now(),
-                    'remarks' => trim($validated['rejectionRemark']),
-                ]);
+                ];
+                if (Schema::hasColumn('vaccination_records', 'nurse_remarks')) {
+                    $attributes['nurse_remarks'] = trim($validated['rejectionRemark']);
+                }
+                $model->update($attributes);
                 $this->attachReviewPhotos($model);
             })->fresh(['child.barangay', 'child.creator', 'vaccineType', 'recorder', 'submitter', 'verifier'])
         );
@@ -171,11 +192,16 @@ class VerificationQueuePage extends Component
             $uploaders[] = 'Nurse · '.auth()->user()->name;
         }
 
-        $record->update([
+        $attributes = [
             'proof_path' => $paths[0] ?? null,
             'proof_paths' => array_values(array_unique($paths)),
-            'proof_uploaders' => array_values($uploaders),
-        ]);
+        ];
+
+        if (Schema::hasColumn('vaccination_records', 'proof_uploaders')) {
+            $attributes['proof_uploaders'] = array_values($uploaders);
+        }
+
+        $record->update($attributes);
     }
 
     public function render(): View
@@ -183,14 +209,28 @@ class VerificationQueuePage extends Component
         abort_unless(auth()->user()->canViewVerificationQueue(), 403);
 
         $query = VaccinationRecord::query()
-            ->with(['child.barangay', 'vaccineType', 'submitter'])
-            ->where('verification_status', 'pending');
+            ->with(['child.barangay', 'vaccineType', 'submitter', 'verifier'])
+            ->when(
+                $this->view === 'history',
+                fn ($builder) => $builder->whereIn('verification_status', ['verified', 'rejected']),
+                fn ($builder) => $builder->where('verification_status', 'pending')
+            );
 
         if (! auth()->user()->isSuperAdmin()) {
             $query->whereHas('child', fn ($builder) => $builder->where('barangay_id', auth()->user()->barangay_id));
         }
 
         $query
+            ->when(trim($this->childSearch) !== '', function ($builder): void {
+                $search = '%'.trim($this->childSearch).'%';
+                $builder->whereHas('child', function ($child) use ($search): void {
+                    $child
+                        ->whereRaw("CONCAT_WS(' ', first_name, middle_name, last_name) LIKE ?", [$search])
+                        ->orWhere('first_name', 'like', $search)
+                        ->orWhere('middle_name', 'like', $search)
+                        ->orWhere('last_name', 'like', $search);
+                });
+            })
             ->when($this->barangay_id, fn ($builder) => $builder->whereHas('child', fn ($child) => $child->where('barangay_id', $this->barangay_id)))
             ->when($this->vaccine_type_id, fn ($builder) => $builder->where('vaccine_type_id', $this->vaccine_type_id))
             ->when($this->source !== '', fn ($builder) => $builder->where('source', $this->source))

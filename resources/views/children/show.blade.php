@@ -3,12 +3,10 @@
     $initialChildViewTab = 'schedule';
     $compactHistory = true;
 
-    if (auth()->user()->canManageChildren()) {
-        if (request()->string('tab')->toString() === 'parents' || $errors->hasAny(['name', 'email', 'phone', 'relationship']) || session('edit_parent_id') !== null) {
-            $initialChildViewTab = 'parents';
-        } elseif ($errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'vaccine_inventory_item_id', 'remarks'])) {
-            $initialChildViewTab = 'vaccination';
-        }
+    if (request()->string('tab')->toString() === 'parents' || $errors->hasAny(['name', 'email', 'phone', 'relationship', 'photo']) || session('edit_parent_id') !== null) {
+        $initialChildViewTab = 'parents';
+    } elseif ($errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'clinic_name', 'clinic_location', 'vaccine_inventory_item_id', 'proof_files', 'proof_files.*', 'remarks'])) {
+        $initialChildViewTab = 'vaccination';
     }
 @endphp
 
@@ -32,7 +30,7 @@
                 this.recordDetails = record;
                 this.recordStep = 'details';
             },
-            childViewTab: @js($initialChildViewTab),
+            childViewTab: @entangle('childTab').live,
             openProofModal(images) {
                 this.proofModalImages = images;
                 this.proofModalIndex = 0;
@@ -90,14 +88,15 @@
             init() {
                 const message = @js(session('toast_error'));
                 if (message) window.Flux?.toast({ variant: 'danger', text: message });
+                const successMessage = @js(session('status'));
+                if (successMessage) window.Flux?.toast({ variant: 'success', text: successMessage });
+                const validationMessage = @js($errors->first());
+                if (validationMessage) window.Flux?.toast({ variant: 'danger', text: validationMessage });
             },
         }"
+        @vaccination-submitted.window="window.Flux?.toast({ variant: 'success', text: $event.detail.message })"
+        @click.capture="const proofLink = $event.target.closest('a[target=_blank]'); if (proofLink && proofLink.querySelector('img[alt*=proof i]')) { $event.preventDefault(); $event.stopPropagation(); openProofModal([proofLink.href]); }"
     >
-        @if (session('status'))
-            <div class="app-alert-success">
-                {{ session('status') }}
-            </div>
-        @endif
         <div x-show="actionStatus" x-cloak x-text="actionStatus" class="app-alert-success" @parent-action-status.window="actionStatus = $event.detail"></div>
 
         <div x-show="editParentOpen" x-cloak x-on:keydown.escape.window="editParentOpen = false" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="edit-parent-title">
@@ -357,6 +356,9 @@
                                             <p><strong class="block text-slate-500">Location</strong>{{ $record->clinic_location ?: '—' }}</p>
                                             <p><strong class="block text-slate-500">Next due</strong>{{ $record->next_due_at?->format('M d, Y') ?: 'None' }}</p>
                                         </div>
+                                        @if ($record->remarks)
+                                            <p class="mt-3 border-t border-slate-200 pt-3 text-sm text-slate-700 dark:border-zinc-800 dark:text-zinc-200"><strong class="text-slate-500">Parent remarks:</strong> {{ $record->remarks }}</p>
+                                        @endif
                                         @php
                                             $proofUrls = $this->proofImageUrls($record);
                                         @endphp
@@ -365,7 +367,7 @@
                                         @else
                                             <div class="mt-4 border-t border-slate-200 pt-3 text-slate-500 dark:border-zinc-800"><div class="record-section-heading record-section-heading-muted"><span>2</span><strong>No proof photo attached</strong></div></div>
                                         @endif
-                                        <div class="mt-4 border-t border-slate-200 pt-3 dark:border-zinc-800"><div class="record-section-heading @if ($record->verification_status === 'pending') record-section-heading-pending @elseif ($record->verification_status === 'rejected') record-section-heading-rejected @endif"><span>@if ($record->verification_status === 'verified')✓ @elseif ($record->verification_status === 'pending')◷ @else! @endif</span><strong>@if ($record->verification_status === 'verified')Verified by Nurse @elseif ($record->verification_status === 'pending')Wait for approval @else Rejected by Nurse @endif</strong></div><p class="mt-1 pl-7 text-xs text-slate-500 dark:text-zinc-400">@if ($record->verification_status === 'verified'){{ $record->verifier?->name ?? $record->recordedByDisplayName() }}@if ($record->verified_at) on {{ $record->verified_at->format('M d, Y g:i A') }}@endif. Your vaccination record is confirmed and included in the timeline.@elseif ($record->verification_status === 'pending')The clinic team is checking your submitted details and proof.@else {{ $record->verifier?->name ?? $record->recordedByDisplayName() }}@if ($record->verified_at) on {{ $record->verified_at->format('M d, Y') }}@endif. This vaccination record was rejected.@endif</p>@if ($record->nurseProofIndexes() !== [])<div class="mt-3 pl-7"><strong class="text-xs text-slate-500">Proof uploaded by {{ $record->nurseProofUploaderSummary() }}</strong><div class="mt-2 flex flex-wrap gap-2">@foreach ($record->nurseProofIndexes() as $proofIndex)@if (isset($proofUrls[$proofIndex]))<a href="{{ $proofUrls[$proofIndex] }}" target="_blank" rel="noopener" @click.stop class="size-14 overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-700"><img src="{{ $proofUrls[$proofIndex] }}" alt="Vaccination proof uploaded by nurse" class="size-full object-cover"></a>@endif @endforeach</div></div>@endif @if ($record->remarks)<p class="mt-3 pl-7 whitespace-pre-line text-sm text-slate-700 dark:text-zinc-200"><strong class="text-slate-500">Remarks:</strong> {{ $record->remarks }}</p>@endif</div>
+                                        <div class="mt-4 border-t border-slate-200 pt-3 dark:border-zinc-800"><div class="record-section-heading @if ($record->verification_status === 'pending') record-section-heading-pending @elseif ($record->verification_status === 'rejected') record-section-heading-rejected @endif"><span>@if ($record->verification_status === 'verified')✓ @elseif ($record->verification_status === 'pending')◷ @else! @endif</span><strong>@if ($record->verification_status === 'verified')Verified by Nurse @elseif ($record->verification_status === 'pending')Wait for approval @else Rejected by Nurse @endif</strong></div><p class="mt-1 pl-7 text-xs text-slate-500 dark:text-zinc-400">@if ($record->verification_status === 'verified'){{ $record->verifier?->name ?? $record->recordedByDisplayName() }}@if ($record->verified_at) on {{ $record->verified_at->format('M d, Y g:i A') }}@endif. Your vaccination record is confirmed and included in the timeline.@elseif ($record->verification_status === 'pending')The clinic team is checking your submitted details and proof.@else {{ $record->verifier?->name ?? $record->recordedByDisplayName() }}@if ($record->verified_at) on {{ $record->verified_at->format('M d, Y') }}@endif. This vaccination record was rejected.@endif</p>@if ($record->nurseProofIndexes() !== [])<div class="mt-3 pl-7"><strong class="text-xs text-slate-500">Proof uploaded by {{ $record->nurseProofUploaderSummary() }}</strong><div class="mt-2 flex flex-wrap gap-2">@foreach ($record->nurseProofIndexes() as $proofIndex)@if (isset($proofUrls[$proofIndex]))<a href="{{ $proofUrls[$proofIndex] }}" target="_blank" rel="noopener" @click.stop class="size-14 overflow-hidden rounded-lg border border-slate-200 dark:border-zinc-700"><img src="{{ $proofUrls[$proofIndex] }}" alt="Vaccination proof uploaded by nurse" class="size-full object-cover"></a>@endif @endforeach</div></div>@endif @if ($record->nurseReviewRemarks())<p class="mt-3 pl-7 whitespace-pre-line text-sm text-slate-700 dark:text-zinc-200"><strong class="text-slate-500">Nurse remarks:</strong> {{ $record->nurseReviewRemarks() }}</p>@endif @if ($record->verification_status === 'pending' && auth()->user()->canViewVerificationQueue())<a href="{{ route('verification-queue.index', ['childSearch' => $child->full_name]) }}" class="mt-4 inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/40" wire:navigate>Review in Verification Queue <span aria-hidden="true">→</span></a>@endif</div>
                                     </div>
                                 </div>
                             </div>
@@ -418,7 +420,7 @@
                                     'location' => $record->clinic_location,
                                     'next' => $record->next_due_at?->format('M d, Y'),
                                     'proofs' => count($record->proofPaths()),
-                                    'remarks' => $record->remarks,
+                                    'remarks' => $record->nurseReviewRemarks(),
                                     'verifier' => $record->verifier?->name ?? $record->recordedByDisplayName(),
                                     'verifiedAt' => $record->verified_at?->format('M d, Y g:i A'),
                                 ]))">
@@ -623,16 +625,65 @@
                     @endphp
                     <form
                         method="POST"
-                        action="{{ $editableRecord ? route('vaccinations.update', $editableRecord) : route('children.vaccinations.store', $child) }}"
-                        class="app-panel order-1 grid content-start gap-4"
-                        x-data="{ submitHistoryOpen: @js($editableRecord !== null), submitStep: @js($editableRecord ? 2 : 1), proofReady: @js($editableRecord && $editableRecord->proofPaths() !== []) }"
+                        action="{{ $editableRecord ? route('vaccinations.update', ['record' => $editableRecord, 'tab' => 'vaccination']) : route('children.vaccinations.store', ['child' => $child, 'tab' => 'vaccination']) }}"
+                        class="app-panel order-1 col-span-full flex w-full min-w-0 max-w-none flex-col gap-4"
+                        x-data="{
+                            submitHistoryOpen: @entangle('submitHistoryOpen').live,
+                            submitStep: @entangle('submissionStep').live,
+                            submitted: @entangle('submissionSubmitted').live,
+                            proofReady: @js(($editableRecord && $editableRecord->proofPaths() !== []) || count($submissionProofFiles) > 0),
+                            proofUploading: false,
+                            errorStep: @js($errors->hasAny(['proof_files', 'proof_files.*']) ? 2 : ($errors->any() ? 1 : null)),
+                            stepRefresh: 0,
+                            refreshStepper() { this.stepRefresh++; },
+                            continueFromStep() {
+                                const form = this.$refs.submitForm;
+                                if (this.submitStep === 1 && !this.stepComplete(1)) {
+                                    form?.reportValidity();
+                                    return;
+                                }
+                                if (this.submitStep === 2 && this.proofUploading) {
+                                    window.Flux?.toast({ variant: 'info', text: 'Please wait for the proof photo to finish uploading.' });
+                                    return;
+                                }
+                                if (this.submitStep === 2 && !this.stepComplete(2)) {
+                                    window.Flux?.toast({ variant: 'danger', text: 'Please attach at least one proof photo before continuing.' });
+                                    return;
+                                }
+                                this.submitStep++;
+                            },
+                            stepComplete(step) {
+                                void this.stepRefresh;
+                                if (step === 1) {
+                                    const form = this.$refs.submitForm;
+                                    const vaccine = form?.querySelector('[name=vaccine_type_id]');
+                                    const dose = form?.querySelector('[name=dose_number]');
+                                    const date = form?.querySelector('[name=administered_at]');
+                                    const clinic = form?.querySelector('[name=clinic_name]');
+                                    return Boolean(
+                                        vaccine?.value && vaccine.checkValidity() &&
+                                        (!dose?.value || dose.checkValidity()) &&
+                                        date?.value && date.checkValidity() &&
+                                        clinic?.value && clinic.checkValidity()
+                                    );
+                                }
+                                if (step === 2) return this.proofReady && !this.proofUploading;
+                                return false;
+                            }
+                        }"
+                        x-ref="submitForm"
+                        @vaccination-submitted.window="submitHistoryOpen = true; submitted = true; submitStep = 4; proofReady = false"
+                        @vaccination-validation-failed.window="submitHistoryOpen = true; errorStep = $event.detail.step; submitStep = $event.detail.step"
+                        @input="refreshStepper()"
+                        @change="refreshStepper()"
+                        wire:submit.prevent="submitVaccinationHistory"
                         enctype="multipart/form-data"
                     >
                         @csrf
                         @if ($editableRecord)
                             @method('PUT')
                         @endif
-                        <div class="sm:col-span-2 lg:col-span-3">
+                        <div class="sm:col-span-2 lg:col-span-4">
                             <button
                                 type="button"
                                 class="flex w-full items-center justify-between gap-4 text-left"
@@ -645,35 +696,38 @@
                                 <span x-show="!submitHistoryOpen" x-cloak class="text-sm font-semibold leading-none text-teal-700 dark:text-teal-300">+ Create</span>
                             </button>
                         </div>
-                        <div id="submit-vaccination-history-fields" x-show="submitHistoryOpen" x-cloak class="grid gap-5">
+                        <div id="submit-vaccination-history-fields" x-show="submitHistoryOpen" x-cloak class="grid w-full min-w-0 max-w-none gap-5">
                             <p class="text-sm text-slate-600 dark:text-zinc-300">
                                 {{ $editableRecord ? 'You can correct this record until it is synchronized to Central. After synchronization, submit a new request if the facility rejects it.' : 'Records given outside the barangay clinic will stay pending until the clinic verifies them.' }}
                             </p>
-                            <div class="vaccination-stepper" aria-label="Vaccination submission steps">
+                            <div class="vaccination-stepper w-full min-w-0" aria-label="Vaccination submission steps">
                                 @foreach ([1 => ['Fill out details', 'Vaccine and date'], 2 => ['Upload proof', 'Card or document'], 3 => ['Submit record', 'Send to clinic'], 4 => ['Wait for approval', 'Nurse review']] as $step => $stepInfo)
-                                    <button type="button" class="vaccination-step" :class="submitStep >= {{ $step }} ? 'vaccination-step-active' : ''" @click="submitStep = {{ $step }}">
-                                        <span class="vaccination-step-number"><span x-show="submitStep < {{ $step }}">{{ $step }}</span><span x-show="submitStep >= {{ $step }}" x-cloak>✓</span></span>
+                                    <button type="button" class="vaccination-step" @if ($step === 4) x-show="submitted" x-cloak @endif :class="errorStep === {{ $step }} ? 'vaccination-step-error' : (stepComplete({{ $step }}) ? 'vaccination-step-complete' : (submitStep === {{ $step }} ? 'vaccination-step-current' : ''))" @click="submitStep = {{ $step }}">
+                                        <span class="vaccination-step-number"><span x-show="!stepComplete({{ $step }})">{{ $step }}</span><span x-show="stepComplete({{ $step }})" x-cloak>✓</span></span>
                                         <span class="hidden text-left sm:block"><strong>{{ $stepInfo[0] }}</strong><small>{{ $stepInfo[1] }}</small></span>
                                     </button>
-                                    @if ($step < 4)<span class="vaccination-step-line" :class="submitStep > {{ $step }} ? 'vaccination-step-line-active' : ''"></span>@endif
+                                    @if ($step < 4)<span class="vaccination-step-line" @if ($step === 3) x-show="submitted" x-cloak @endif :class="stepComplete({{ $step }}) ? 'vaccination-step-line-active' : ''"></span>@endif
                                 @endforeach
                             </div>
-                            <div x-show="submitStep === 1" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                <div class="sm:col-span-2 lg:col-span-3"><p class="text-sm font-semibold text-slate-900 dark:text-white">When and what was given?</p><p class="mt-1 text-xs text-slate-500">Use the information exactly as it appears on the vaccine card.</p></div>
-                                <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" :value="$editableRecord?->vaccine_type_id" />
-                                <x-form-field label="Dose number" name="dose_number" type="number" :value="$editableRecord?->dose_number" />
-                                <x-form-field label="Date given" name="administered_at" type="date" :value="$editableRecord?->administered_at?->toDateString()" />
-                                <x-form-field label="Facility or clinic name" name="clinic_name" :value="$defaultClinicName" />
-                                <x-form-field label="Facility or clinic location" name="clinic_location" :value="$defaultClinicLocation" />
+                            <div x-show="submitStep === 1" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                <div class="sm:col-span-2 lg:col-span-4"><p class="text-sm font-semibold text-slate-900 dark:text-white">When and what was given?</p><p class="mt-1 text-xs text-slate-500">Use the information exactly as it appears on the vaccine card.</p></div>
+                                <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" :value="$editableRecord?->vaccine_type_id" wire:model="submissionVaccineTypeId" required />
+                                <x-form-field label="Dose number" name="dose_number" type="number" min="1" max="10" :value="$editableRecord?->dose_number" wire:model="submissionDoseNumber" />
+                                <x-form-field label="Date given" name="administered_at" type="date" max="{{ today()->toDateString() }}" :value="$editableRecord?->administered_at?->toDateString()" wire:model="submissionAdministeredAt" required />
+                                <x-form-field label="Facility or clinic name" name="clinic_name" :value="$defaultClinicName" wire:model="submissionClinicName" required />
+                                <x-form-field label="Facility or clinic location" name="clinic_location" :value="$defaultClinicLocation" wire:model="submissionClinicLocation" />
                             </div>
-                            <div x-show="submitStep === 2" x-cloak class="grid gap-4">
+                            <div x-show="submitStep === 2" x-cloak class="grid w-full min-w-0 max-w-none gap-4">
                                 <div><p class="text-sm font-semibold text-slate-900 dark:text-white">Add your proof</p><p class="mt-1 text-xs text-slate-500">Take a clear photo of the vaccine card, receipt, or clinic record.</p></div>
                                 <label class="vaccination-upload-zone">
                                     <span class="flex size-11 items-center justify-center rounded-2xl bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300"><flux:icon.arrow-up-tray class="size-5" /></span>
                                     <span><strong>Choose document or photos</strong><small>JPG, PNG · up to 5 files · max 5 MB each</small></span>
-                                    <input type="file" name="proof_files[]" accept="image/*" multiple class="sr-only" @change="proofReady = $event.target.files.length > 0 || {{ $editableRecord && $editableRecord->proofPaths() !== [] ? 'true' : 'false' }}">
+                                    <input wire:key="vaccination-proof-upload" type="file" name="proof_files[]" accept="image/*" multiple class="sr-only" wire:model="submissionProofFiles" :required="submitStep === 2 && !proofReady" @change="proofUploading = $event.target.files.length > 0; proofReady = $event.target.files.length > 0 || {{ $editableRecord && $editableRecord->proofPaths() !== [] ? 'true' : 'false' }}" x-on:livewire-upload-start="proofUploading = true" x-on:livewire-upload-finish="proofUploading = false; proofReady = true" x-on:livewire-upload-error="proofUploading = false; proofReady = false">
                                 </label>
-                                <div class="flex items-center gap-2 text-xs" :class="proofReady ? 'text-emerald-700' : 'text-slate-500'"><span class="size-2 rounded-full" :class="proofReady ? 'bg-emerald-500' : 'bg-slate-300'"></span><span x-text="proofReady ? 'Proof attached and ready' : 'No new proof selected yet'"></span></div>
+                                <div class="flex items-center gap-2 text-xs" :class="proofUploading ? 'text-amber-600' : (proofReady ? 'text-emerald-700' : 'text-slate-500')"><span class="size-2 rounded-full" :class="proofUploading ? 'animate-pulse bg-amber-500' : (proofReady ? 'bg-emerald-500' : 'bg-slate-300')"></span><span x-text="proofUploading ? 'Uploading proof…' : (proofReady ? 'Proof attached and ready' : 'No new proof selected yet')"></span></div>
+                                @if (count($submissionProofFiles) > 0)
+                                    <p class="text-xs font-medium text-emerald-700 dark:text-emerald-300">{{ count($submissionProofFiles) }} proof photo{{ count($submissionProofFiles) === 1 ? '' : 's' }} attached and ready.</p>
+                                @endif
                                 @if ($editableRecord && $editableRecord->proofPaths() !== [])
                                     <div class="text-xs">
                                         <a href="#" @click.prevent="openProofModal(@js($this->proofImageUrls($editableRecord)))" class="text-teal-700 hover:underline dark:text-teal-300">
@@ -688,21 +742,21 @@
                                     <span class="text-xs font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
                                 @enderror
                             </div>
-                            <div x-show="submitStep === 3" x-cloak class="grid gap-4">
+                            <div x-show="submitStep === 3" x-cloak class="grid w-full min-w-0 max-w-none gap-4">
                                 <div><p class="text-sm font-semibold text-slate-900 dark:text-white">Review before sending</p><p class="mt-1 text-xs text-slate-500">Check your details and attached proof. You can still go back to make changes.</p></div>
                                 <div class="rounded-2xl bg-slate-50 p-4 text-sm text-slate-700 ring-1 ring-slate-200 dark:bg-zinc-950 dark:text-zinc-300 dark:ring-zinc-800"><div class="grid gap-2 sm:grid-cols-2"><span>Child <strong class="block text-slate-950 dark:text-white">{{ $child->full_name }}</strong></span><span>Clinic <strong class="block text-slate-950 dark:text-white">{{ $defaultClinicName }}</strong></span><span>After submission <strong class="block text-slate-950 dark:text-white">Pending nurse verification</strong></span><span>Proof <strong class="block text-slate-950 dark:text-white" x-text="proofReady ? 'Attached' : 'Required'">Required</strong></span></div></div>
                             </div>
-                            <div x-show="submitStep === 4" x-cloak class="grid gap-4">
-                                <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40"><p class="text-sm font-semibold text-amber-900 dark:text-amber-100">What happens next?</p><p class="mt-1 text-sm leading-6 text-amber-800 dark:text-amber-200">A nurse will compare your details with the uploaded proof. Your record will appear as <strong>Pending</strong> until it is verified.</p></div>
+                            <div x-show="submitStep === 4 && submitted" x-cloak class="grid w-full min-w-0 max-w-none gap-4">
+                                <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/40"><p class="text-sm font-semibold text-blue-900 dark:text-blue-100">What happens next?</p><p class="mt-1 text-sm leading-6 text-blue-800 dark:text-blue-200">A nurse will compare your details with the uploaded proof. Your record will appear as <strong>Pending</strong> until it is verified.</p></div>
                                 <div class="grid gap-3 sm:grid-cols-3"><div class="rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-zinc-950 dark:text-zinc-300"><strong class="block text-slate-900 dark:text-white">Submitted</strong>We received your record.</div><div class="rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-zinc-950 dark:text-zinc-300"><strong class="block text-slate-900 dark:text-white">Under review</strong>Nurse checks your proof.</div><div class="rounded-xl bg-slate-50 p-3 text-xs text-slate-600 dark:bg-zinc-950 dark:text-zinc-300"><strong class="block text-slate-900 dark:text-white">Verified</strong>Timeline is updated.</div></div>
                             </div>
-                            <div>
-                                <x-form-field label="Remarks" name="remarks" type="textarea" :value="$editableRecord?->remarks" />
+                            <div x-show="submitStep === 1" x-cloak class="w-full min-w-0">
+                                <x-form-field label="Remarks" name="remarks" type="textarea" :value="$editableRecord?->remarks" wire:model="submissionRemarks" />
                             </div>
                             <div class="flex flex-wrap justify-between gap-2">
                                 <button type="button" class="app-button-secondary" x-show="submitStep > 1" @click="submitStep--">Back</button>
                                 <span x-show="submitStep === 1"></span>
-                                <button type="button" class="app-button-primary" x-show="submitStep < 3" @click="submitStep++">Continue <span aria-hidden="true">→</span></button>
+                                <button type="button" class="app-button-primary" x-show="submitStep < 3" @click="continueFromStep()">Continue <span aria-hidden="true">→</span></button>
                                 <button type="submit" class="app-button-primary" x-show="submitStep === 3">{{ $editableRecord ? 'Save changes' : 'Submit for clinic verification' }}</button>
                                 @if ($editableRecord)
                                     <a href="{{ route('children.show', $child) }}" class="app-button-secondary">Cancel</a>
