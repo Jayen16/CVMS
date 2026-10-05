@@ -206,6 +206,13 @@ class DashboardPage extends Component
                 ];
             })->filter()->groupBy('date')->sortKeys();
 
+            $nextDoseItems = $children->mapWithKeys(fn (ChildProfile $child): array => [
+                $child->id => [
+                    'child' => $child,
+                    'suggestion' => $suggestions->suggestNextDose($child),
+                ],
+            ]);
+
             return view('livewire.dashboard-page', [
                 'role' => 'parent',
                 'stats' => [
@@ -215,6 +222,7 @@ class DashboardPage extends Component
                 ],
                 'children' => $children,
                 'calendarItems' => $calendarItems,
+                'nextDoseItems' => $nextDoseItems,
                 'monthlyVaccinationChart' => $this->monthlyVaccinationChart($parentVaccinations),
                 'statusChart' => $this->statusChart($parentVaccinations),
                 'announcements' => $announcements,

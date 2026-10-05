@@ -46,6 +46,9 @@
                     <flux:sidebar.item icon="calendar-days" :href="route('family-schedule.index')" :current="request()->routeIs('family-schedule.*')" wire:navigate>
                         {{ __('Family schedule') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="beaker" :href="route('vaccine-information.index')" :current="request()->routeIs('vaccine-information.*')" wire:navigate>
+                        {{ __('Vaccine information') }}
+                    </flux:sidebar.item>
                 @elseif (auth()->user()->canViewChildrenRegistry()
                     || auth()->user()->canViewVerificationQueue())
                     <flux:sidebar.group expandable :heading="__('Child Records')" class="grid">
@@ -57,6 +60,11 @@
                         @if (auth()->user()->canViewVerificationQueue())
                             <flux:sidebar.item icon="clipboard-document-check" :href="route('verification-queue.index')" :current="request()->routeIs('verification-queue.*')" wire:navigate>
                                 {{ __('Verification Queue') }}
+                            </flux:sidebar.item>
+                        @endif
+                        @if (auth()->user()->isNurse())
+                            <flux:sidebar.item icon="beaker" :href="route('vaccine-information.index')" :current="request()->routeIs('vaccine-information.*')" wire:navigate>
+                                {{ __('Vaccine information') }}
                             </flux:sidebar.item>
                         @endif
                     </flux:sidebar.group>

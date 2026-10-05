@@ -570,6 +570,46 @@ select:focus[data-flux-control] {
         @apply bg-[linear-gradient(90deg,#ffffff,#f8fbff)] dark:bg-zinc-900;
     }
 
+    .vaccine-info-hero {
+        @apply rounded-[1.35rem] border border-teal-100 bg-[linear-gradient(120deg,#ecfeff_0%,#f0fdfa_58%,#ffffff_100%)] p-6 shadow-[0_10px_30px_rgba(13,148,136,0.08)] dark:border-teal-950 dark:bg-[linear-gradient(120deg,#102b31_0%,#102b26_58%,#18181b_100%)];
+    }
+
+    .vaccine-info-icon {
+        @apply flex size-14 shrink-0 items-center justify-center rounded-2xl bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300;
+    }
+
+    .vaccine-info-tab {
+        @apply min-w-max rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-teal-50 hover:text-teal-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-teal-300;
+    }
+
+    .vaccine-info-tab.is-active {
+        @apply bg-teal-600 text-white shadow-sm hover:bg-teal-700 hover:text-white;
+    }
+
+    .vaccine-info-content {
+        @apply p-5 sm:p-7;
+    }
+
+    .vaccine-info-content h2 {
+        @apply text-lg font-bold text-slate-950 dark:text-white;
+    }
+
+    .vaccine-info-content p {
+        @apply mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-zinc-300;
+    }
+
+    .vaccine-library-grid {
+        @apply grid gap-4 sm:grid-cols-2 lg:grid-cols-3;
+    }
+
+    .vaccine-library-card {
+        @apply flex min-w-0 gap-4 rounded-[1.25rem] border border-slate-200/80 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.045)] transition hover:-translate-y-1 hover:border-teal-200 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900;
+    }
+
+    .vaccine-library-image {
+        @apply size-16 shrink-0 rounded-2xl object-cover;
+    }
+
     .dashboard-section-title {
         @apply flex items-center justify-between gap-3 px-1;
     }
