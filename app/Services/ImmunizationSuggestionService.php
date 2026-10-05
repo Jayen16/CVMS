@@ -14,7 +14,7 @@ class ImmunizationSuggestionService
     ) {}
 
     /**
-     * @return array{vaccine_code: string|null, vaccine_name: string|null, dose_number: int|null, due_at: Carbon|null, action_at: Carbon|null, status: string, due_label: string|null, note: string, checks: list<string>, suggested_schedule_version_id: int|null}
+     * @return array{vaccine_code: string|null, vaccine_type_id: string|null, vaccine_name: string|null, dose_number: int|null, due_at: Carbon|null, action_at: Carbon|null, status: string, due_label: string|null, note: string, checks: list<string>, suggested_schedule_version_id: int|null}
      */
     public function suggestNextDose(ChildProfile $child): array
     {
@@ -29,6 +29,7 @@ class ImmunizationSuggestionService
 
             return [
                 'vaccine_code' => null,
+                'vaccine_type_id' => null,
                 'vaccine_name' => null,
                 'dose_number' => null,
                 'due_at' => null,
@@ -51,6 +52,7 @@ class ImmunizationSuggestionService
         if ($candidate === null) {
             return [
                 'vaccine_code' => null,
+                'vaccine_type_id' => null,
                 'vaccine_name' => null,
                 'dose_number' => null,
                 'due_at' => null,
@@ -78,6 +80,7 @@ class ImmunizationSuggestionService
 
         return [
             'vaccine_code' => $candidate['code'],
+            'vaccine_type_id' => $candidate['id'],
             'vaccine_name' => $candidate['name'],
             'dose_number' => $candidate['dose'],
             'due_at' => $candidate['due_at'],
@@ -166,6 +169,7 @@ class ImmunizationSuggestionService
 
                 $candidates[] = [
                     'code' => $code,
+                    'id' => $dose->vaccineType->id,
                     'name' => $dose->vaccineType->name,
                     'dose' => $doseNumber,
                     'due_at' => $dose->dueDateFromBirthdate($birthdate),

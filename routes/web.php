@@ -22,6 +22,7 @@ use App\Http\Controllers\PlanningReportController;
 use App\Http\Controllers\PrivacyAcknowledgmentController;
 use App\Http\Controllers\PhonePasswordResetController;
 use App\Http\Controllers\VaccinationRecordController;
+use App\Http\Controllers\VaccineInformationController;
 use App\Http\Controllers\VaccineCardController;
 use App\Http\Controllers\VaccineInventoryController;
 use App\Http\Controllers\VaccineScheduleController;
@@ -96,6 +97,8 @@ Route::middleware(['auth', 'verified', 'parent.privacy'])->group(function () {
     Route::get('dashboard', DashboardPage::class)->name('dashboard');
     Route::get('children', ChildrenIndexPage::class)->name('children.index');
     Route::get('family-schedule', ChildrenScheduleCalendar::class)->name('family-schedule.index');
+    Route::get('vaccine-information', [VaccineInformationController::class, 'index'])->name('vaccine-information.index');
+    Route::get('vaccine-information/{vaccineType}', [VaccineInformationController::class, 'show'])->name('vaccine-information.show');
     Route::get('children/archive', [ChildProfileController::class, 'archiveIndex'])->name('children.archive.index');
     Route::prefix('archives')->name('archives.')->group(function (): void {
         Route::get('/', [ArchiveController::class, 'index'])->name('index');

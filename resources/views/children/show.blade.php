@@ -216,16 +216,20 @@
                             @endif
                         </h2>
                     </div>
-
-                    <span class="status-pill
-                        @if ($suggestion['status'] === 'overdue') status-rejected
-                        @elseif ($suggestion['status'] === 'delayed') bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200
-                        @elseif ($suggestion['status'] === 'due') bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200
-                        @elseif ($suggestion['status'] === 'upcoming') bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200
-                        @elseif ($suggestion['status'] === 'catch_up_review') bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200
-                        @else status-verified @endif">
-                        {{ $suggestion['status'] === 'catch_up_review' ? 'Catch-up review' : ucfirst($suggestion['status']) }}
-                    </span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if (auth()->user()->isParent() && $suggestion['vaccine_type_id'])
+                            <a href="{{ route('vaccine-information.show', $suggestion['vaccine_type_id']) }}" class="app-button-primary !px-3 !py-2 !text-xs" wire:navigate>Learn about this vaccine</a>
+                        @endif
+                        <span class="status-pill
+                            @if ($suggestion['status'] === 'overdue') status-rejected
+                            @elseif ($suggestion['status'] === 'delayed') bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200
+                            @elseif ($suggestion['status'] === 'due') bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200
+                            @elseif ($suggestion['status'] === 'upcoming') bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200
+                            @elseif ($suggestion['status'] === 'catch_up_review') bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200
+                            @else status-verified @endif">
+                            {{ $suggestion['status'] === 'catch_up_review' ? 'Catch-up review' : ucfirst($suggestion['status']) }}
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -390,6 +394,7 @@
                                             'remarks' => $record->remarks,
                                             'proofs' => count($record->proofPaths()),
                                             'proofImages' => $this->proofImageUrls($record),
+                                            'informationUrl' => auth()->user()->isParent() ? route('vaccine-information.show', $record->vaccineType) : null,
                                         ]))"><span class="min-w-0"><span class="block truncate text-teal-700 dark:text-teal-300">{{ $record->vaccineType->name }}</span><span class="mt-0.5 block text-xs font-normal text-slate-500 dark:text-zinc-400">{{ $record->dose_number ? 'Dose '.$record->dose_number : 'Not set' }}</span></span><flux:icon.chevron-right class="size-4 shrink-0 text-slate-400" /></button></td>
                                         <td><span class="status-pill @if ($record->verification_status === 'verified') status-verified @elseif ($record->verification_status === 'pending') status-pending @else status-rejected @endif">{{ ucfirst($record->verification_status) }}</span></td>
                                     @else
@@ -958,6 +963,7 @@
                 </div>
                 <div x-show="recordDetails.proofImages && recordDetails.proofImages.length" class="mt-4"><p class="text-xs font-semibold uppercase text-slate-500">Uploaded proof</p><div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3"><template x-for="image in recordDetails.proofImages" :key="image"><a :href="image" target="_blank" rel="noopener" class="block overflow-hidden rounded-xl border border-slate-200 bg-slate-50 dark:border-zinc-800 dark:bg-zinc-950"><img :src="image" alt="Uploaded vaccination proof" class="aspect-square size-full object-cover"></a></template></div></div>
                 <div class="mt-4 space-y-2 text-sm text-slate-600 dark:text-zinc-300"><p><span class="font-semibold">Submitted by:</span> <span x-text="recordDetails.submitter"></span></p><p><span class="font-semibold">Recorded or verified by:</span> <span x-text="recordDetails.verifier"></span></p><p x-show="recordDetails.remarks"><span class="font-semibold">Remarks:</span> <span x-text="recordDetails.remarks"></span></p><p x-show="recordDetails.proofs > 0"><span class="font-semibold">Proof photos:</span> <span x-text="recordDetails.proofs"></span></p></div>
+                <a x-show="recordDetails.informationUrl" :href="recordDetails.informationUrl" class="app-button-primary mt-5 w-full text-center" wire:navigate>Learn about this vaccine</a>
             </div>
         </div>
 

@@ -28,6 +28,22 @@ return [
         ['code' => 'influenza', 'name' => 'Influenza'],
     ],
 
+    // Parent-facing copy is intentionally general. Clinical decisions remain with the health worker.
+    'vaccine_information' => [
+        'bcg' => ['summary' => 'BCG helps protect children against tuberculosis, especially serious forms of TB in young children. It is given by injection.'],
+        'hepb' => ['summary' => 'Hepatitis B vaccine helps protect against hepatitis B infection, which can affect the liver. It is given by injection.'],
+        'dtap' => ['summary' => 'DTaP / DTwP-containing vaccines help protect against diphtheria, tetanus, and pertussis (whooping cough). It is given by injection.'],
+        'opv' => ['summary' => 'Oral Polio Vaccine helps protect against poliovirus and is given by mouth.'],
+        'ipv' => ['summary' => 'Inactivated Polio Vaccine helps protect against poliovirus and is given by injection.'],
+        'hib' => ['summary' => 'Haemophilus influenzae type b vaccine helps protect against serious Hib infections. It is given by injection.'],
+        'pcv' => ['summary' => 'Pneumococcal conjugate vaccine helps protect against serious infections caused by pneumococcal bacteria. It is given by injection.'],
+        'rv' => ['summary' => 'Rotavirus vaccine helps protect babies and young children from rotavirus illness, which can cause severe diarrhea and dehydration.'],
+        'mmr' => ['summary' => 'MMR vaccine helps protect against measles, mumps, and rubella. It is given by injection.'],
+        'var' => ['summary' => 'Varicella vaccine helps protect against chickenpox. It is given by injection.'],
+        'hep_a' => ['summary' => 'Hepatitis A vaccine helps protect against hepatitis A infection, which affects the liver. It is given by injection.'],
+        'influenza' => ['summary' => 'Influenza vaccine helps protect against influenza and is recommended according to the current local schedule. It is given by injection.'],
+    ],
+
     'routine_schedule' => [
         'bcg' => [
             ['dose' => 1, 'age' => ['days' => 0], 'label' => 'At birth'],
