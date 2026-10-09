@@ -227,19 +227,6 @@
                 <x-stat-card label="Overdue" :value="$overdueCount" />
             </section>
 
-            <div class="parent-feature-grid lg:grid-cols-1">
-                <section class="parent-action-card">
-                    <div class="parent-card-heading"><div><span class="parent-icon parent-icon-warning"><flux:icon.exclamation-circle class="size-5" /></span><div><h2>Action needed</h2><p>Stay on top of your children’s upcoming doses.</p></div></div><span class="parent-count-badge">{{ $upcomingItems->count() }}</span></div>
-                    <div class="mt-3 divide-y divide-amber-100/80 dark:divide-amber-900/40">
-                        @forelse ($upcomingItems as $item)
-                            <a href="{{ route('children.show', $item['child']) }}" class="parent-list-row" wire:navigate><span class="parent-list-icon"><flux:icon.calendar-days class="size-4" /></span><span class="min-w-0 flex-1"><span class="block truncate font-semibold text-slate-900 dark:text-white">{{ $item['suggestion']['vaccine_name'] }} · Dose {{ $item['suggestion']['dose_number'] }}</span><span class="block text-xs text-slate-500">{{ $item['child']->full_name }} · {{ $item['suggestion']['due_label'] ?? 'Due this month' }}</span></span><flux:icon.chevron-right class="size-4 text-slate-400" /></a>
-                        @empty
-                            <p class="py-5 text-sm text-slate-500">No upcoming vaccinations this month.</p>
-                        @endforelse
-                    </div>
-                    <a href="{{ route('family-schedule.index') }}" class="app-button-primary mt-3 w-full" wire:navigate>View schedule</a>
-                </section>
-            </div>
 
             <section>
                 <div class="dashboard-section-title"><h2>My children</h2><a href="{{ route('children.index') }}" wire:navigate>View all <span aria-hidden="true">›</span></a></div>
@@ -252,6 +239,17 @@
                     @empty
                         <p class="app-card p-5 text-sm text-zinc-500">No linked child profiles yet.</p>
                     @endforelse
+                    <section class="parent-action-card">
+                    <div class="parent-card-heading"><div><span class="parent-icon parent-icon-warning"><flux:icon.exclamation-circle class="size-5" /></span><div><h2>Action needed</h2><p>Stay on top of your children’s upcoming doses.</p></div></div><span class="parent-count-badge">{{ $upcomingItems->count() }}</span></div>
+                    <div class="mt-3 divide-y divide-amber-100/80 dark:divide-amber-900/40">
+                    @forelse ($upcomingItems as $item)
+                    <a href="{{ route('children.show', $item['child']) }}" class="parent-list-row" wire:navigate><span class="parent-list-icon"><flux:icon.calendar-days class="size-4" /></span><span class="min-w-0 flex-1"><span class="block truncate font-semibold text-slate-900 dark:text-white">{{ $item['suggestion']['vaccine_name'] }} · Dose {{ $item['suggestion']['dose_number'] }}</span><span class="block text-xs text-slate-500">{{ $item['child']->full_name }} · {{ $item['suggestion']['due_label'] ?? 'Due this month' }}</span></span><flux:icon.chevron-right class="size-4 text-slate-400" /></a>
+                    @empty
+                    <p class="py-5 text-sm text-slate-500">No upcoming vaccinations this month.</p>
+                    @endforelse
+                    </div>
+                    <a href="{{ route('family-schedule.index') }}" class="app-button-primary mt-3 w-full" wire:navigate>View schedule</a>
+                    </section>
                 </div>
             </section>
 
@@ -261,7 +259,9 @@
             </div>
 
             <section><div class="dashboard-section-title"><h2>Quick actions</h2></div><div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">@if (auth()->user()->canViewChildrenRegistry())<a href="{{ route('children.index') }}" class="dashboard-action-tile" wire:navigate><flux:icon.users class="size-6 text-teal-600" />View children</a>@endif<a href="{{ route('notifications.index') }}" class="dashboard-action-tile" wire:navigate><flux:icon.bell class="size-6 text-amber-500" />Notifications</a><a href="{{ route('family-schedule.index') }}" class="dashboard-action-tile" wire:navigate><flux:icon.calendar-days class="size-6 text-sky-600" />Schedule</a></div></section>
-            <x-dashboard-bar-chart title="Vaccination activity" subtitle="Last 6 months" :data="$monthlyVaccinationChart" />
+            <div class="w-full min-w-0 lg:max-w-2xl">
+                <x-dashboard-bar-chart title="Vaccination activity" subtitle="Last 6 months" :data="$monthlyVaccinationChart" />
+            </div>
         </div>
     @else
         <div class="nurse-dashboard">
