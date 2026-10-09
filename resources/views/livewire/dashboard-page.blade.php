@@ -199,7 +199,7 @@
             $overdueCount = $children->filter(fn ($child) => ($suggestion = app(\App\Services\ImmunizationSuggestionService::class)->suggestNextDose($child)) && ($suggestion['status'] ?? null) === 'overdue')->count();
             $greeting = now()->hour < 12 ? 'Good morning' : (now()->hour < 18 ? 'Good afternoon' : 'Good evening');
         @endphp
-        <div class="parent-dashboard">
+        <div class="parent-dashboard" x-data="{ summary: null, close() { this.summary = null } }" @keydown.escape.window="close()">
             <section class="parent-welcome-panel">
                 <div class="flex min-w-0 items-center gap-4">
                     <a href="{{ route('profile.edit') }}" wire:navigate class="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-teal-400/60 bg-teal-100 text-2xl font-bold text-teal-700 shadow-sm dark:bg-teal-950 dark:text-teal-300" title="Update profile photo">
@@ -219,27 +219,42 @@
                 <div class="parent-welcome-art" aria-hidden="true"><span>✦</span><span>✚</span><span>♥</span></div>
             </section>
 
-            <section class="parent-summary-grid">
-                <x-stat-card label="Children" :value="$stats['children']" />
-                <x-stat-card label="Vaccination records" :value="$stats['vaccinations']" />
-                <x-stat-card label="Verified" :value="$verifiedCount" />
-                <x-stat-card label="Awaiting verification" :value="$pendingCount" />
-                <x-stat-card label="Overdue" :value="$overdueCount" />
+            <section class="parent-summary-grid" aria-label="Immunization summaries">
+                @foreach ([['children', 'Children', $stats['children']], ['records', 'Vaccination records', $stats['vaccinations']], ['verified', 'Verified', $verifiedCount], ['pending', 'Awaiting verification', $pendingCount], ['overdue', 'Overdue', $overdueCount]] as [$key, $label, $value])
+                    <button type="button" @click="summary = '{{ $key }}'" class="app-card block w-full cursor-pointer p-5 text-left transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 dark:hover:border-teal-700 dark:focus:ring-offset-zinc-950" aria-haspopup="dialog">
+                        <span class="flex items-start justify-between gap-4"><span><span class="block text-sm font-medium text-slate-500 dark:text-zinc-400">{{ $label }}</span><span class="mt-2 block text-2xl font-semibold text-slate-950 dark:text-white">{{ $value }}</span></span><span class="stat-card-icon flex size-10 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100 dark:bg-teal-950 dark:text-teal-300 dark:ring-teal-900">@if ($key === 'children')<flux:icon.users class="size-5" />@elseif ($key === 'records')<flux:icon.beaker class="size-5" />@elseif ($key === 'verified')<flux:icon.check-circle class="size-5" />@elseif ($key === 'pending')<flux:icon.clock class="size-5" />@else<flux:icon.chart-bar class="size-5" />@endif</span></span>
+                    </button>
+                @endforeach
             </section>
 
-            <div class="parent-feature-grid lg:grid-cols-1">
-                <section class="parent-action-card">
-                    <div class="parent-card-heading"><div><span class="parent-icon parent-icon-warning"><flux:icon.exclamation-circle class="size-5" /></span><div><h2>Action needed</h2><p>Stay on top of your children’s upcoming doses.</p></div></div><span class="parent-count-badge">{{ $upcomingItems->count() }}</span></div>
-                    <div class="mt-3 divide-y divide-amber-100/80 dark:divide-amber-900/40">
-                        @forelse ($upcomingItems as $item)
-                            <a href="{{ route('children.show', $item['child']) }}" class="parent-list-row" wire:navigate><span class="parent-list-icon"><flux:icon.calendar-days class="size-4" /></span><span class="min-w-0 flex-1"><span class="block truncate font-semibold text-slate-900 dark:text-white">{{ $item['suggestion']['vaccine_name'] }} · Dose {{ $item['suggestion']['dose_number'] }}</span><span class="block text-xs text-slate-500">{{ $item['child']->full_name }} · {{ $item['suggestion']['due_label'] ?? 'Due this month' }}</span></span><flux:icon.chevron-right class="size-4 text-slate-400" /></a>
-                        @empty
-                            <p class="py-5 text-sm text-slate-500">No upcoming vaccinations this month.</p>
-                        @endforelse
+            <div x-cloak x-show="summary" x-transition.opacity class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" @click.self="close()" role="presentation">
+                <section x-show="summary" x-transition class="max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-[1.1rem] bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] dark:bg-zinc-900" role="dialog" aria-modal="true" aria-labelledby="parent-summary-title" @click.stop>
+                    <header class="flex items-start justify-between border-b border-slate-100 px-5 py-4 dark:border-zinc-800"><div><h2 id="parent-summary-title" class="text-base font-bold text-slate-950 dark:text-white" x-text="({children:'Your children',records:'Vaccination records',verified:'Verified records',pending:'Awaiting verification',overdue:'Overdue vaccinations'})[summary]"></h2><p class="mt-1 text-sm text-slate-500 dark:text-zinc-400">A summary across all your linked children.</p></div><button type="button" @click="close()" class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-600 dark:hover:bg-zinc-800" aria-label="Close summary"><flux:icon.x-mark class="size-5" /></button></header>
+                    <div class="max-h-[65vh] overflow-y-auto p-5">
+                        <div x-show="summary === 'children'" class="space-y-3">
+                            @forelse ($children as $child)
+                                <a href="{{ route('children.show', $child) }}" wire:navigate class="flex items-center gap-3 rounded-xl border border-slate-100 p-3 transition hover:border-teal-200 hover:bg-slate-50/60 dark:border-zinc-800 dark:hover:bg-zinc-800/50"><span class="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-teal-50 text-sm font-semibold text-teal-700 ring-1 ring-teal-100 dark:bg-teal-950 dark:text-teal-300 dark:ring-teal-900">@if ($child->photo_path)<img src="{{ route('children.photo', $child) }}" alt="Photo of {{ $child->full_name }}" class="size-full object-cover">@else{{ str($child->full_name)->substr(0, 1)->upper() }}@endif</span><span class="min-w-0 flex-1"><span class="block truncate text-sm font-semibold text-slate-900 dark:text-white">{{ $child->full_name }}</span><span class="mt-1 block text-xs text-slate-500 dark:text-zinc-400">{{ $child->vaccinations_count }} vaccination records</span></span><flux:icon.chevron-right class="size-4 shrink-0 text-slate-400" /></a>
+                            @empty <p class="text-sm text-slate-500">No linked child profiles.</p> @endforelse
+                        </div>
+                        @foreach (['records' => null, 'verified' => 'verified', 'pending' => 'pending'] as $summaryKey => $statusFilter)
+                            <div x-show="summary === '{{ $summaryKey }}'" class="space-y-3">
+                                @php($records = $children->flatMap(fn ($child) => $child->vaccinations->map(fn ($record) => ['child' => $child, 'record' => $record]))->when($statusFilter, fn ($items) => $items->filter(fn ($item) => $item['record']->verification_status === $statusFilter))->sortByDesc(fn ($item) => $item['record']->administered_at)->values())
+                                @forelse ($records as $item)
+                                    <a href="{{ route('children.show', $item['child']) }}" wire:navigate class="flex items-center gap-3 rounded-xl border border-slate-100 p-3 transition hover:border-teal-200 hover:bg-slate-50/60 dark:border-zinc-800 dark:hover:bg-zinc-800/50"><span class="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-teal-50 text-sm font-semibold text-teal-700 dark:bg-teal-950 dark:text-teal-300">@if ($item['child']->photo_path)<img src="{{ route('children.photo', $item['child']) }}" alt="" class="size-full object-cover">@else{{ str($item['child']->full_name)->substr(0, 1)->upper() }}@endif</span><span class="min-w-0 flex-1"><span class="block truncate text-sm font-semibold text-slate-900 dark:text-white">{{ $item['record']->vaccineType?->name ?? 'Vaccination' }}{{ $item['record']->dose_number ? ' · Dose '.$item['record']->dose_number : '' }}</span><span class="mt-1 block text-xs text-slate-500 dark:text-zinc-400">{{ $item['child']->full_name }} · {{ $item['record']->administered_at?->format('M j, Y') ?? 'Date not recorded' }}</span></span><span class="status-pill {{ $item['record']->verification_status === 'verified' ? 'status-verified' : ($item['record']->verification_status === 'pending' ? 'status-pending' : 'status-rejected') }}">{{ str($item['record']->verification_status)->headline() }}</span></a>
+                                @empty <p class="text-sm text-slate-500">No matching vaccination records.</p> @endforelse
+                            </div>
+                        @endforeach
+                        <div x-show="summary === 'overdue'" class="space-y-3">
+                            @php($overdueChildren = $children->filter(fn ($child) => ($nextDoseItems->get($child->id)['suggestion']['status'] ?? null) === 'overdue'))
+                            @forelse ($overdueChildren as $child)
+                                @php($suggestion = $nextDoseItems->get($child->id)['suggestion'])
+                                <a href="{{ route('children.show', $child) }}" wire:navigate class="flex items-center gap-3 rounded-xl border border-rose-100 p-3 transition hover:border-rose-300 dark:border-rose-900/50"><span class="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-rose-50 text-sm font-semibold text-rose-700 dark:bg-rose-950 dark:text-rose-300">@if ($child->photo_path)<img src="{{ route('children.photo', $child) }}" alt="" class="size-full object-cover">@else{{ str($child->full_name)->substr(0, 1)->upper() }}@endif</span><span class="min-w-0 flex-1"><span class="block truncate text-sm font-semibold text-slate-900 dark:text-white">{{ $child->full_name }}</span><span class="mt-1 block text-xs text-slate-500 dark:text-zinc-400">{{ $suggestion['vaccine_name'] ?? 'Scheduled dose' }}{{ !empty($suggestion['dose_number']) ? ' · Dose '.$suggestion['dose_number'] : '' }}{{ !empty($suggestion['due_label']) ? ' · '.$suggestion['due_label'] : '' }}</span></span><flux:icon.chevron-right class="size-4 shrink-0 text-slate-400" /></a>
+                            @empty <p class="text-sm text-slate-500">No overdue vaccinations across your children.</p> @endforelse
+                        </div>
                     </div>
-                    <a href="{{ route('family-schedule.index') }}" class="app-button-primary mt-3 w-full" wire:navigate>View schedule</a>
                 </section>
             </div>
+
 
             <section>
                 <div class="dashboard-section-title"><h2>My children</h2><a href="{{ route('children.index') }}" wire:navigate>View all <span aria-hidden="true">›</span></a></div>
@@ -252,6 +267,17 @@
                     @empty
                         <p class="app-card p-5 text-sm text-zinc-500">No linked child profiles yet.</p>
                     @endforelse
+                    <section class="parent-action-card">
+                    <div class="parent-card-heading"><div><span class="parent-icon parent-icon-warning"><flux:icon.exclamation-circle class="size-5" /></span><div><h2>Action needed</h2><p>Stay on top of your children’s upcoming doses.</p></div></div><span class="parent-count-badge">{{ $upcomingItems->count() }}</span></div>
+                    <div class="mt-3 divide-y divide-amber-100/80 dark:divide-amber-900/40">
+                    @forelse ($upcomingItems as $item)
+                    <a href="{{ route('children.show', $item['child']) }}" class="parent-list-row" wire:navigate><span class="parent-list-icon"><flux:icon.calendar-days class="size-4" /></span><span class="min-w-0 flex-1"><span class="block truncate font-semibold text-slate-900 dark:text-white">{{ $item['suggestion']['vaccine_name'] }} · Dose {{ $item['suggestion']['dose_number'] }}</span><span class="block text-xs text-slate-500">{{ $item['child']->full_name }} · {{ $item['suggestion']['due_label'] ?? 'Due this month' }}</span></span><flux:icon.chevron-right class="size-4 text-slate-400" /></a>
+                    @empty
+                    <p class="py-5 text-sm text-slate-500">No upcoming vaccinations this month.</p>
+                    @endforelse
+                    </div>
+                    <a href="{{ route('family-schedule.index') }}" class="app-button-primary mt-3 w-full" wire:navigate>View schedule</a>
+                    </section>
                 </div>
             </section>
 
@@ -261,7 +287,9 @@
             </div>
 
             <section><div class="dashboard-section-title"><h2>Quick actions</h2></div><div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">@if (auth()->user()->canViewChildrenRegistry())<a href="{{ route('children.index') }}" class="dashboard-action-tile" wire:navigate><flux:icon.users class="size-6 text-teal-600" />View children</a>@endif<a href="{{ route('notifications.index') }}" class="dashboard-action-tile" wire:navigate><flux:icon.bell class="size-6 text-amber-500" />Notifications</a><a href="{{ route('family-schedule.index') }}" class="dashboard-action-tile" wire:navigate><flux:icon.calendar-days class="size-6 text-sky-600" />Schedule</a></div></section>
-            <x-dashboard-bar-chart title="Vaccination activity" subtitle="Last 6 months" :data="$monthlyVaccinationChart" />
+            <div class="w-full min-w-0 lg:max-w-2xl">
+                <x-dashboard-bar-chart title="Vaccination activity" subtitle="Last 6 months" :data="$monthlyVaccinationChart" />
+            </div>
         </div>
     @else
         <div class="nurse-dashboard">

@@ -189,7 +189,7 @@ select:focus[data-flux-control] {
     }
 
     .app-page {
-        @apply mx-auto flex w-full max-w-[90rem] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8 lg:py-7;
+        @apply mx-auto flex w-full min-w-0 max-w-[90rem] flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8 lg:py-7;
     }
 
     .page-heading {
@@ -515,11 +515,15 @@ select:focus[data-flux-control] {
     }
 
     .parent-dashboard {
-        @apply flex flex-col gap-5;
+        @apply flex min-w-0 flex-col gap-5;
     }
 
     .parent-welcome-panel {
-        @apply relative isolate flex min-h-32 items-center justify-between overflow-hidden rounded-[1.35rem] border border-teal-100 bg-[linear-gradient(110deg,#ffffff_0%,#ecfdf5_58%,#dff7f5_100%)] px-6 py-5 shadow-[0_10px_30px_rgba(13,148,136,0.08)] dark:border-teal-950 dark:bg-[linear-gradient(110deg,#111827_0%,#102b26_58%,#123d3b_100%)];
+        @apply relative isolate flex min-w-0 min-h-32 items-center justify-between overflow-hidden rounded-[1.35rem] border border-teal-100 bg-[linear-gradient(110deg,#ffffff_0%,#ecfdf5_58%,#dff7f5_100%)] px-4 py-4 shadow-[0_10px_30px_rgba(13,148,136,0.08)] sm:px-6 sm:py-5 dark:border-teal-950 dark:bg-[linear-gradient(110deg,#111827_0%,#102b26_58%,#123d3b_100%)];
+    }
+
+    .parent-welcome-panel h1 {
+        @apply break-words text-xl sm:text-2xl;
     }
 
     .parent-welcome-panel::after {
@@ -540,16 +544,33 @@ select:focus[data-flux-control] {
     .parent-welcome-art span:nth-child(3) { @apply right-0 top-0 text-rose-400; }
 
     .parent-summary-grid {
-        @apply grid gap-3 sm:grid-cols-2 lg:grid-cols-5;
+        @apply grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5;
     }
 
     .parent-summary-grid > * {
         @apply min-w-0;
     }
 
+    .parent-summary-grid .app-card {
+        @apply p-3 sm:p-4;
+    }
+
+    .parent-summary-grid .stat-card-icon {
+        @apply size-8 sm:size-10;
+    }
+
+    .parent-summary-grid .app-card p:nth-child(2) {
+        @apply mt-1 text-xl sm:text-2xl;
+    }
+
     .parent-feature-grid,
     .parent-lower-grid {
-        @apply grid gap-4 lg:grid-cols-2;
+        @apply grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2;
+    }
+
+    .parent-lower-grid > *,
+    .parent-feature-grid > * {
+        @apply min-w-0;
     }
 
     .parent-action-card {
@@ -585,7 +606,11 @@ select:focus[data-flux-control] {
     }
 
     .parent-card-heading > div:first-child {
-        @apply flex items-center gap-3;
+        @apply flex min-w-0 items-center gap-3;
+    }
+
+    .parent-card-heading > div:first-child > div {
+        @apply min-w-0;
     }
 
     .parent-card-heading h2 {
@@ -608,7 +633,7 @@ select:focus[data-flux-control] {
     }
 
     .parent-list-row {
-        @apply flex items-center gap-3 py-3 transition hover:translate-x-0.5;
+        @apply flex min-w-0 items-center gap-3 py-3 transition hover:translate-x-0.5;
     }
 
     .parent-list-icon {
@@ -616,15 +641,30 @@ select:focus[data-flux-control] {
     }
 
     .parent-children-grid {
-        @apply grid gap-4 sm:grid-cols-2;
+        @apply grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4;
     }
 
     .parent-child-card {
-        @apply rounded-[1.25rem] border border-slate-200/80 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.045)] transition hover:-translate-y-1 hover:border-teal-200 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900;
+        @apply min-w-0 rounded-[1.25rem] border border-slate-200/80 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.045)] transition hover:-translate-y-1 hover:border-teal-200 hover:shadow-lg sm:p-5 dark:border-zinc-800 dark:bg-zinc-900;
+    }
+
+    .parent-action-card {
+        @apply min-w-0;
     }
 
     .parent-child-avatar {
         @apply flex size-12 items-center justify-center overflow-hidden rounded-full bg-teal-100 text-lg font-bold text-teal-700 dark:bg-teal-950 dark:text-teal-300;
+    }
+
+    .parent-child-card h3,
+    .parent-child-card > div:last-child > p {
+        overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 639px) {
+        .parent-child-card > div:last-child > div:last-child {
+            flex-direction: column;
+        }
     }
 
     .parent-notification-row {
