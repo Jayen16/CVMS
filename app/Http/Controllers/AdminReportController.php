@@ -99,7 +99,18 @@ class AdminReportController extends Controller
         $this->authorizeAdmin();
         abort_unless(in_array($format, ['pdf', 'both'], true), 404);
 
-        $filters = $request->only(['start_date', 'end_date', 'region_id', 'province_id', 'municipality_id', 'barangay_id', 'schedule_version']);
+        $filters = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'region_id' => [auth()->user()->isSuperAdmin() ? 'required' : 'nullable', 'string', Rule::in([
+                ...(auth()->user()->isSuperAdmin() ? [] : ['all']),
+                ...Region::pluck('id')->all(),
+            ])],
+            'province_id' => ['nullable', 'string', Rule::in(['all', ...Province::pluck('id')->all()])],
+            'municipality_id' => ['nullable', 'string', Rule::in(['all', ...Municipality::pluck('id')->all()])],
+            'barangay_id' => ['nullable', 'string', Rule::in(['all', ...auth()->user()->accessibleBarangayIds()->all()])],
+            'schedule_version' => ['nullable', 'string', Rule::in(['all', 'unassigned', ...VaccineScheduleVersion::pluck('id')->map(fn ($id) => (string) $id)->all()])],
+        ]);
         $filters['start_date'] = $filters['start_date'] ?? now()->startOfMonth()->toDateString();
         $filters['end_date'] = $filters['end_date'] ?? now()->toDateString();
         foreach (['region_id', 'province_id', 'municipality_id', 'barangay_id', 'schedule_version'] as $key) {
@@ -107,9 +118,9 @@ class AdminReportController extends Controller
         }
 
         $export = ReportExport::create(['user_id' => auth()->id(), 'format' => $format, 'filters' => $filters]);
-        BuildReportExport::dispatch($export->id);
+        BuildReportExport::dispatch($export->id)->onConnection('deferred');
 
-        return to_route('reports.index', array_merge($request->query(), ['export' => $export->id]))
+        return to_route('reports.index', array_merge($filters, ['export' => $export->id]))
             ->with('status', 'Your export is being prepared in the background.');
     }
 

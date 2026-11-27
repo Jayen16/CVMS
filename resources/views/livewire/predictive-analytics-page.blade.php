@@ -35,7 +35,8 @@
             </section>
         @else
         <section class="app-card border-l-4 border-teal-500 px-4 py-3">
-            <p class="text-sm text-zinc-600 dark:text-zinc-300"><span class="font-semibold text-teal-700 dark:text-teal-300">Planning note:</span> Estimated demand combines scheduled doses, catch-up backlog, and historical vaccination activity. Compare it with available stock; a negative projected balance indicates a possible shortage for staff review.</p>
+            <p class="text-sm text-zinc-600 dark:text-zinc-300"><span class="font-semibold text-teal-700 dark:text-teal-300">Planning note:</span> Estimated demand combines scheduled doses, catch-up backlog, and historical vaccination activity. All quantities are in doses for the selected location; demand covers the selected forecast period. Projected balance = available stock minus estimated demand.</p>
+            <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">Stock can be available today while still falling short of estimated demand. A projected shortage shows how many additional doses would be needed to meet that estimate. Compare Inventory and Demand Forecast using the same location filters.</p>
         </section>
 
         @include('livewire.partials.ai-planning-summary')
@@ -65,7 +66,8 @@
                 <div class="grid gap-3 p-3 md:hidden">
                     @forelse ($demand as $row)
                         <article class="rounded-xl border border-slate-200 p-4 dark:border-zinc-700">
-                            <div class="flex items-start justify-between gap-3"><h3 class="font-semibold text-slate-900 dark:text-white">{{ $row['vaccine']->name }}</h3><span class="status-pill {{ $row['stock_status'] === 'shortage' ? 'status-rejected' : 'status-verified' }}">{{ ucfirst($row['stock_status']) }}</span></div>
+                            <h3 class="font-semibold text-slate-900 dark:text-white">{{ $row['vaccine']->name }}</h3>
+                            <span class="status-pill mt-2 {{ $row['stock_status'] === 'shortage' ? 'status-rejected' : 'status-verified' }}"><x-projected-stock-status :balance="$row['projected_balance']" /></span>
                             <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-slate-100 pt-3 text-sm dark:border-zinc-800">
                                 <div><dt class="text-xs text-zinc-500">Scheduled due</dt><dd class="mt-0.5">{{ $row['scheduled_due'] }}</dd></div>
                                 <div><dt class="text-xs text-zinc-500">Catch-up backlog</dt><dd class="mt-0.5">{{ $row['catch_up_backlog'] }}</dd></div>
@@ -81,10 +83,10 @@
                 </div>
                 <div class="hidden overflow-x-auto md:block">
                 <table class="app-table">
-                    <thead><tr><th>Vaccine</th><th>Scheduled due</th><th>Catch-up backlog</th><th>Recent history</th><th>Estimated demand</th><th>Available stock</th><th>Projected balance</th></tr></thead>
+                    <thead><tr><th>Vaccine</th><th>Scheduled due</th><th>Catch-up backlog</th><th>Recent history</th><th>Estimated demand</th><th>Available stock</th><th>Projected balance (doses)</th></tr></thead>
                     <tbody>
                         @forelse ($demand as $row)
-                            <tr class="app-table-row"><td class="font-semibold">{{ $row['vaccine']->name }}</td><td>{{ $row['scheduled_due'] }}</td><td>{{ $row['catch_up_backlog'] }}</td><td>{{ $row['recent_three_months'] }}</td><td class="font-semibold">{{ $row['estimated_demand'] }}</td><td>{{ $row['available_stock'] }}</td><td><span class="status-pill {{ $row['stock_status'] === 'shortage' ? 'status-rejected' : 'status-verified' }}">{{ $row['projected_balance'] >= 0 ? '+' : '' }}{{ $row['projected_balance'] }} ({{ ucfirst($row['stock_status']) }})</span></td></tr>
+                            <tr class="app-table-row"><td class="font-semibold">{{ $row['vaccine']->name }}</td><td>{{ $row['scheduled_due'] }}</td><td>{{ $row['catch_up_backlog'] }}</td><td>{{ $row['recent_three_months'] }}</td><td class="font-semibold">{{ $row['estimated_demand'] }}</td><td>{{ $row['available_stock'] }}</td><td><div class="font-semibold {{ $row['projected_balance'] < 0 ? 'text-red-600' : 'text-emerald-700' }}">{{ $row['projected_balance'] >= 0 ? '+' : '' }}{{ $row['projected_balance'] }}</div><span class="status-pill mt-1 {{ $row['stock_status'] === 'shortage' ? 'status-rejected' : 'status-verified' }}"><x-projected-stock-status :balance="$row['projected_balance']" /></span></td></tr>
                         @empty
                             <tr><td colspan="7" class="px-4 py-8 text-center text-zinc-500">No demand data available.</td></tr>
                         @endforelse

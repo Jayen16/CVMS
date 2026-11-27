@@ -13,7 +13,7 @@
     <div class="app-card-header flex flex-wrap items-center justify-between gap-3">
         <div>
             <h2 class="app-card-title">Demand versus available stock</h2>
-            <p class="mt-1 text-sm text-slate-500 dark:text-zinc-400">Compare projected vaccine demand with current inventory.</p>
+            <p class="mt-1 text-sm text-slate-500 dark:text-zinc-400">Compare estimated demand with current inventory, in doses. Red stock bars indicate a projected shortage, even when some doses are available.</p>
         </div>
         <div class="flex flex-wrap gap-4 text-xs text-slate-600 dark:text-zinc-300">
             <span class="inline-flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-teal-500"></span>Estimated demand</span>

@@ -5,6 +5,7 @@ body{font-family:DejaVu Sans,Arial,sans-serif;color:#172033;font-size:10px}h1{fo
 <h1>Vaccine Stock Report</h1>
 <div class="meta"><strong>Barangay:</strong> {{ $barangay->name }}<br><span class="muted">Generated {{ now()->format('M d, Y h:i A') }}</span></div>
 <div class="summary"><div class="box">Vaccines<strong>{{ $vaccineBalances->count() }}</strong></div><div class="box">Total available doses<strong>{{ number_format($vaccineBalances->sum('available_stock')) }}</strong></div><div class="box">Stock items<strong>{{ $items->count() }}</strong></div></div>
+<p class="muted">Available doses show current recorded inventory. Stock availability does not indicate whether it covers estimated demand. Use Demand Forecast for the same location to check projected shortages.</p>
 
 @foreach($vaccineBalances as $vaccine)
     @php($vaccineItems = $items->where('vaccine_type_id', $vaccine->id))
