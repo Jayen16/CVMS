@@ -17,6 +17,7 @@ class VaccinationReminder extends Model
         'dose_number',
         'due_at',
         'channel',
+        'reminder_stage',
         'recipient',
         'status',
         'error_message',

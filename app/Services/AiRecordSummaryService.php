@@ -62,8 +62,8 @@ class AiRecordSummaryService
             'children_by_next_schedule_status' => $rows->countBy('status')->all(),
             'children_by_available_contact_channel' => $rows->countBy('contact_channel')->all(),
             'contact_channels_by_schedule_status' => $rows->groupBy('status')->map(fn ($group): array => $group->countBy('contact_channel')->all())->all(),
-            'children_with_pending_verification' => $rows->filter(fn (array $row): bool => $row['child']->vaccinations->contains('verification_status', 'pending'))->count(),
-            'pending_verification_records' => $rows->sum(fn (array $row): int => $row['child']->vaccinations->where('verification_status', 'pending')->count()),
+            'children_with_pending_verification' => $rows->filter(fn (array $row): bool => ($row['child']->pending_vaccinations_count ?? $row['child']->vaccinations->where('verification_status', 'pending')->count()) > 0)->count(),
+            'pending_verification_records' => $rows->sum(fn (array $row): int => (int) ($row['child']->pending_vaccinations_count ?? $row['child']->vaccinations->where('verification_status', 'pending')->count())),
         ]);
     }
 

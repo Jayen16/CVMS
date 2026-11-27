@@ -70,14 +70,23 @@
 
     @if (! $isManagePage)
     <section class="app-card p-5">
-        <form method="GET" class="flex flex-wrap items-end gap-3" @submit="locationLoading = true">
+        <form method="GET" class="flex flex-wrap items-end gap-3" @submit="locationLoading = true"
+            @change="
+                const fields = ['region_id', 'province_id', 'municipality_id', 'barangay_id'];
+                const changedIndex = fields.indexOf($event.target.name);
+                if (changedIndex === -1) return;
+                fields.slice(changedIndex + 1).forEach(name => {
+                    const field = $el.elements.namedItem(name);
+                    if (field) field.value = '';
+                });
+                $el.requestSubmit();
+            ">
             @if(auth()->user()->isSuperAdmin())
                 <label class="min-w-52 flex-1 space-y-1.5"><span class="text-sm font-medium">Region</span><select name="region_id" class="app-input"><option value="">All regions</option>@foreach($regions as $region)<option value="{{ $region->id }}" @selected($selectedRegion === (string) $region->id)>{{ $region->name }}</option>@endforeach</select></label>
                 <label class="min-w-52 flex-1 space-y-1.5"><span class="text-sm font-medium">Province</span><select name="province_id" class="app-input"><option value="">All provinces</option>@foreach($provinces as $province)<option value="{{ $province->id }}" @selected($selectedProvince === (string) $province->id)>{{ $province->name }}</option>@endforeach</select></label>
             @endif
             <label class="min-w-64 flex-1 space-y-1.5"><span class="text-sm font-medium">Municipality</span><select name="municipality_id" class="app-input"><option value="">All municipalities</option>@foreach($municipalities as $municipality)<option value="{{ $municipality->id }}" @selected($selectedMunicipality === (string) $municipality->id)>{{ $municipality->name }}</option>@endforeach</select></label>
             <label class="min-w-64 flex-1 space-y-1.5"><span class="text-sm font-medium">Barangay</span><select name="barangay_id" class="app-input"><option value="">All barangays</option>@foreach($barangays as $barangay)<option value="{{ $barangay->id }}" @selected($selectedBarangay === (string) $barangay->id)>{{ $barangay->name }} ({{ $barangay->municipalityRelation?->name }})</option>@endforeach</select></label>
-            <button class="app-button-secondary inline-flex items-center gap-2"><flux:icon.map-pin class="size-4" />Apply location</button>
             @if($selectedMunicipality !== '' || $selectedBarangay !== '' || $selectedRegion !== '' || $selectedProvince !== '')<a href="{{ route('population-background.index') }}" class="app-button-secondary inline-flex items-center gap-2"><flux:icon.arrow-path class="size-4" />All locations</a>@endif
         </form>
         <p class="mt-3 text-xs text-zinc-500">When All locations is selected, targets are summed by sex, age group, and reference year.</p>

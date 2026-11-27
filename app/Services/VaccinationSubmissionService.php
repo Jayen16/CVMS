@@ -5,10 +5,13 @@ namespace App\Services;
 use App\Models\ChildProfile;
 use App\Models\User;
 use App\Models\VaccinationRecord;
+use App\Models\VaccineSchedule;
+use App\Models\VaccineType;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -42,7 +45,12 @@ class VaccinationSubmissionService
                         ->where('vaccine_type_id', (string) ($input['vaccine_type_id'] ?? ''))
                         ->where('verification_status', '!=', 'rejected')),
             ],
-            'administered_at' => ['required', 'date', 'before_or_equal:today'],
+            'administered_at' => [
+                'required',
+                'date',
+                'after_or_equal:'.Carbon::parse($child->birthdate)->toDateString(),
+                'before_or_equal:today',
+            ],
             'remarks' => ['nullable', 'string', 'max:1000'],
             'client_submission_id' => [
                 'nullable',
@@ -70,9 +78,44 @@ class VaccinationSubmissionService
             ];
         }
 
-        return Validator::make($input, $rules, [
+        $validated = Validator::make($input, $rules, [
             'dose_number.unique' => 'This dose number has already been recorded for this vaccine and child.',
+            'administered_at.after_or_equal' => "The vaccination date cannot be before the child's birthdate.",
+            'administered_at.before_or_equal' => 'The vaccination date cannot be in the future.',
         ])->validate();
+
+        $vaccine = VaccineType::findOrFail($validated['vaccine_type_id']);
+        $seriesRecords = $child->vaccinations()
+            ->where('vaccine_type_id', $vaccine->id)
+            ->where('verification_status', '!=', 'rejected')
+            ->get();
+        $version = app(VaccineScheduleVersionResolver::class)->versionForChildAndVaccine(
+            $child, $vaccine, $seriesRecords, persistAssignment: false,
+        );
+        $schedules = VaccineSchedule::query()
+            ->where('vaccine_type_id', $vaccine->id)
+            ->where('vaccine_schedule_version_id', $version?->id)
+            ->where('active', true)
+            ->get();
+
+        if ($schedules->isNotEmpty()) {
+            $dose = $schedules->firstWhere('dose_number', $validated['dose_number'] ?? null);
+            if ($dose === null) {
+                throw ValidationException::withMessages([
+                    'dose_number' => 'Select a dose number included in the child\'s applicable vaccine schedule.',
+                ]);
+            }
+
+            $earliestDate = $dose->dueDateFromBirthdate(Carbon::parse($child->birthdate)->startOfDay());
+            if (Carbon::parse($validated['administered_at'])->startOfDay()->lt($earliestDate)) {
+                throw ValidationException::withMessages([
+                    'administered_at' => 'This dose cannot be recorded before '.$earliestDate->format('M d, Y')
+                        .' (scheduled age: '.$dose->ageSummary().'). Late doses can still be recorded.',
+                ]);
+            }
+        }
+
+        return $validated;
     }
 
     /**

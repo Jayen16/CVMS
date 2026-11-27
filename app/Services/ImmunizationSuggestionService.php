@@ -13,16 +13,19 @@ class ImmunizationSuggestionService
         private readonly VaccineScheduleVersionResolver $scheduleVersions,
     ) {}
 
+    public function withCachedSchedules(callable $calculation): mixed
+    {
+        return $this->scheduleVersions->withCachedSchedules($calculation);
+    }
+
     /**
-     * @return array{vaccine_code: string|null, vaccine_type_id: string|null, vaccine_name: string|null, dose_number: int|null, due_at: Carbon|null, action_at: Carbon|null, status: string, due_label: string|null, note: string, checks: list<string>, suggested_schedule_version_id: int|null}
+     * @return array{vaccine_code: string|null, vaccine_type_id: string|null, vaccine_name: string|null, dose_number: int|null, due_at: Carbon|null, action_at: Carbon|null, status: string, due_label: string|null, note: string, checks: list<string>, suggested_schedule_version_id: string|null}
      */
     public function suggestNextDose(ChildProfile $child): array
     {
-        $records = VaccinationRecord::query()
-            ->where('child_profile_id', $child->id)
-            ->where('verification_status', '!=', 'rejected')
-            ->with('vaccineType')
-            ->get();
+        $child->loadMissing('vaccinations.vaccineType');
+        $records = $child->vaccinations
+            ->filter(fn (VaccinationRecord $record) => $record->verification_status !== 'rejected');
 
         if ($records->isEmpty() && $this->isOlderChildWithoutDoseHistory($child)) {
             $age = $child->ageLabel();
@@ -120,7 +123,7 @@ class ImmunizationSuggestionService
     }
 
     /**
-     * @return array{next_due_at: Carbon|null, suggested_vaccine: string|null, suggested_schedule_version_id: int|null, suggestion_note: string}
+     * @return array{next_due_at: Carbon|null, suggested_vaccine: string|null, suggested_schedule_version_id: string|null, suggestion_note: string}
      */
     public function suggestionForRecord(ChildProfile $child): array
     {
@@ -136,7 +139,7 @@ class ImmunizationSuggestionService
 
     /**
      * @param  EloquentCollection<int, VaccinationRecord>  $records
-     * @return array{code: string, name: string, dose: int, due_at: Carbon, label: string, version_id: int, version_name: string}|null
+     * @return array{code: string, id: string, name: string, dose: int, due_at: Carbon, label: string, version_id: string, version_name: string}|null
      */
     private function nextMissingRoutineDose(ChildProfile $child, EloquentCollection $records): ?array
     {

@@ -59,7 +59,7 @@ test('missing key and empty data make no external request', function () {
 test('provider errors do not expose response bodies', function () {
     Http::fake(['generativelanguage.googleapis.com/*' => Http::response(['error' => 'private provider details'], 429)]);
     expect(fn () => app(GeminiPlanningSummaryService::class)->generate(planningDemandFixture(), 3))
-        ->toThrow(RuntimeException::class, 'The AI service usage limit was reached. Please try again later.');
+        ->toThrow(RuntimeException::class, 'Gemini\'s usage limit was reached. Please try again later.');
 });
 
 test('blocked or truncated responses cannot appear as completed summaries', function (array $response) {
@@ -99,4 +99,31 @@ test('unauthorized users cannot invoke generation', function () {
     $parent = User::factory()->create(['role' => 'parent']);
     Livewire::actingAs($parent)->test(PredictiveAnalyticsPage::class)->assertForbidden();
     Http::assertNothingSent();
+});
+
+test('planning summary shows a Gemini failure and recovers on retry', function () {
+    $barangay = Barangay::create(['name' => 'Retry Barangay']);
+    $staff = User::factory()->create(['role' => 'barangay_admin', 'barangay_id' => $barangay->id]);
+    $this->mock(PredictiveAnalyticsService::class, function ($mock) {
+        $mock->shouldReceive('vaccineDemand')->andReturn(planningDemandFixture());
+    });
+    Http::fake(['generativelanguage.googleapis.com/*' => Http::sequence()
+        ->push(['error' => 'private provider details'], 503)
+        ->push(['candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => 'Planning retry succeeded.']]]]]])]);
+
+    Livewire::actingAs($staff)->test(PredictiveAnalyticsPage::class)
+        ->call('generateAiSummary')
+        ->assertSet('aiSummary', null)
+        ->assertSet('aiGeneratedAt', null)
+        ->assertSee('Unable to generate the planning summary')
+        ->assertSee('Gemini could not generate a summary right now.')
+        ->assertSee('Try again')
+        ->assertDontSee('private provider details')
+        ->call('generateAiSummary')
+        ->assertSet('aiError', null)
+        ->assertSet('aiSummary', 'Planning retry succeeded.')
+        ->assertSee('Refresh summary')
+        ->assertDontSee('Unable to generate the planning summary');
+
+    Http::assertSentCount(2);
 });

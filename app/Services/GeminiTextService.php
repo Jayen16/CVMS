@@ -13,7 +13,7 @@ class GeminiTextService
     {
         $key = (string) config('services.gemini.key');
         if (trim($key) === '') {
-            throw new RuntimeException('AI summaries are not configured. Please contact your system administrator.');
+            throw new RuntimeException('Gemini AI summaries are not configured. Please contact your system administrator.');
         }
 
         try {
@@ -27,20 +27,20 @@ class GeminiTextService
                         'generationConfig' => ['temperature' => 0.2, 'maxOutputTokens' => 2048],
                     ]);
         } catch (ConnectionException) {
-            throw new RuntimeException('The AI service could not be reached. Check the internet connection and try again.');
+            throw new RuntimeException('Gemini could not be reached. Check your internet connection and try again.');
         }
 
         if (! $response->successful()) {
             throw new RuntimeException(match ($response->status()) {
-                400, 401, 403 => 'The AI service could not authorize this request. Please contact your system administrator.',
-                404 => 'The AI service is currently unavailable. Please contact your system administrator.',
-                429 => 'The AI service usage limit was reached. Please try again later.',
-                default => 'The AI service could not generate a summary. Please try again later.',
+                400, 401, 403 => 'Gemini could not accept this request. Please contact your system administrator.',
+                404 => 'The configured Gemini model is unavailable. Please contact your system administrator.',
+                429 => 'Gemini\'s usage limit was reached. Please try again later.',
+                default => 'Gemini could not generate a summary right now. Please try again in a moment.',
             });
         }
 
         if ($response->json('candidates.0.finishReason') !== 'STOP') {
-            throw new RuntimeException('The AI service did not return a complete summary. Please try again.');
+            throw new RuntimeException('Gemini did not return a complete summary. Please try again.');
         }
 
         $parts = $response->json('candidates.0.content.parts', []);
@@ -55,7 +55,7 @@ class GeminiTextService
         $summary = implode("\n", $texts);
 
         if (trim($summary) === '') {
-            throw new RuntimeException('The AI service returned an empty summary. Please try again.');
+            throw new RuntimeException('Gemini returned an empty summary. Please try again.');
         }
 
         return trim($summary);

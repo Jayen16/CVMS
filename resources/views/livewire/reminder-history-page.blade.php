@@ -34,7 +34,7 @@
                             <td><a href="{{ route('children.show', $reminder->child) }}" class="font-semibold text-teal-700 hover:underline">{{ $reminder->child->full_name }}</a><div class="text-xs text-zinc-500">{{ $reminder->child->barangay?->name ?? 'No barangay' }}</div></td>
                             <td>{{ $reminder->parent?->name ?? 'N/A' }}</td>
                             <td><span class="font-medium">{{ $reminder->vaccine_name }}</span><div class="text-xs text-zinc-500">Dose {{ $reminder->dose_number ?? '—' }} · due {{ $reminder->due_at?->format('M d, Y') }}</div></td>
-                            <td>{{ strtoupper($reminder->channel) }}</td>
+                            <td>{{ strtoupper($reminder->channel) }}<div class="text-xs text-zinc-500">{{ match ($reminder->reminder_stage) { 'three_days' => '3-day reminder', 'one_day' => '1-day reminder', default => 'Initial reminder' } }}</div></td>
                             <td>{{ $reminder->recipient }}</td>
                             <td><span class="status-pill {{ $statusClasses[$reminder->status] ?? 'bg-zinc-100 text-zinc-600' }}">{{ str($reminder->status)->headline() }}</span></td>
                             <td>{{ $reminder->sent_at?->format('M d, Y g:i A') ?? '—' }}</td>

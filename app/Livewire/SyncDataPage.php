@@ -11,15 +11,15 @@ use App\Models\Municipality;
 use App\Models\OfflineSyncOutbox;
 use App\Models\Province;
 use App\Models\Region;
-use App\Models\SyncStatus;
 use App\Models\SyncReceivedItem;
+use App\Models\SyncStatus;
 use App\Models\SystemInstallation;
 use App\Models\User;
 use App\Models\VaccinationRecord;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Carbon;
 use Illuminate\Contracts\View\View;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -102,6 +102,9 @@ class SyncDataPage extends Component
             ->with('user')
             ->where('scope', 'global')
             ->first();
+        if (config('system.instance_type') === 'central' && ! $latestStatus?->last_synced_at) {
+            $latestStatus = SyncStatus::where('scope', 'demo')->first() ?? $latestStatus;
+        }
         $installation = config('system.instance_type') === 'facility'
             ? SystemInstallation::query()->latest('created_at')->first()
             : null;

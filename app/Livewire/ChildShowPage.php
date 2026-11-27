@@ -45,6 +45,8 @@ class ChildShowPage extends Component
 
     public string $childTab = 'schedule';
 
+    public bool $recordVaccinationOpen = false;
+
     public bool $submitHistoryOpen = false;
 
     public int $submissionStep = 1;
@@ -74,6 +76,17 @@ class ChildShowPage extends Component
         $this->childTab = in_array(request()->string('tab')->toString(), ['vaccination', 'parents'], true)
             ? request()->string('tab')->toString()
             : 'schedule';
+        $errors = $this->getErrorBag();
+        $this->recordVaccinationOpen = $errors->hasAny([
+            'vaccine_type_id', 'dose_number', 'administered_at', 'vaccine_inventory_item_id', 'remarks',
+        ]);
+
+        if ($errors->hasAny(['name', 'email', 'phone', 'relationship', 'photo']) || session('edit_parent_id') !== null) {
+            $this->childTab = 'parents';
+        } elseif ($this->recordVaccinationOpen || $errors->hasAny(['clinic_name', 'clinic_location', 'proof_files', 'proof_files.*'])) {
+            $this->childTab = 'vaccination';
+        }
+
         $this->submissionClinicName = $this->child->barangay?->name ?? 'Current clinic barangay';
         $this->submissionClinicLocation = 'Indang, Cavite, Barangay 4 (pob.), Indang, Cavite, 4122';
         $this->editingRecordId = request()->string('edit_record')->toString() ?: null;

@@ -43,13 +43,16 @@
             </div>
         </div>
         <button type="button" wire:click="{{ $action }}" wire:loading.attr="disabled" @disabled($empty) class="app-button-secondary shrink-0 disabled:cursor-not-allowed disabled:opacity-50">
-            <span wire:loading.remove wire:target="{{ $action }}" class="inline-flex items-center gap-2"><flux:icon.arrow-path class="size-4" />{{ $summary ? 'Refresh summary' : ($action === 'generateAiFollowUpBriefing' ? 'Generate follow-up briefing' : 'Summarize record') }}</span>
+            <span wire:loading.remove wire:target="{{ $action }}" class="inline-flex items-center gap-2"><flux:icon.arrow-path class="size-4" />{{ $error ? 'Try again' : ($summary ? 'Refresh summary' : ($action === 'generateAiFollowUpBriefing' ? 'Generate follow-up briefing' : 'Summarize record')) }}</span>
             <span wire:loading.inline-flex wire:target="{{ $action }}" class="items-center gap-2"><span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-teal-700" aria-hidden="true"></span> Preparing...</span>
         </button>
     </div>
     <div class="px-5 py-5 sm:px-6" aria-live="polite">
         @if ($error)
-            <p role="alert" class="rounded-xl bg-red-50 p-4 text-sm leading-6 text-red-800 dark:bg-red-950/30 dark:text-red-200">{{ $error }}</p>
+            <div role="alert" class="rounded-xl bg-red-50 p-4 text-sm leading-6 text-red-800 dark:bg-red-950/30 dark:text-red-200">
+                <p class="font-semibold">{{ $action === 'generateAiFollowUpBriefing' ? 'Unable to generate the follow-up briefing' : 'Unable to generate the record summary' }}</p>
+                <p class="mt-1">{{ $error }}</p>
+            </div>
         @elseif ($summary)
             <div class="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs leading-5 text-slate-500 dark:text-zinc-400">
                 <span class="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-1 font-medium text-teal-800 dark:bg-teal-950 dark:text-teal-200"><span class="size-1.5 rounded-full bg-teal-500" aria-hidden="true"></span>AI-generated overview</span>
