@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\AdverseEventReport;
-use App\Models\AuditLog;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\User;
@@ -12,7 +11,7 @@ test('archive with no matching records returns to the archive center with an err
 
     $this->actingAs($admin)
         ->post(route('archives.store'), [
-            'type' => 'aefi',
+            'type' => 'vaccinations',
             'date_from' => '2025-01-01',
             'date_to' => '2025-12-31',
             'archive_reason' => 'Closed reporting year',
@@ -23,7 +22,7 @@ test('archive with no matching records returns to the archive center with an err
         ]);
 });
 
-test('authorized staff can archive matching AEFI reports by date range', function () {
+test('AEFI reports are excluded from the archive center and cannot be archived or restored', function () {
     $barangay = Barangay::create(['name' => 'Report Archive Barangay']);
     $admin = User::factory()->create([
         'role' => 'barangay_admin',
@@ -56,17 +55,29 @@ test('authorized staff can archive matching AEFI reports by date range', functio
             'date_to' => '2025-12-31',
             'archive_reason' => '2025 reporting cycle complete',
         ])
-        ->assertRedirect(route('archives.index'));
+        ->assertSessionHasErrors('type');
 
-    expect(AdverseEventReport::find($report->id))->toBeNull()
-        ->and(AdverseEventReport::withoutGlobalScope('not_archived')->find($report->id)->isArchived())->toBeTrue()
-        ->and(AuditLog::where('event', 'reports_archived')->exists())->toBeTrue();
+    expect($report->fresh()->isArchived())->toBeFalse();
+
+    $report->forceFill([
+        'archived_at' => now(),
+        'archived_by' => $admin->id,
+        'archive_reason' => 'Previously archived AEFI',
+    ])->save();
+
+    $this->actingAs($admin)
+        ->get(route('archives.index'))
+        ->assertOk()
+        ->assertDontSee('AEFI reports')
+        ->assertDontSee('Previously archived AEFI')
+        ->assertSee('Vaccination records')
+        ->assertSee('Saved report exports');
 
     $this->actingAs($admin)
         ->post(route('archives.restore', ['type' => 'aefi', 'recordId' => $report->id]))
-        ->assertRedirect(route('archives.index'));
+        ->assertNotFound();
 
-    expect(AdverseEventReport::find($report->id)->isArchived())->toBeFalse();
+    expect(AdverseEventReport::withoutGlobalScope('not_archived')->find($report->id)->isArchived())->toBeTrue();
 });
 
 test('nurses cannot access the report archive center', function () {

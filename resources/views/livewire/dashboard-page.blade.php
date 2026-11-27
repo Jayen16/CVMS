@@ -70,7 +70,7 @@
                             <th class="px-4 py-3 font-medium">Children</th>
                             <th class="px-4 py-3 font-medium">Vaccination records</th>
                             <th class="px-4 py-3 font-medium">Pending</th>
-                            <th class="px-4 py-3 font-medium">Records / child</th>
+                            <th class="px-4 py-3 font-medium">Average records per child</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -165,7 +165,7 @@
             </div>
             <div class="overflow-x-auto">
                 <table class="app-table">
-                    <thead><tr><th class="px-4 py-3 font-medium">Barangay</th><th class="px-4 py-3 font-medium">Admins</th><th class="px-4 py-3 font-medium">Nurses</th><th class="px-4 py-3 font-medium">Children</th><th class="px-4 py-3 font-medium">Vaccination records</th><th class="px-4 py-3 font-medium">Pending</th><th class="px-4 py-3 font-medium">Records / child</th></tr></thead>
+                    <thead><tr><th class="px-4 py-3 font-medium">Barangay</th><th class="px-4 py-3 font-medium">Admins</th><th class="px-4 py-3 font-medium">Nurses</th><th class="px-4 py-3 font-medium">Children</th><th class="px-4 py-3 font-medium">Vaccination records</th><th class="px-4 py-3 font-medium">Pending</th><th class="px-4 py-3 font-medium">Average records per child</th></tr></thead>
                     <tbody>
                         @forelse ($barangays as $barangay)
                             <tr class="app-table-row">

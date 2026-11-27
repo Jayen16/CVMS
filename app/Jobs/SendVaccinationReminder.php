@@ -24,6 +24,8 @@ class SendVaccinationReminder implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 3;
 
+    public const STAGE_DAYS = ['initial' => 7, 'three_days' => 3, 'one_day' => 1];
+
     public function __construct(
         public string $childId,
         public string $parentId,
@@ -31,11 +33,12 @@ class SendVaccinationReminder implements ShouldBeUnique, ShouldQueue
         public ?int $doseNumber,
         public string $dueAt,
         public string $channel,
+        public string $reminderStage = 'initial',
     ) {}
 
     public function uniqueId(): string
     {
-        return implode(':', [$this->childId, $this->parentId, $this->vaccineName, $this->doseNumber ?? 'none', $this->dueAt, $this->channel]);
+        return implode(':', [$this->childId, $this->parentId, $this->vaccineName, $this->doseNumber ?? 'none', $this->dueAt, $this->channel, $this->reminderStage]);
     }
 
     /** @return array<int, int> */
@@ -54,13 +57,21 @@ class SendVaccinationReminder implements ShouldBeUnique, ShouldQueue
         }
 
         $dueAt = Carbon::parse($this->dueAt)->startOfDay();
-        $reminder = VaccinationReminder::updateOrCreate([
+        // Recheck the exact stage at delivery time, including retries and
+        // legacy jobs. Never send a missed stage on a later day.
+        $daysUntilDue = (int) Carbon::today()->diffInDays($dueAt, false);
+        if ((self::STAGE_DAYS[$this->reminderStage] ?? null) !== $daysUntilDue) {
+            return;
+        }
+
+        $reminder = VaccinationReminder::firstOrCreate([
             'child_profile_id' => $child->id,
             'parent_id' => $parent->id,
             'vaccine_name' => $this->vaccineName,
             'dose_number' => $this->doseNumber,
             'due_at' => $dueAt,
             'channel' => $this->channel,
+            'reminder_stage' => $this->reminderStage,
         ], [
             'recipient' => 'pending',
             'status' => 'pending',
@@ -92,7 +103,7 @@ class SendVaccinationReminder implements ShouldBeUnique, ShouldQueue
             $reminder->update(['status' => 'sent', 'sent_at' => now(), 'error_message' => null]);
             $notifications->vaccinationDue(
                 $parent,
-                'vaccination-due:'.$child->id.':'.$this->vaccineName.':'.$this->doseNumber.':'.$dueAt->toDateString(),
+                'vaccination-due:'.$child->id.':'.$this->vaccineName.':'.$this->doseNumber.':'.$dueAt->toDateString().':'.$this->reminderStage,
                 $this->message($child, $dueAt),
                 route('children.show', $child),
             );

@@ -149,3 +149,28 @@ test('record summary respects the shared AI rate limit', function () {
         ->assertSet('aiNarrativeError', 'Please wait a minute before generating another summary.');
     Http::assertNothingSent();
 });
+
+test('follow-up briefing shows a Gemini failure and recovers on retry', function () {
+    createAiReviewChild($this->nurse);
+    Http::swap(new \Illuminate\Http\Client\Factory);
+    Http::preventStrayRequests();
+    Http::fake(['generativelanguage.googleapis.com/*' => Http::sequence()
+        ->push(['candidates' => [['finishReason' => 'MAX_TOKENS', 'content' => ['parts' => [['text' => 'Partial briefing.']]]]]])
+        ->push(['candidates' => [['finishReason' => 'STOP', 'content' => ['parts' => [['text' => 'Briefing retry succeeded.']]]]]])]);
+
+    Livewire::actingAs($this->nurse)->test(ImmunizationSchedulePage::class)
+        ->call('generateAiFollowUpBriefing')
+        ->assertSet('aiNarrative', null)
+        ->assertSet('aiNarrativeAt', null)
+        ->assertSee('Unable to generate the follow-up briefing')
+        ->assertSee('Gemini did not return a complete summary.')
+        ->assertSee('Try again')
+        ->assertDontSee('Partial briefing.')
+        ->call('generateAiFollowUpBriefing')
+        ->assertSet('aiNarrativeError', null)
+        ->assertSet('aiNarrative', 'Briefing retry succeeded.')
+        ->assertSee('Refresh summary')
+        ->assertDontSee('Unable to generate the follow-up briefing');
+
+    Http::assertSentCount(2);
+});

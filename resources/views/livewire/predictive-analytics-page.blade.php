@@ -60,6 +60,8 @@
                     <label class="flex items-center gap-2 text-sm font-medium">Forecast period <select wire:model.live="months" wire:loading.attr="disabled" class="app-input !w-auto"><option value="1">1 month</option><option value="3">3 months</option><option value="6">6 months</option><option value="12">12 months</option></select></label>
                     <label class="flex items-center gap-2 text-sm font-medium">Schedule version <select wire:model.live="scheduleVersion" wire:loading.attr="disabled" class="app-input max-w-64"><option value="">Latest active</option>@foreach ($scheduleVersions as $version)<option value="{{ $version->id }}">{{ $version->name }} ({{ $version->version_code }}){{ $version->status === 'active' ? ' - Active' : '' }}</option>@endforeach</select></label>
                 </div>
+                <p class="mt-3 text-sm text-zinc-500">Changing the period includes more upcoming doses and scales the historical estimate. The overdue backlog and current stock stay the same, so balances can remain unchanged when no additional doses fall due and history does not raise demand.</p>
+                <p class="mt-1 text-sm text-zinc-500">Schedule version applies to unassigned vaccine series. Series already assigned to a schedule keep that version.</p>
             </div>
             <div wire:loading.flex wire:target="months,scheduleVersion,regionId,provinceId,municipalityId,barangayId" class="absolute inset-0 z-20 items-center justify-center bg-white/70 dark:bg-zinc-900/70"><div class="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-medium text-zinc-700 shadow dark:bg-zinc-800 dark:text-zinc-200"><span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-teal-700"></span> Recalculating forecast…</div></div>
             <div x-show="view === 'table'" x-cloak>
@@ -71,7 +73,7 @@
                             <dl class="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-slate-100 pt-3 text-sm dark:border-zinc-800">
                                 <div><dt class="text-xs text-zinc-500">Scheduled due</dt><dd class="mt-0.5">{{ $row['scheduled_due'] }}</dd></div>
                                 <div><dt class="text-xs text-zinc-500">Catch-up backlog</dt><dd class="mt-0.5">{{ $row['catch_up_backlog'] }}</dd></div>
-                                <div><dt class="text-xs text-zinc-500">Recent history</dt><dd class="mt-0.5">{{ $row['recent_three_months'] }}</dd></div>
+                                <div><dt class="text-xs text-zinc-500">Recent history (3 months)</dt><dd class="mt-0.5">{{ $row['recent_three_months'] }}</dd></div>
                                 <div><dt class="text-xs text-zinc-500">Estimated demand</dt><dd class="mt-0.5 font-semibold">{{ $row['estimated_demand'] }}</dd></div>
                                 <div><dt class="text-xs text-zinc-500">Available stock</dt><dd class="mt-0.5">{{ $row['available_stock'] }}</dd></div>
                                 <div><dt class="text-xs text-zinc-500">Projected balance</dt><dd class="mt-0.5 font-semibold {{ $row['projected_balance'] < 0 ? 'text-red-600' : 'text-emerald-700' }}">{{ $row['projected_balance'] >= 0 ? '+' : '' }}{{ $row['projected_balance'] }}</dd></div>
@@ -83,7 +85,7 @@
                 </div>
                 <div class="hidden overflow-x-auto md:block">
                 <table class="app-table">
-                    <thead><tr><th>Vaccine</th><th>Scheduled due</th><th>Catch-up backlog</th><th>Recent history</th><th>Estimated demand</th><th>Available stock</th><th>Projected balance (doses)</th></tr></thead>
+                    <thead><tr><th>Vaccine</th><th>Scheduled due</th><th>Catch-up backlog</th><th>Recent history (3 months)</th><th>Estimated demand</th><th>Available stock</th><th>Projected balance (doses)</th></tr></thead>
                     <tbody>
                         @forelse ($demand as $row)
                             <tr class="app-table-row"><td class="font-semibold">{{ $row['vaccine']->name }}</td><td>{{ $row['scheduled_due'] }}</td><td>{{ $row['catch_up_backlog'] }}</td><td>{{ $row['recent_three_months'] }}</td><td class="font-semibold">{{ $row['estimated_demand'] }}</td><td>{{ $row['available_stock'] }}</td><td><div class="font-semibold {{ $row['projected_balance'] < 0 ? 'text-red-600' : 'text-emerald-700' }}">{{ $row['projected_balance'] >= 0 ? '+' : '' }}{{ $row['projected_balance'] }}</div><span class="status-pill mt-1 {{ $row['stock_status'] === 'shortage' ? 'status-rejected' : 'status-verified' }}"><x-projected-stock-status :balance="$row['projected_balance']" /></span></td></tr>

@@ -129,10 +129,6 @@
                                 <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-zinc-800 dark:text-zinc-300">
                                     {{ $vaccine->schedules->count() }} doses
                                 </span>
-                                <form method="POST" action="{{ route('vaccine-types.toggle', $vaccine) }}">
-                                    @csrf
-                                    <button class="app-button-secondary !px-3 !py-1.5 !text-xs">{{ $vaccine->active ? 'Deactivate vaccine' : 'Activate vaccine' }}</button>
-                                </form>
                             </div>
                         </div>
                     </div>
@@ -174,10 +170,6 @@
                                         <td>
                                             <div class="flex flex-wrap gap-2">
                                                 <a href="{{ route('vaccine-schedules.edit', $schedule) }}" class="app-button-secondary !px-3 !py-1.5 !text-xs">Edit</a>
-                                                <form method="POST" action="{{ route('vaccine-schedules.toggle', $schedule) }}">
-                                                    @csrf
-                                                    <button class="app-button-secondary !px-3 !py-1.5 !text-xs">{{ $schedule->active ? 'Deactivate' : 'Activate' }}</button>
-                                                </form>
                                             </div>
                                         </td>
                                     </tr>

@@ -189,27 +189,31 @@ class ImmunizationSchedulePage extends Component
         $barangayIds = $this->filteredBarangayIds($user);
         $children = ChildProfile::query()->visibleTo($user)
             ->whereIn('barangay_id', $barangayIds)
-            ->with(['barangay', 'parents', 'vaccinations'])->withCount('vaccinations')
+            ->with(['barangay', 'parents'])->withCount(['vaccinations', 'vaccinations as pending_vaccinations_count' => fn ($query) => $query->where('verification_status', 'pending')])
             ->when(trim($this->search) !== '', function ($query): void {
                 $term = '%'.trim($this->search).'%';
                 $query->where(fn ($child) => $child->where('first_name', 'like', $term)->orWhere('last_name', 'like', $term));
             })->get();
         $risks = $analytics->missedDoseRisk($user, $this->regionId, $this->provinceId, $this->municipalityId, $this->barangayId)->keyBy(fn (array $row): string => $row['child']->id);
-        $rows = $children->map(function (ChildProfile $child) use ($suggestions, $risks): array {
-            $suggestion = $suggestions->suggestNextDose($child);
-            $risk = $risks->get($child->id);
-            $status = $suggestion['status'];
+        $rows = $suggestions->withCachedSchedules(function () use ($children, $suggestions, $risks): array {
+            return $children->map(function (ChildProfile $child) use ($suggestions, $risks): array {
+                $risk = $risks->get($child->id);
+                $suggestion = $risk['suggestion'] ?? $suggestions->suggestNextDose($child);
+                $child->unsetRelation('vaccinations');
+                $child->unsetRelation('seriesVersions');
+                $status = $suggestion['status'];
 
-            return [
-                'child' => $child, 'suggestion' => $suggestion, 'status' => $status, 'risk' => $risk,
-                'risk_level' => $risk['risk_level'] ?? ($status === 'complete' ? 'not_applicable' : 'low'),
-                'contact_channel' => $this->contactChannel($child),
-                'days_late' => in_array($status, ['delayed', 'overdue'], true) && $suggestion['due_at'] ? (int) $suggestion['due_at']->diffInDays(Carbon::today()) : 0,
-            ];
-        })->filter(fn (array $row): bool => ($this->status === 'all' || $row['status'] === $this->status) && ($this->risk === 'all' || $row['risk_level'] === $this->risk))
-            ->sortBy(fn (array $row): array => [$row['status'] === 'overdue' ? 0 : ($row['status'] === 'delayed' ? 1 : 2), isset($row['suggestion']['due_at']) ? $row['suggestion']['due_at']->timestamp : PHP_INT_MAX])->values();
+                return [
+                    'child' => $child, 'suggestion' => $suggestion, 'status' => $status, 'risk' => $risk,
+                    'risk_level' => $risk['risk_level'] ?? ($status === 'complete' ? 'not_applicable' : 'low'),
+                    'contact_channel' => $this->contactChannel($child),
+                    'days_late' => in_array($status, ['delayed', 'overdue'], true) && $suggestion['due_at'] ? (int) $suggestion['due_at']->diffInDays(Carbon::today()) : 0,
+                ];
+            })->filter(fn (array $row): bool => ($this->status === 'all' || $row['status'] === $this->status) && ($this->risk === 'all' || $row['risk_level'] === $this->risk))
+                ->sortBy(fn (array $row): array => [$row['status'] === 'overdue' ? 0 : ($row['status'] === 'delayed' ? 1 : 2), isset($row['suggestion']['due_at']) ? $row['suggestion']['due_at']->timestamp : PHP_INT_MAX])->values()->all();
+        });
 
-        return [$children, array_values($rows->all())];
+        return [$children, array_values($rows)];
     }
 
     /** @return Collection<int, string> */

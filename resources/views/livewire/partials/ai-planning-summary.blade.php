@@ -9,14 +9,17 @@
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
                 <button type="button" wire:click="generateAiSummary" wire:loading.attr="disabled" @disabled($demand->isEmpty()) class="app-button-secondary shrink-0 disabled:cursor-not-allowed disabled:opacity-50">
-                    <span wire:loading.remove wire:target="generateAiSummary">{{ $aiSummary ? 'Refresh summary' : 'Generate AI Summary' }}</span>
+                    <span wire:loading.remove wire:target="generateAiSummary">{{ $aiError ? 'Try again' : ($aiSummary ? 'Refresh summary' : 'Generate AI Summary') }}</span>
                     <span wire:loading.inline-flex wire:target="generateAiSummary" class="items-center gap-2"><span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-teal-700" aria-hidden="true"></span> Preparing summary...</span>
                 </button>
                 </div>
             </div>
             <div aria-live="polite" class="px-5 py-6 sm:px-6">
                 @if ($aiError)
-                    <div role="alert" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">{{ $aiError }}</div>
+                    <div role="alert" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm leading-6 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                        <p class="font-semibold">Unable to generate the planning summary</p>
+                        <p class="mt-1">{{ $aiError }}</p>
+                    </div>
                 @elseif ($aiSummary)
                     <div class="mb-6 grid gap-3 sm:grid-cols-3">
                         <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/30">

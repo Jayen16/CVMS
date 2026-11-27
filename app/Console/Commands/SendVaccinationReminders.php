@@ -27,7 +27,6 @@ class SendVaccinationReminders extends Command
 
         $channels = $this->channels();
         $today = Carbon::now()->startOfDay();
-        $latestDueDate = $today->copy()->addDays((int) config('reminders.lookahead_days'));
         $queuedCount = 0;
         $skippedCount = 0;
 
@@ -55,42 +54,46 @@ class SendVaccinationReminders extends Command
             $children->where('barangay_id', $installation->barangay_id);
         }
 
-        $children->chunkById(100, function ($children) use ($suggestions, $channels, $latestDueDate, &$queuedCount, &$skippedCount): void {
-                foreach ($children as $child) {
-                    $suggestion = $suggestions->suggestNextDose($child);
+        $children->chunkById(100, function ($children) use ($suggestions, $channels, $today, &$queuedCount, &$skippedCount): void {
+            foreach ($children as $child) {
+                $suggestion = $suggestions->suggestNextDose($child);
 
-                    if ($suggestion['due_at'] === null || $suggestion['vaccine_name'] === null) {
-                        continue;
-                    }
+                if ($suggestion['due_at'] === null || $suggestion['vaccine_name'] === null) {
+                    continue;
+                }
 
-                    if ($suggestion['due_at']->startOfDay()->greaterThan($latestDueDate)) {
-                        continue;
-                    }
+                $dueAt = $suggestion['due_at']->copy()->startOfDay();
+                $daysUntilDue = (int) $today->diffInDays($dueAt, false);
+                $stage = array_search($daysUntilDue, SendVaccinationReminder::STAGE_DAYS, true);
+                if ($stage === false) {
+                    continue;
+                }
 
-                    foreach ($child->parents as $parent) {
-                        foreach ($this->availableChannels($parent, $channels) as $channel) {
-                            if ($this->alreadySent($child, $parent, $suggestion, $channel)) {
-                                $skippedCount++;
+                foreach ($child->parents as $parent) {
+                    foreach ($this->availableChannels($parent, $channels) as $channel) {
+                        if ($this->alreadySent($child, $parent, $suggestion, $channel, $stage)) {
+                            $skippedCount++;
 
-                                continue;
-                            }
+                            continue;
+                        }
 
-                            $queuedCount++;
+                        $queuedCount++;
 
-                            if (! $this->option('dry-run')) {
-                                SendVaccinationReminder::dispatch(
-                                    (string) $child->id,
-                                    (string) $parent->id,
-                                    $suggestion['vaccine_name'],
-                                    $suggestion['dose_number'],
-                                    $suggestion['due_at']->toDateString(),
-                                    $channel,
-                                );
-                            }
+                        if (! $this->option('dry-run')) {
+                            SendVaccinationReminder::dispatch(
+                                (string) $child->id,
+                                (string) $parent->id,
+                                $suggestion['vaccine_name'],
+                                $suggestion['dose_number'],
+                                $suggestion['due_at']->toDateString(),
+                                $channel,
+                                $stage,
+                            );
                         }
                     }
                 }
-            });
+            }
+        });
 
         $this->info("Reminder run complete. {$queuedCount} queued, {$skippedCount} skipped.");
 
@@ -131,7 +134,7 @@ class SendVaccinationReminders extends Command
     /**
      * @param  array{vaccine_code: string|null, vaccine_name: string|null, dose_number: int|null, due_at: Carbon|null, note: string}  $suggestion
      */
-    private function alreadySent(ChildProfile $child, User $parent, array $suggestion, string $channel): bool
+    private function alreadySent(ChildProfile $child, User $parent, array $suggestion, string $channel, string $stage): bool
     {
         return VaccinationReminder::query()
             ->where('child_profile_id', $child->id)
@@ -140,8 +143,8 @@ class SendVaccinationReminders extends Command
             ->where('dose_number', $suggestion['dose_number'])
             ->whereDate('due_at', $suggestion['due_at'])
             ->where('channel', $channel)
+            ->where('reminder_stage', $stage)
             ->where('status', 'sent')
             ->exists();
     }
-
 }

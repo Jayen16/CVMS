@@ -1,13 +1,6 @@
 @php
     $editParent = $child->parents->firstWhere('id', session('edit_parent_id'));
-    $initialChildViewTab = 'schedule';
     $compactHistory = true;
-
-    if (request()->string('tab')->toString() === 'parents' || $errors->hasAny(['name', 'email', 'phone', 'relationship', 'photo']) || session('edit_parent_id') !== null) {
-        $initialChildViewTab = 'parents';
-    } elseif ($errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'clinic_name', 'clinic_location', 'vaccine_inventory_item_id', 'proof_files', 'proof_files.*', 'remarks'])) {
-        $initialChildViewTab = 'vaccination';
-    }
 @endphp
 
 <div
@@ -143,7 +136,7 @@
 
         <section class="app-panel relative flex flex-col gap-5 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
             <div class="absolute right-3 top-3 z-30" x-data="{ open: false }">
-                <button type="button" class="inline-flex size-9 items-center justify-center rounded-xl text-lg font-bold tracking-widest text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white" @click="open = !open" :aria-expanded="open.toString()" aria-label="Child profile actions">•••</button>
+                <button type="button" class="app-button-secondary inline-flex items-center gap-2" @click="open = !open" :aria-expanded="open.toString()" aria-label="Child profile options">Options<flux:icon.chevron-down class="size-4" /></button>
                 <div x-show="open" x-cloak @click.outside="open = false" class="absolute right-0 top-11 z-20 min-w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
                     @if (auth()->user()->canManageChildren())
                         <a href="{{ route('children.edit', $child) }}" class="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-zinc-200 dark:hover:bg-zinc-800" wire:navigate>Edit child info</a>
@@ -733,7 +726,7 @@
                                 <div class="sm:col-span-2 lg:col-span-4"><p class="text-sm font-semibold text-slate-900 dark:text-white">When and what was given?</p><p class="mt-1 text-xs text-slate-500">Use the information exactly as it appears on the vaccine card.</p></div>
                                 <x-form-field label="Vaccine" name="vaccine_type_id" type="select" :options="$vaccines->pluck('name', 'id')" :value="$editableRecord?->vaccine_type_id" wire:model="submissionVaccineTypeId" required />
                                 <x-form-field label="Dose number" name="dose_number" type="number" min="1" max="10" :value="$editableRecord?->dose_number" wire:model="submissionDoseNumber" />
-                                <x-form-field label="Date given" name="administered_at" type="date" max="{{ today()->toDateString() }}" :value="$editableRecord?->administered_at?->toDateString()" wire:model="submissionAdministeredAt" required />
+                                <x-form-field label="Date given" name="administered_at" type="date" min="{{ \Illuminate\Support\Carbon::parse($child->birthdate)->toDateString() }}" max="{{ today()->toDateString() }}" :value="$editableRecord?->administered_at?->toDateString()" wire:model="submissionAdministeredAt" required />
                                 <x-form-field label="Facility or clinic name" name="clinic_name" :value="$defaultClinicName" wire:model="submissionClinicName" required />
                                 <x-form-field label="Facility or clinic location" name="clinic_location" :value="$defaultClinicLocation" wire:model="submissionClinicLocation" />
                             </div>
@@ -791,7 +784,7 @@
                                 class="app-panel order-first"
                                 x-show="childViewTab === 'vaccination'"
                                 x-data="{
-                                     recordVaccinationOpen: @js($errors->hasAny(['vaccine_type_id', 'dose_number', 'administered_at', 'vaccine_inventory_item_id', 'remarks'])),
+                                    recordVaccinationOpen: @entangle('recordVaccinationOpen'),
                                     vaccineId: @js((string) old('vaccine_type_id', '')),
                                     inventoryVaccineIds: @js($inventoryItems->mapWithKeys(fn ($item) => [(string) $item->id => (string) $item->vaccine_type_id])),
                                     inventorySelect: null,
@@ -837,7 +830,7 @@
                                         @enderror
                                     </label>
                                     <x-form-field label="Dose number" name="dose_number" type="number" />
-                                    <x-form-field label="Date given" name="administered_at" type="date" />
+                                    <x-form-field label="Date given" name="administered_at" type="date" min="{{ \Illuminate\Support\Carbon::parse($child->birthdate)->toDateString() }}" max="{{ today()->toDateString() }}" />
                                     <x-form-field
                                         label="Inventory stock (optional)"
                                         name="vaccine_inventory_item_id"

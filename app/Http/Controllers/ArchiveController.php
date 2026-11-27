@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AdverseEventReport;
 use App\Models\AuditLog;
 use App\Models\ChildProfile;
 use App\Models\ReportExport;
@@ -15,11 +14,6 @@ use Illuminate\View\View;
 class ArchiveController extends Controller
 {
     private const TYPES = [
-        'aefi' => [
-            'label' => 'AEFI reports',
-            'model' => AdverseEventReport::class,
-            'date' => 'event_date',
-        ],
         'vaccinations' => [
             'label' => 'Vaccination records',
             'model' => VaccinationRecord::class,
@@ -51,10 +45,9 @@ class ArchiveController extends Controller
             $records = $definition['model']::query()
                 ->withoutGlobalScope('not_archived')
                 ->whereNotNull('archived_at')
-                ->when($type === 'aefi', fn ($query) => $query->whereHas('child', fn ($child) => $this->scopeChild($child)))
                 ->when($type === 'vaccinations', fn ($query) => $query->whereHas('child', fn ($child) => $this->scopeChild($child)))
                 ->when($type === 'exports' && ! auth()->user()->isSuperAdmin(), fn ($query) => $query->where('user_id', auth()->id()))
-                ->with($type === 'aefi' || $type === 'vaccinations' ? ['child'] : ['user'])
+                ->with($type === 'vaccinations' ? ['child'] : ['user'])
                 ->latest('archived_at')
                 ->limit(100)
                 ->get()
@@ -99,7 +92,7 @@ class ArchiveController extends Controller
                 Carbon::parse($validated['date_to'])->endOfDay(),
             ]);
 
-        if ($validated['type'] === 'aefi' || $validated['type'] === 'vaccinations') {
+        if ($validated['type'] === 'vaccinations') {
             $query->whereHas('child', fn ($child) => $this->scopeChild($child));
         } elseif ($validated['type'] === 'exports' && ! auth()->user()->isSuperAdmin()) {
             $query->where('user_id', auth()->id());
@@ -142,7 +135,7 @@ class ArchiveController extends Controller
         $definition = self::TYPES[$type];
         $record = $definition['model']::withoutGlobalScope('not_archived')->findOrFail($recordId);
 
-        if ($type === 'aefi' || $type === 'vaccinations') {
+        if ($type === 'vaccinations') {
             $child = ChildProfile::withoutGlobalScope('not_archived')->findOrFail($record->child_profile_id);
             abort_unless(auth()->user()->isSuperAdmin() || auth()->user()->accessibleBarangayIds()->contains($child->barangay_id), 403);
         } elseif ($type === 'exports' && ! auth()->user()->isSuperAdmin()) {
@@ -166,7 +159,6 @@ class ArchiveController extends Controller
     private function description(string $type, mixed $record): string
     {
         return match ($type) {
-            'aefi' => ($record->child?->full_name ?? 'Unknown child').' · '.($record->severity ?? 'AEFI'),
             'vaccinations' => ($record->child?->full_name ?? 'Unknown child').' · '.($record->vaccineType?->name ?? 'Vaccination'),
             'audit_logs' => $record->description ?? 'Audit event',
             default => strtoupper($record->format).' export · '.($record->user?->name ?? 'Unknown user'),
