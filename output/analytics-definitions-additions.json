@@ -1,0 +1,26 @@
+[
+  [
+    "Mean Absolute Error (MAE)",
+    "The average absolute difference between estimated vaccine demand and the corresponding observed value over a defined evaluation period. Lower values indicate smaller average errors. This metric applies when estimates are evaluated against observed outcomes."
+  ],
+  [
+    "Root Mean Squared Error (RMSE)",
+    "A measure calculated as the square root of the mean squared differences between estimated and observed vaccine demand. It gives greater weight to larger errors, with lower values indicating better agreement."
+  ],
+  [
+    "Precision",
+    "The proportion of children classified as requiring priority follow-up who subsequently meet the study’s defined missed or delayed dose outcome, evaluated at a specified score threshold."
+  ],
+  [
+    "Recall",
+    "The proportion of children who subsequently meet the defined missed or delayed dose outcome who were correctly identified for priority follow-up at a specified score threshold."
+  ],
+  [
+    "F1-score",
+    "The harmonic mean of precision and recall, used to summarize the balance between identifying actual missed or delayed dose outcomes and limiting incorrect classifications at a specified score threshold."
+  ],
+  [
+    "Receiver Operating Characteristic–Area Under the Curve (ROC-AUC)",
+    "A measure of how well follow-up scores distinguish children who subsequently meet the defined missed or delayed dose outcome from those who do not, across different classification thresholds. Evaluation requires both outcome groups."
+  ]
+]

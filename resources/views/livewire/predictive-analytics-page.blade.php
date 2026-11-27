@@ -1,5 +1,5 @@
 <div class="app-page">
-    <div wire:loading.flex class="fixed inset-x-0 top-0 z-[60] items-center justify-center gap-2 bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite">
+    <div wire:loading.flex wire:target="months,scheduleVersion,regionId,provinceId,municipalityId,barangayId" class="fixed inset-x-0 top-0 z-[60] items-center justify-center gap-2 bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite">
         <span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span> Filtering data…
     </div>
     <div class="page-heading">
@@ -38,6 +38,8 @@
             <p class="text-sm text-zinc-600 dark:text-zinc-300"><span class="font-semibold text-teal-700 dark:text-teal-300">Planning note:</span> Estimated demand combines scheduled doses, catch-up backlog, and historical vaccination activity. Compare it with available stock; a negative projected balance indicates a possible shortage for staff review.</p>
         </section>
 
+        @include('livewire.partials.ai-planning-summary')
+
         <div x-data="{ view: 'table' }" class="space-y-4">
         <section class="app-card relative w-full overflow-hidden">
             <div class="app-card-header">
@@ -58,7 +60,7 @@
                     <label class="flex items-center gap-2 text-sm font-medium">Schedule version <select wire:model.live="scheduleVersion" wire:loading.attr="disabled" class="app-input max-w-64"><option value="">Latest active</option>@foreach ($scheduleVersions as $version)<option value="{{ $version->id }}">{{ $version->name }} ({{ $version->version_code }}){{ $version->status === 'active' ? ' - Active' : '' }}</option>@endforeach</select></label>
                 </div>
             </div>
-            <div wire:loading.flex class="absolute inset-0 z-20 items-center justify-center bg-white/70 dark:bg-zinc-900/70"><div class="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-medium text-zinc-700 shadow dark:bg-zinc-800 dark:text-zinc-200"><span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-teal-700"></span> Recalculating forecast…</div></div>
+            <div wire:loading.flex wire:target="months,scheduleVersion,regionId,provinceId,municipalityId,barangayId" class="absolute inset-0 z-20 items-center justify-center bg-white/70 dark:bg-zinc-900/70"><div class="flex items-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-medium text-zinc-700 shadow dark:bg-zinc-800 dark:text-zinc-200"><span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-teal-700"></span> Recalculating forecast…</div></div>
             <div x-show="view === 'table'" x-cloak>
                 <div class="grid gap-3 p-3 md:hidden">
                     @forelse ($demand as $row)

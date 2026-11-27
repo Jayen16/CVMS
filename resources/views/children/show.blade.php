@@ -204,6 +204,18 @@
             @endif
         </section>
 
+        @unless (auth()->user()->isParent())
+            <x-ai-narrative
+                title="AI Record Summary"
+                description="Understand what this record shows, why it may need review, and which documentation checks to do next."
+                action="generateAiRecordSummary"
+                :summary="$aiNarrative"
+                :generated-at="$aiNarrativeAt"
+                :error="$aiNarrativeError"
+                scope="This child's record only"
+            />
+        @endunless
+
         <nav class="app-card flex gap-1 overflow-x-auto p-1.5" aria-label="Child profile sections">
             <button type="button" class="min-w-max flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition" :class="childViewTab === 'schedule' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:bg-teal-50 dark:text-zinc-300 dark:hover:bg-zinc-800'" @click="childViewTab = 'schedule'">Schedule</button>
             <button type="button" class="min-w-max flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold transition" :class="childViewTab === 'vaccination' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:bg-teal-50 dark:text-zinc-300 dark:hover:bg-zinc-800'" @click="childViewTab = 'vaccination'">Vaccination History</button>

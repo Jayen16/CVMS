@@ -4,6 +4,7 @@ use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\User;
 use App\Services\PredictiveAnalyticsService;
+use App\Support\PrivacyNotice;
 
 test('authorized staff can view demand estimates and missed-dose risk outputs', function () {
     $barangay = Barangay::create(['name' => 'Analytics Barangay']);
@@ -51,7 +52,10 @@ test('authorized staff can view demand estimates and missed-dose risk outputs', 
 });
 
 test('parents cannot access predictive analytics', function () {
-    $parent = User::factory()->create(['role' => 'parent']);
+    $parent = User::factory()->create([
+        'role' => 'parent',
+        'privacy_notice_version' => PrivacyNotice::VERSION,
+    ]);
 
     $this->actingAs($parent)
         ->get(route('predictive-analytics.index'))

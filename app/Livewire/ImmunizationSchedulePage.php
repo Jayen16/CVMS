@@ -2,37 +2,57 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\InteractsWithAiNarratives;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\Municipality;
 use App\Models\Province;
 use App\Models\Region;
+use App\Models\User;
+use App\Services\AiRecordSummaryService;
 use App\Services\ImmunizationSuggestionService;
 use App\Services\PredictiveAnalyticsService;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 class ImmunizationSchedulePage extends Component
 {
-    use WithPagination;
+    use InteractsWithAiNarratives, WithPagination;
 
-    #[Url] public string $search = '';
-    #[Url] public string $status = 'all';
-    #[Url] public string $risk = 'all';
-    #[Url] public string $regionId = 'all';
-    #[Url] public string $provinceId = 'all';
-    #[Url] public string $municipalityId = 'all';
-    #[Url] public string $barangayId = 'all';
-    #[Url] public int $perPage = 10;
+    #[Url]
+    public string $search = '';
 
-    public function updating($name): void
+    #[Url]
+    public string $status = 'all';
+
+    #[Url]
+    public string $risk = 'all';
+
+    #[Url]
+    public string $regionId = 'all';
+
+    #[Url]
+    public string $provinceId = 'all';
+
+    #[Url]
+    public string $municipalityId = 'all';
+
+    #[Url]
+    public string $barangayId = 'all';
+
+    #[Url]
+    public int $perPage = 10;
+
+    public function updating(string $name): void
     {
         if (in_array($name, ['search', 'status', 'risk', 'regionId', 'provinceId', 'municipalityId', 'barangayId'], true)) {
             $this->resetPage();
+            $this->clearAiNarrative();
         }
     }
 
@@ -58,6 +78,24 @@ class ImmunizationSchedulePage extends Component
     public function updatedMunicipalityId(): void
     {
         $this->barangayId = 'all';
+    }
+
+    public function generateAiFollowUpBriefing(AiRecordSummaryService $ai, ImmunizationSuggestionService $suggestions, PredictiveAnalyticsService $analytics): void
+    {
+        $user = auth()->user();
+        abort_unless($user->canViewDefaulters(), 403);
+        if ($user->isSuperAdmin() && $this->regionId === 'all') {
+            $this->clearAiNarrative();
+            $this->aiNarrativeError = 'Select a region before generating a briefing.';
+
+            return;
+        }
+
+        $this->generateAiNarrative(function () use ($ai, $suggestions, $analytics): string {
+            [, $rows] = $this->monitoringData($suggestions, $analytics);
+
+            return $ai->followUpBriefing($rows);
+        });
     }
 
     public function render(ImmunizationSuggestionService $suggestions, PredictiveAnalyticsService $analytics): View
@@ -91,27 +129,8 @@ class ImmunizationSchedulePage extends Component
             ])->layout('layouts.app', ['title' => 'Schedule monitoring']);
         }
 
-        $barangayIds = $this->filteredBarangayIds($user);
-        $children = ChildProfile::query()->visibleTo($user)
-            ->whereIn('barangay_id', $barangayIds)
-            ->with(['barangay', 'parents', 'vaccinations'])->withCount('vaccinations')
-            ->when(trim($this->search) !== '', function ($query): void {
-                $term = '%'.trim($this->search).'%';
-                $query->where(fn ($child) => $child->where('first_name', 'like', $term)->orWhere('last_name', 'like', $term));
-            })->get();
-        $risks = $analytics->missedDoseRisk($user, $this->regionId, $this->provinceId, $this->municipalityId, $this->barangayId)->keyBy(fn (array $row) => $row['child']->id);
-        $rows = $children->map(function (ChildProfile $child) use ($suggestions, $risks): array {
-            $suggestion = $suggestions->suggestNextDose($child);
-            $risk = $risks->get($child->id);
-            $status = $suggestion['status'];
-            return [
-                'child' => $child, 'suggestion' => $suggestion, 'status' => $status, 'risk' => $risk,
-                'risk_level' => $risk['risk_level'] ?? ($status === 'complete' ? 'not_applicable' : 'low'),
-                'contact_channel' => $this->contactChannel($child),
-                'days_late' => in_array($status, ['delayed', 'overdue'], true) && $suggestion['due_at'] ? (int) $suggestion['due_at']->diffInDays(Carbon::today()) : 0,
-            ];
-        })->filter(fn (array $row): bool => ($this->status === 'all' || $row['status'] === $this->status) && ($this->risk === 'all' || $row['risk_level'] === $this->risk))
-            ->sortBy(fn (array $row): array => [$row['status'] === 'overdue' ? 0 : ($row['status'] === 'delayed' ? 1 : 2), $row['suggestion']['due_at']?->timestamp ?? PHP_INT_MAX])->values();
+        [$children, $rowItems] = $this->monitoringData($suggestions, $analytics);
+        $rows = collect($rowItems);
 
         $totalMatching = $rows->count();
         $statusLabels = [
@@ -163,8 +182,38 @@ class ImmunizationSchedulePage extends Component
         ])->layout('layouts.app', ['title' => 'Schedule monitoring']);
     }
 
-    /** @return \Illuminate\Support\Collection<int, string> */
-    private function filteredBarangayIds($user)
+    /** @return array{0: \Illuminate\Database\Eloquent\Collection<int, ChildProfile>, 1: list<array<string, mixed>>} */
+    private function monitoringData(ImmunizationSuggestionService $suggestions, PredictiveAnalyticsService $analytics): array
+    {
+        $user = auth()->user();
+        $barangayIds = $this->filteredBarangayIds($user);
+        $children = ChildProfile::query()->visibleTo($user)
+            ->whereIn('barangay_id', $barangayIds)
+            ->with(['barangay', 'parents', 'vaccinations'])->withCount('vaccinations')
+            ->when(trim($this->search) !== '', function ($query): void {
+                $term = '%'.trim($this->search).'%';
+                $query->where(fn ($child) => $child->where('first_name', 'like', $term)->orWhere('last_name', 'like', $term));
+            })->get();
+        $risks = $analytics->missedDoseRisk($user, $this->regionId, $this->provinceId, $this->municipalityId, $this->barangayId)->keyBy(fn (array $row): string => $row['child']->id);
+        $rows = $children->map(function (ChildProfile $child) use ($suggestions, $risks): array {
+            $suggestion = $suggestions->suggestNextDose($child);
+            $risk = $risks->get($child->id);
+            $status = $suggestion['status'];
+
+            return [
+                'child' => $child, 'suggestion' => $suggestion, 'status' => $status, 'risk' => $risk,
+                'risk_level' => $risk['risk_level'] ?? ($status === 'complete' ? 'not_applicable' : 'low'),
+                'contact_channel' => $this->contactChannel($child),
+                'days_late' => in_array($status, ['delayed', 'overdue'], true) && $suggestion['due_at'] ? (int) $suggestion['due_at']->diffInDays(Carbon::today()) : 0,
+            ];
+        })->filter(fn (array $row): bool => ($this->status === 'all' || $row['status'] === $this->status) && ($this->risk === 'all' || $row['risk_level'] === $this->risk))
+            ->sortBy(fn (array $row): array => [$row['status'] === 'overdue' ? 0 : ($row['status'] === 'delayed' ? 1 : 2), isset($row['suggestion']['due_at']) ? $row['suggestion']['due_at']->timestamp : PHP_INT_MAX])->values();
+
+        return [$children, array_values($rows->all())];
+    }
+
+    /** @return Collection<int, string> */
+    private function filteredBarangayIds(User $user): Collection
     {
         $query = Barangay::query()->whereIn('id', $user->accessibleBarangayIds());
         if ($this->regionId !== 'all') {
@@ -179,13 +228,19 @@ class ImmunizationSchedulePage extends Component
         if ($this->barangayId !== 'all') {
             $query->whereKey($this->barangayId);
         }
+
         return $query->pluck('id');
     }
 
     private function contactChannel(ChildProfile $child): string
     {
-        if ($child->parents->contains(fn ($parent) => filled($parent->phone)) || filled($child->guardian_contact)) return 'SMS priority';
-        if ($child->parents->contains(fn ($parent) => filled($parent->email))) return 'Email';
+        if ($child->parents->contains(fn ($parent) => filled($parent->phone)) || filled($child->guardian_contact)) {
+            return 'SMS priority';
+        }
+        if ($child->parents->contains(fn ($parent) => filled($parent->email))) {
+            return 'Email';
+        }
+
         return 'No contact';
     }
 }

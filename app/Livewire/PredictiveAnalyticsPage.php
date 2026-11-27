@@ -7,10 +7,14 @@ use App\Models\Municipality;
 use App\Models\Province;
 use App\Models\Region;
 use App\Models\VaccineScheduleVersion;
+use App\Services\GeminiPlanningSummaryService;
 use App\Services\PredictiveAnalyticsService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\RateLimiter;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use RuntimeException;
 
 class PredictiveAnalyticsPage extends Component
 {
@@ -20,10 +24,67 @@ class PredictiveAnalyticsPage extends Component
     #[Url]
     public ?string $scheduleVersion = null;
 
-    #[Url] public string $regionId = 'all';
-    #[Url] public string $provinceId = 'all';
-    #[Url] public string $municipalityId = 'all';
-    #[Url] public string $barangayId = 'all';
+    #[Url]
+    public string $regionId = 'all';
+
+    #[Url]
+    public string $provinceId = 'all';
+
+    #[Url]
+    public string $municipalityId = 'all';
+
+    #[Url]
+    public string $barangayId = 'all';
+
+    #[Locked]
+    public ?string $aiSummary = null;
+
+    #[Locked]
+    public ?string $aiGeneratedAt = null;
+
+    #[Locked]
+    public ?string $aiError = null;
+
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['months', 'scheduleVersion', 'regionId', 'provinceId', 'municipalityId', 'barangayId'], true)) {
+            $this->reset('aiSummary', 'aiGeneratedAt', 'aiError');
+        }
+    }
+
+    public function generateAiSummary(PredictiveAnalyticsService $analytics, GeminiPlanningSummaryService $gemini): void
+    {
+        $user = auth()->user();
+        abort_unless($user->canViewDefaulters(), 403);
+        $this->reset('aiSummary', 'aiGeneratedAt', 'aiError');
+
+        if ($user->isSuperAdmin() && $this->regionId === 'all') {
+            $this->aiError = 'Select a region before generating a summary.';
+
+            return;
+        }
+
+        $limitKey = 'gemini-planning:'.$user->id;
+        if (RateLimiter::tooManyAttempts($limitKey, 3)) {
+            $this->aiError = 'Please wait a minute before generating another summary.';
+
+            return;
+        }
+
+        $months = in_array($this->months, [1, 3, 6, 12], true) ? $this->months : 3;
+        $versions = VaccineScheduleVersion::query()->orderByDesc('effective_date')->orderByDesc('id')->get();
+        $version = $versions->firstWhere('id', $this->scheduleVersion) ?? $versions->firstWhere('status', 'active');
+        $demand = $analytics->vaccineDemand($user, $months, $version, $this->regionId, $this->provinceId, $this->municipalityId, $this->barangayId);
+
+        RateLimiter::hit($limitKey, 60);
+
+        try {
+            $this->aiSummary = $gemini->generate($demand, $months);
+            $this->aiGeneratedAt = now()->timezone('Asia/Manila')->format('M d, Y g:i A').' (Philippine time)';
+        } catch (RuntimeException $exception) {
+            $this->aiError = $exception->getMessage();
+        }
+    }
 
     public function updatedRegionId(): void
     {
