@@ -1,0 +1,182 @@
+[
+  [
+    "Administrator",
+    "An authorized CVMS user assigned a Superadmin, Municipal Admin, or Barangay Admin role. Available functions depend on the assigned role, permissions, and geographic scope."
+  ],
+  [
+    "Application Notifications",
+    "Notices displayed within CVMS to inform authorized users of relevant vaccination schedules, record updates, or other supported events."
+  ],
+  [
+    "Audit Trail",
+    "Recorded system activities that allow authorized personnel to review supported actions affecting accounts, records, and clinic operations."
+  ],
+  [
+    "Catch-up Backlog",
+    "Scheduled vaccine doses with due dates before the assessment date that have no corresponding non-rejected vaccination record in CVMS. These doses contribute to the demand estimate and require staff review."
+  ],
+  [
+    "Child Immunization Record",
+    "The electronic record of a registered child’s vaccination history, including vaccine types, dose numbers, administration dates, and verification status."
+  ],
+  [
+    "Child Registration",
+    "The process through which authorized personnel create and maintain a child’s profile, location information, and parent or guardian links in CVMS."
+  ],
+  [
+    "Child Vaccination Monitoring System (CVMS)",
+    "The web-based application examined in this study for managing child records, vaccination schedules, vaccination submissions and verification, inventory, reminders, analytics, and reports."
+  ],
+  [
+    "Dashboard and Data Visualization",
+    "CVMS screens that summarize authorized immunization and inventory information using indicators, tables, and charts to support monitoring and review."
+  ],
+  [
+    "Data Synchronization",
+    "The controlled exchange of supported records between a facility instance and a central instance when connectivity and valid authorization are available. It does not replicate every database table or replace a separate backup procedure."
+  ],
+  [
+    "Delayed Dose",
+    "An unrecorded dose classified by the scheduling service as past its due date but below the configured overdue threshold."
+  ],
+  [
+    "Design Science Research Methodology (DSRM)",
+    "The research approach proposed for identifying the local immunization-management problem, defining objectives, developing the CVMS artifact, demonstrating its use, evaluating it, and communicating the findings."
+  ],
+  [
+    "Due Dose",
+    "A dose classified by the scheduling service as scheduled for the current assessment date and not yet satisfied by an applicable recorded dose."
+  ],
+  [
+    "F1-score",
+    "The harmonic mean of precision and recall, used to summarize the balance between identifying actual missed or delayed dose outcomes and limiting incorrect classifications at a specified score threshold."
+  ],
+  [
+    "Facility and Central Instances",
+    "Two deployment modes of the same Laravel application. The facility instance supports local clinic operations, while the central instance coordinates supported information exchange and consolidated records from connected facilities."
+  ],
+  [
+    "Follow-up Prioritization Score",
+    "A rule-based score calculated from prior missed or delayed doses, a local baseline, guardian contact availability, pending verification, and current schedule status. It assigns low, medium, or high follow-up priority and is not a clinically validated probability of a future missed dose."
+  ],
+  [
+    "Functionality",
+    "The extent to which CVMS performs the specified tasks correctly, assessed through defined functional checks and users’ evaluation of the functions relevant to their roles."
+  ],
+  [
+    "Iterative and Incremental Development",
+    "The development approach proposed in the methodology, in which CVMS functions are built in manageable groups, tested, reviewed, and refined through successive stages."
+  ],
+  [
+    "Laravel",
+    "The PHP framework used to implement CVMS routes, application services, authentication, authorization, database operations, and integrations."
+  ],
+  [
+    "Livewire",
+    "The Laravel component framework used to build interactive CVMS pages, including forms, tables, dashboards, and operational screens."
+  ],
+  [
+    "Local Operation",
+    "The ability to perform supported clinic tasks through a running facility server and its local database during loss of internet connectivity. Users still require access to that server through the local network or host device."
+  ],
+  [
+    "Mean Absolute Error (MAE)",
+    "The average absolute difference between estimated vaccine demand and the corresponding observed value over a defined evaluation period. Lower values indicate smaller average errors. This metric applies when estimates are evaluated against observed outcomes."
+  ],
+  [
+    "MySQL",
+    "The relational database management system configured for the target CVMS deployment to store application records. The application also supports a SQLite configuration."
+  ],
+  [
+    "Nurse",
+    "An operational application role whose access to child records, vaccination workflows, inventory, and other supported functions depends on assigned permissions and service area."
+  ],
+  [
+    "Overdue Dose",
+    "An unrecorded dose classified by the scheduling service as having reached or exceeded the configured number of days after its due date. The current default threshold is seven days; this is an application setting rather than a universal clinical definition."
+  ],
+  [
+    "Parent or Guardian Portal",
+    "The CVMS interface through which authorized Parent accounts access linked children’s vaccination information, submit outside-clinic vaccination records with proof, edit pending submissions, and track verification status."
+  ],
+  [
+    "PHP",
+    "The server-side programming language used to implement the CVMS application and its rule-based analytics calculations."
+  ],
+  [
+    "Precision",
+    "The proportion of children classified as requiring priority follow-up who subsequently meet the study’s defined missed or delayed dose outcome, evaluated at a specified score threshold."
+  ],
+  [
+    "Purposive Sampling",
+    "The proposed selection of research participants based on their relevant immunization-service responsibilities or intended use of CVMS, including personnel and parents or guardians evaluating the functions applicable to them."
+  ],
+  [
+    "Recall",
+    "The proportion of children who subsequently meet the defined missed or delayed dose outcome who were correctly identified for priority follow-up at a specified score threshold."
+  ],
+  [
+    "Receiver Operating Characteristic–Area Under the Curve (ROC-AUC)",
+    "A measure of how well follow-up scores distinguish children who subsequently meet the defined missed or delayed dose outcome from those who do not, across different classification thresholds. Evaluation requires both outcome groups."
+  ],
+  [
+    "Reliability",
+    "The consistency of supported CVMS operations, including correct record handling, behavior during interruptions, and synchronization recovery. Technical checks and user perceptions are evaluated separately."
+  ],
+  [
+    "Role-Based Access Control",
+    "The restriction of CVMS functions and records according to application roles, permissions, assigned locations, and parent–child links."
+  ],
+  [
+    "Root Mean Squared Error (RMSE)",
+    "A measure calculated as the square root of the mean squared differences between estimated and observed vaccine demand. It gives greater weight to larger errors, with lower values indicating better agreement."
+  ],
+  [
+    "Rule-Based Analytics",
+    "The use of predefined calculations, weights, and thresholds to generate vaccine-demand estimates and follow-up scores in CVMS, without training a machine-learning model."
+  ],
+  [
+    "Rural Health Unit (RHU)",
+    "The local health facility context for the study. Indang RHU is the intended setting for requirements gathering and evaluation of CVMS."
+  ],
+  [
+    "Security",
+    "The implemented controls used to restrict access to CVMS accounts and health records, including authentication, authorization, validation, and protected record access. Users’ ratings describe perceived security, while technical checks assess specific controls."
+  ],
+  [
+    "SMS Reminders",
+    "Vaccination-related messages sent through the configured SMS service to supported parent or guardian recipients. Delivery depends on service configuration, external connectivity, and mobile-network availability."
+  ],
+  [
+    "Upcoming Dose",
+    "A dose classified by the scheduling service as having a due date after the current assessment date."
+  ],
+  [
+    "Usability",
+    "The extent to which intended users can understand the CVMS interface and complete role-appropriate tasks, assessed through representative use and the study’s evaluation questionnaire."
+  ],
+  [
+    "User Acceptance Testing (UAT)",
+    "The proposed evaluation in which intended users perform representative CVMS tasks and provide ratings and comments about functionality, reliability, security, and usability."
+  ],
+  [
+    "Vaccination Scheduling and Tracking",
+    "The application of configured schedule rules and recorded dose information to identify next-dose suggestions and upcoming, due, delayed, overdue, or completed status. Suggestions support staff review and do not replace clinical assessment."
+  ],
+  [
+    "Vaccination Verification",
+    "The staff review of parent-submitted vaccination information and supporting proof, resulting in a verified or rejected status. Parent submissions remain pending until reviewed."
+  ],
+  [
+    "Vaccine Demand Estimation",
+    "The rule-based calculation of vaccine requirements represented by registered CVMS children and recorded activity, using scheduled doses, catch-up backlog, historical utilization, and positive recent-use trends. Estimates are compared with available stock; census population data is not currently an input."
+  ],
+  [
+    "Vaccine Inventory",
+    "The CVMS records of vaccine stock movements, including receipts, usage, and adjustments, from which available quantities and projected balances are calculated."
+  ],
+  [
+    "Web-Based Application",
+    "The CVMS software accessed through a supported browser on a computer or mobile device connected to the appropriate local or online application server."
+  ]
+]

@@ -2,24 +2,27 @@
 
 namespace App\Livewire;
 
+use App\Livewire\Concerns\InteractsWithAiNarratives;
 use App\Models\ChildProfile;
 use App\Models\VaccinationRecord;
 use App\Models\VaccineInventoryItem;
 use App\Models\VaccineType;
+use App\Services\AiRecordSummaryService;
 use App\Services\ImmunizationSuggestionService;
-use App\Services\VaccineScheduleVersionResolver;
 use App\Services\VaccinationSubmissionService;
+use App\Services\VaccineScheduleVersionResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 class ChildShowPage extends Component
 {
-    use WithFileUploads, WithPagination;
+    use InteractsWithAiNarratives, WithFileUploads, WithPagination;
 
     public ChildProfile $child;
 
@@ -35,7 +38,7 @@ class ChildShowPage extends Component
 
     public ?string $submissionRemarks = null;
 
-    /** @var list<\Livewire\Features\SupportFileUploads\TemporaryUploadedFile> */
+    /** @var list<TemporaryUploadedFile> */
     public array $submissionProofFiles = [];
 
     public ?string $editingRecordId = null;
@@ -92,6 +95,16 @@ class ChildShowPage extends Component
                 $this->submissionRemarks = $record->remarks;
             }
         }
+    }
+
+    public function generateAiRecordSummary(AiRecordSummaryService $ai): void
+    {
+        $user = auth()->user();
+        abort_unless($user->canViewChildrenRegistry() && ! $user->isParent(), 403);
+        // Recheck ownership on the action itself, before any external request.
+        $child = ChildProfile::query()->visibleTo($user)->findOrFail($this->child->id);
+        $this->authorizeChild($child);
+        $this->generateAiNarrative(fn (): string => $ai->childRecord($child));
     }
 
     public function submitVaccinationHistory(VaccinationSubmissionService $submissions, ImmunizationSuggestionService $suggestions): void

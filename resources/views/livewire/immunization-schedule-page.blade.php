@@ -1,5 +1,5 @@
 <div class="app-page">
-    <div wire:loading.flex class="fixed inset-x-0 top-0 z-[60] items-center justify-center gap-2 bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite">
+    <div wire:loading.flex wire:target="search,status,risk,regionId,provinceId,municipalityId,barangayId,perPage" class="fixed inset-x-0 top-0 z-[60] items-center justify-center gap-2 bg-teal-700 px-4 py-2 text-sm font-medium text-white shadow-lg" role="status" aria-live="polite">
         <span class="size-4 animate-spin rounded-full border-2 border-teal-200 border-t-white"></span> Filtering data…
     </div>
     <div class="page-heading"><div><p class="eyebrow">ROUTINE IMMUNIZATION</p><h1 class="page-title">Schedule monitoring</h1><p class="page-subtitle">Review each child’s next schedule item, timing status, missed-dose risk, and follow-up channel.</p></div>@unless($requiresLocationSelection)<a href="{{ route('schedule-monitoring.pdf', ['search' => $search, 'status' => $status, 'risk' => $risk, 'regionId' => $regionId, 'provinceId' => $provinceId, 'municipalityId' => $municipalityId, 'barangayId' => $barangayId]) }}" target="_blank" rel="noopener" class="app-button-secondary inline-flex items-center gap-2" aria-label="Print schedule monitoring as PDF"><flux:icon.printer class="size-4" /> Print PDF</a>@endunless</div>
@@ -32,6 +32,16 @@
         <label class="space-y-1.5"><span class="text-sm font-medium">Risk level</span><select wire:model.live="risk" class="app-input w-full"><option value="all">All risk levels</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="not_applicable">Not applicable</option></select></label>
         <button type="button" wire:click="$set('search', '')" class="app-button-secondary">Clear</button>
     </div></section>
+    <x-ai-narrative
+        title="AI Follow-up Briefing"
+        description="Understand the main findings in the selected group, why they need attention, and which record-review tasks to prioritize."
+        action="generateAiFollowUpBriefing"
+        :summary="$aiNarrative"
+        :generated-at="$aiNarrativeAt"
+        :error="$aiNarrativeError"
+        :empty="$totalMatching === 0"
+        :scope="$totalMatching.' matching children across all results pages. Uses the current location, search, status, and risk filters.'"
+    />
     <div
         x-data="{
             current: 0,
