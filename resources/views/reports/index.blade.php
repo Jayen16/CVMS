@@ -15,12 +15,15 @@
                     @foreach (request()->only(['start_date', 'end_date', 'region_id', 'province_id', 'municipality_id', 'barangay_id', 'schedule_version']) as $key => $value)
                         <input type="hidden" name="{{ $key }}" value="{{ $value }}">
                     @endforeach
-                    <button type="submit" class="app-button-primary inline-flex items-center gap-2" :disabled="loading">
+                    <button type="submit" class="app-button-primary inline-flex items-center gap-2" @disabled($requiresLocationSelection) :disabled="loading || @js($requiresLocationSelection)">
                         <flux:icon.arrow-down-tray class="size-4" x-show="!loading" />
                         <flux:icon.arrow-path class="size-4 animate-spin" x-show="loading" />
                         <span x-text="loading ? 'Preparing export…' : 'Export PDF + Excel-compatible ZIP'"></span>
                     </button>
                 </form>
+                @if ($requiresLocationSelection)
+                    <p class="text-sm text-zinc-500">Select a region before exporting.</p>
+                @endif
             </div>
         </div>
 
@@ -29,14 +32,37 @@
         @endif
 
         @if (request('export'))
-            <div class="app-card" x-data="{status:'queued', progress:0, url:null, poll:null}" x-init="poll=setInterval(async()=>{ const response=await fetch('{{ route('reports.export.status', request('export')) }}'); const data=await response.json(); status=data.status; progress=data.progress; url=data.download_url; if(status==='ready'||status==='failed') clearInterval(poll)},1500)" x-cloak>
-                <div class="flex items-center gap-3 p-4" x-show="status !== 'ready' && status !== 'failed'">
+            <div class="app-card" x-data="{
+                status: 'queued', progress: 0, url: null, poll: null, pollingError: false, checks: 0,
+                async refresh() {
+                    clearTimeout(this.poll);
+                    this.pollingError = false;
+                    try {
+                        const response = await fetch(@js(route('reports.export.status', request('export'))), { headers: { Accept: 'application/json' } });
+                        if (!response.ok) throw new Error('Status unavailable');
+                        const data = await response.json();
+                        this.status = data.status;
+                        this.progress = data.progress;
+                        this.url = data.download_url;
+                        this.checks++;
+                        if (this.status !== 'ready' &amp;&amp; this.status !== 'failed') this.poll = setTimeout(() => this.refresh(), 1500);
+                    } catch (error) {
+                        this.pollingError = true;
+                    }
+                },
+                destroy() { clearTimeout(this.poll); }
+            }" x-init="refresh()" x-cloak>
+                <div class="flex items-center gap-3 p-4" x-show="status !== 'ready' &amp;&amp; status !== 'failed' &amp;&amp; !pollingError">
                     <span class="size-5 animate-spin rounded-full border-2 border-teal-200 border-t-teal-600"></span>
-                    <div class="flex-1"><p class="font-medium">Preparing your export…</p><div class="mt-2 h-2 rounded-full bg-slate-100"><div class="h-2 rounded-full bg-teal-600 transition-all" :style="`width: ${progress}%`"></div></div></div>
+                    <div class="flex-1">
+                        <p class="font-medium" x-text="status === 'queued' ? (checks > 20 ? 'This export has not started. Select a location and submit a new export.' : 'Waiting for export to start...') : 'Preparing your export...'"></p>
+                        <div class="mt-2 h-2 rounded-full bg-slate-100"><div class="h-2 rounded-full bg-teal-600 transition-all" :style="`width: ${progress}%`"></div></div>
+                    </div>
                     <span class="text-sm text-zinc-500" x-text="`${progress}%`"></span>
                 </div>
                 <div class="p-4" x-show="status === 'ready'"><p class="font-medium">Export ready.</p><a class="app-button-primary mt-3 inline-flex" :href="url">Download ZIP</a></div>
-                <div class="p-4 text-red-700" x-show="status === 'failed'">The export could not be completed. Please try again.</div>
+                <div class="p-4 text-red-700" x-show="status === 'failed'">The export could not be completed. Select your location and reporting period, then try exporting again.</div>
+                <div class="p-4" x-show="pollingError"><p class="text-red-700">Unable to check export progress. Check your connection and try again.</p><button type="button" class="app-button-secondary mt-3" @click="refresh()">Check progress again</button></div>
             </div>
         @endif
 

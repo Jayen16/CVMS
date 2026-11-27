@@ -54,16 +54,17 @@
     <section class="app-card overflow-hidden">
         <div class="app-card-header">
             <h2 class="app-card-title">Available vaccine doses</h2>
+            <p class="mt-1 text-sm text-zinc-500">Stock available means at least one dose is recorded. It does not indicate whether stock covers estimated demand. Use Demand Forecast with the same location filters to check projected shortages.</p>
         </div>
         <div class="overflow-x-auto">
             <table class="app-table">
-                <thead><tr><th>Vaccine name</th><th>Available dose</th><th>Status</th></tr></thead>
+                <thead><tr><th>Vaccine name</th><th>Available doses</th><th>Current stock status</th></tr></thead>
                 <tbody>
                     @forelse ($balances as $vaccine)
                         <tr class="app-table-row">
                             <td class="font-medium text-slate-900 dark:text-white">{{ $vaccine->name }}</td>
                             <td class="font-semibold {{ $vaccine->available_stock <= 0 ? 'text-red-600' : 'text-slate-900 dark:text-white' }}">{{ number_format($vaccine->available_stock) }}</td>
-                            <td><span class="status-pill {{ $vaccine->available_stock > 0 ? 'status-verified' : 'status-rejected' }}">{{ $vaccine->available_stock > 0 ? 'In stock' : 'Out of stock' }}</span></td>
+                            <td><span class="status-pill {{ $vaccine->available_stock > 0 ? 'status-verified' : 'status-rejected' }}">{{ $vaccine->available_stock > 0 ? 'Stock available' : 'No stock available' }}</span></td>
                         </tr>
                     @empty
                         <tr><td colspan="3" class="px-4 py-6 text-center text-sm text-zinc-500">Select a barangay to view stock balances.</td></tr>

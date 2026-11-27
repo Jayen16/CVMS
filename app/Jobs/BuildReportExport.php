@@ -11,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Spatie\LaravelPdf\Facades\Pdf;
 use ZipArchive;
 
@@ -25,10 +26,19 @@ class BuildReportExport implements ShouldQueue
     public function handle(): void
     {
         $export = ReportExport::findOrFail($this->exportId);
-        $export->update(['status' => 'processing']);
+        if ($export->status === 'ready') {
+            return;
+        }
+        $export->update(['status' => 'processing', 'processed_items' => 0, 'error' => null]);
 
         $filters = $export->filters ?? [];
+        if ($export->user->isSuperAdmin() && ($filters['region_id'] ?? 'all') === 'all') {
+            throw new RuntimeException('Select a region before exporting reports.');
+        }
+        set_time_limit($this->timeout);
+
         $barangayQuery = Barangay::query()
+            ->whereIn('id', $export->user->accessibleBarangayIds())
             ->with(['municipalityRelation.province.region'])
             ->when(($filters['region_id'] ?? 'all') !== 'all', fn ($q) => $q->whereHas('municipalityRelation.province', fn ($p) => $p->where('region_id', $filters['region_id'])))
             ->when(($filters['province_id'] ?? 'all') !== 'all', fn ($q) => $q->whereHas('municipalityRelation', fn ($p) => $p->where('province_id', $filters['province_id'])))
@@ -36,7 +46,11 @@ class BuildReportExport implements ShouldQueue
             ->when(($filters['barangay_id'] ?? 'all') !== 'all', fn ($q) => $q->whereKey($filters['barangay_id']))
             ->orderBy('id');
 
-        $export->update(['total_items' => $barangayQuery->count()]);
+        $total = $barangayQuery->count();
+        if ($total === 0) {
+            throw new RuntimeException('No accessible barangays match the selected export filters.');
+        }
+        $export->update(['total_items' => $total]);
         $base = 'report-exports/'.$export->id;
         $directory = Storage::disk('local')->path($base);
         if (! is_dir($directory)) {
@@ -45,7 +59,9 @@ class BuildReportExport implements ShouldQueue
 
         $zipPath = $directory.'.zip';
         $zip = new ZipArchive;
-        $zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            throw new RuntimeException('Could not create the report ZIP file.');
+        }
 
         $barangayQuery->chunkById(100, function ($barangays) use ($export, $filters, $directory, $zip): void {
             foreach ($barangays as $barangay) {
@@ -69,7 +85,9 @@ class BuildReportExport implements ShouldQueue
             }
         });
 
-        $zip->close();
+        if (! $zip->close()) {
+            throw new RuntimeException('Could not finish the report ZIP file.');
+        }
         $export->update(['status' => 'ready', 'path' => $zipPath]);
     }
 

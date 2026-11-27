@@ -25,6 +25,10 @@ class ReportExport extends Model
 
     public function progress(): int
     {
+        if ($this->status === 'ready') {
+            return 100;
+        }
+
         return $this->total_items > 0 ? (int) floor(($this->processed_items / $this->total_items) * 100) : 0;
     }
 }
