@@ -6,6 +6,7 @@ use App\Models\AdverseEventReport;
 use App\Models\Barangay;
 use App\Models\ChildProfile;
 use App\Models\ClinicAnnouncement;
+use App\Models\Facility;
 use App\Models\FacilityStaff;
 use App\Models\Municipality;
 use App\Models\OfflineSyncOutbox;
@@ -159,7 +160,20 @@ class SyncDataPage extends Component
 
         if (config('system.instance_type') === 'central') {
             $centralRows = DB::table('sync_processed_events')
-                ->when($latestStatus?->last_attempted_at && $latestStatus->last_synced_at, fn ($query) => $query->whereBetween('applied_at', [$latestStatus->last_attempted_at, $latestStatus->last_synced_at]))
+                ->when($locationData['syncUuids'] !== [], function ($query) use ($locationData): void {
+                    $query->where(function ($events) use ($locationData): void {
+                        $events->where(function ($children) use ($locationData): void {
+                            $children->where('entity', 'children')->whereIn('record_uuid', $locationData['syncUuids']['childUuids']);
+                        })->orWhere(function ($records) use ($locationData): void {
+                            $records->where('entity', 'immunization_records')->whereIn('record_uuid', $locationData['syncUuids']['recordUuids']);
+                        })->orWhere(function ($other) use ($locationData): void {
+                            // Staff and relationship events have their own UUIDs.
+                            $other->whereNotIn('entity', ['children', 'immunization_records'])
+                                ->whereIn('facility_id', Facility::whereIn('barangay_id', $locationData['barangayIds'])->select('id'));
+                        });
+                    });
+                })
+                ->when(! $this->viewProcessedAll && $latestStatus?->last_attempted_at && $latestStatus->last_synced_at, fn ($query) => $query->whereBetween('applied_at', [$latestStatus->last_attempted_at, $latestStatus->last_synced_at]))
                 ->when($this->viewProcessedAll && filled($this->dateFilter), fn ($query) => $query->whereDate('applied_at', $this->dateFilter))
                 ->latest('applied_at')
                 ->get()
@@ -264,6 +278,7 @@ class SyncDataPage extends Component
         if ($municipalitySelected) {
             $barangayIds = Barangay::whereIn('id', $barangayIds)->where('municipality_id', $this->municipalityId)->pluck('id');
         }
+        $barangayOptions = $barangayIds;
         if ($this->barangayId !== 'all') {
             $barangayIds = $barangayIds->intersect([$this->barangayId])->values();
         }
@@ -281,7 +296,7 @@ class SyncDataPage extends Component
                 : collect(),
             'barangays' => $user->isMunicipalAdmin()
                 ? Barangay::whereIn('id', $accessibleIds)->orderBy('name')->get()
-                : ($user->isSuperAdmin() && $municipalitySelected ? Barangay::whereIn('id', $barangayIds)->orderBy('name')->get() : collect()),
+                : ($user->isSuperAdmin() && $municipalitySelected ? Barangay::whereIn('id', $barangayOptions)->orderBy('name')->get() : collect()),
             'regionFilter' => $this->regionId,
             'provinceFilter' => $this->provinceId,
             'municipalityFilter' => $this->municipalityId,
@@ -294,9 +309,10 @@ class SyncDataPage extends Component
     /** @return array<int, string> */
     private function syncUuidsForBarangays($barangayIds): array
     {
-        $childUuids = ChildProfile::whereIn('barangay_id', $barangayIds)->pluck('sync_uuid')->all();
+        $childIds = ChildProfile::withoutGlobalScope('not_archived')->whereIn('barangay_id', $barangayIds)->pluck('id');
+        $childUuids = ChildProfile::withoutGlobalScope('not_archived')->whereIn('id', $childIds)->pluck('sync_uuid')->all();
         $announcementUuids = ClinicAnnouncement::whereIn('barangay_id', $barangayIds)->pluck('sync_uuid')->all();
-        $recordUuids = VaccinationRecord::whereIn('child_profile_id', ChildProfile::whereIn('barangay_id', $barangayIds)->pluck('id'))->pluck('sync_uuid')->all();
+        $recordUuids = VaccinationRecord::withoutGlobalScope('not_archived')->whereIn('child_profile_id', $childIds)->pluck('sync_uuid')->all();
         $aefiUuids = AdverseEventReport::whereIn('child_profile_id', ChildProfile::whereIn('barangay_id', $barangayIds)->pluck('id'))->pluck('sync_uuid')->all();
 
         return compact('childUuids', 'announcementUuids', 'recordUuids', 'aefiUuids');

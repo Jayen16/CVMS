@@ -28,7 +28,7 @@
         <form x-show="otpSent && !locked" x-cloak method="POST" action="{{ route('account.activation.otp.verify') }}" class="flex flex-col gap-6">
             @csrf
             <input type="hidden" name="identifier" value="{{ session('otp_identifier') }}"><input type="hidden" name="mode" value="activation">
-            <flux:input name="code" :label="__('Activation code')" inputmode="numeric" maxlength="6" required />
+            <flux:input name="code" :label="__('Activation code')" inputmode="numeric" maxlength="10" required />
             <p class="-mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
                 {{ __('Your password must be at least 12 characters and include uppercase and lowercase letters, a number, and a symbol.') }}
             </p>
@@ -41,6 +41,7 @@
             </p>
         </form>
         <form id="resend-activation-otp" method="POST" action="{{ route('account.activation.otp.send') }}" class="hidden">@csrf<input type="hidden" name="mode" value="activation"><input type="hidden" name="identifier" value="{{ session('otp_identifier') }}"></form>
+        <div class="text-center text-sm"><a class="text-teal-700 hover:underline" href="{{ route('account.activation.code') }}">{{ __('Already have an activation code?') }}</a></div>
         <div class="text-center text-sm"><a class="text-teal-700 hover:underline" href="{{ route('password.request') }}">{{ __('Forgot password?') }}</a></div>
     </div>
 </x-layouts::auth>

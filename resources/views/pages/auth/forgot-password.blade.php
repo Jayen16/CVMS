@@ -28,7 +28,7 @@
         <form x-show="otpSent && !locked" x-cloak method="POST" action="{{ route('password.otp.verify') }}" class="flex flex-col gap-6">
             @csrf
             <input type="hidden" name="identifier" value="{{ session('otp_identifier') }}"><input type="hidden" name="mode" value="reset">
-            <flux:input name="code" :label="__('Verification code')" inputmode="numeric" maxlength="6" required />
+            <flux:input name="code" :label="__('Verification code')" inputmode="numeric" maxlength="10" required />
             <flux:input name="password" :label="__('New password')" type="password" required />
             <flux:input name="password_confirmation" :label="__('Confirm password')" type="password" required />
             <flux:button variant="primary" type="submit" class="w-full">{{ __('Reset password') }}</flux:button>
