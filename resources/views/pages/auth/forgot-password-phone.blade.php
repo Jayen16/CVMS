@@ -14,7 +14,7 @@
         <form method="POST" action="{{ route('password.phone.reset') }}" class="flex flex-col gap-4">
             @csrf
             <flux:input name="phone" :label="__('Phone number')" type="tel" required />
-            <flux:input name="code" :label="__('Verification code')" inputmode="numeric" maxlength="6" required />
+            <flux:input name="code" :label="__('Verification code')" inputmode="numeric" maxlength="10" required />
             <flux:input name="password" :label="__('New password')" type="password" required />
             <flux:input name="password_confirmation" :label="__('Confirm password')" type="password" required />
             <flux:button type="submit" variant="primary" class="w-full">{{ __('Activate / reset password') }}</flux:button>

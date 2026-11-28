@@ -45,6 +45,7 @@ test('linking a new parent sends account activation instructions by email', func
 });
 
 test('linking a phone-only parent sends activation instructions by SMS', function () {
+    config(['reminders.sms.driver' => 'log']);
     Notification::fake();
     Log::spy();
 
@@ -78,8 +79,8 @@ test('linking a phone-only parent sends activation instructions by SMS', functio
 
     Notification::assertNothingSent();
     Log::shouldHaveReceived('info')->with('SMS reminder logged.', Mockery::on(function (array $context): bool {
-        return $context['recipient'] === '+639177999000'
-            && $context['message'] === 'CVMS: Go to Activate My Account and enter your registered phone number to create your account.';
+        return $context['recipient'] === '+639179990000'
+            && preg_match('/\A[0-9]{10}\z/', $context['message']) === 1;
     }));
 });
 

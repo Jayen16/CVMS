@@ -12,8 +12,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password as PasswordBroker;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class PhonePasswordResetController extends Controller
@@ -23,6 +23,20 @@ class PhonePasswordResetController extends Controller
         $this->abortIfOfflineRecovery();
 
         return view('pages.auth.activate-account');
+    }
+
+    public function activationCode(): View
+    {
+        $this->abortIfOfflineRecovery();
+
+        return view('pages.auth.activation-code');
+    }
+
+    public function passwordCode(): View
+    {
+        $this->abortIfOfflineRecovery();
+
+        return view('pages.auth.activation-code', ['codeMode' => 'reset']);
     }
 
     public function showCreatePassword(string $token): View
@@ -39,6 +53,9 @@ class PhonePasswordResetController extends Controller
         $otpTtlMinutes = 10;
         $email = filter_var($identifier, FILTER_VALIDATE_EMAIL) ? strtolower($identifier) : null;
         $lookup = $email ?? User::normalizePhone($identifier);
+        if ($email === null) {
+            $this->validateSmsPhone($lookup, 'identifier');
+        }
         $throttleKey = 'password-otp-send:'.hash('sha256', $lookup.'|'.$request->ip());
         $cooldownKey = 'password-otp-cooldown:'.hash('sha256', $lookup.'|'.$request->ip());
         $lockKey = 'password-otp-locked:'.hash('sha256', $lookup);
@@ -77,7 +94,7 @@ class PhonePasswordResetController extends Controller
                     'otp_available_at' => $availableAt,
                     'otp_mode' => $mode,
                     'toast_error' => $mode === 'activation'
-                        ? 'Check your email for the activation code.'
+                        ? ($email !== null ? 'Check your email for the activation code.' : 'Check your phone for the activation code.')
                         : 'Please wait 5 minutes before requesting another code.',
                 ]);
             }
@@ -108,7 +125,8 @@ class PhonePasswordResetController extends Controller
             ]);
         }
 
-        $code = (string) random_int(100000, 999999);
+        // UniSMS requires at least 10 characters; keep SMS content entirely numeric.
+        $code = (string) ($email !== null ? random_int(100000, 999999) : random_int(1000000000, 9999999999));
         $activation = $user->invitation_accepted_at === null;
         Cache::put($otpKey, ['user_id' => $user->id, 'code' => Hash::make($code), 'attempts' => 0, 'activation' => $activation, 'mode' => $mode], now()->addMinutes(10));
 
@@ -116,17 +134,17 @@ class PhonePasswordResetController extends Controller
             if ($email !== null) {
                 $user->notify(new PasswordOtpNotification($code, $activation));
             } else {
-                $message = $activation
-                    ? "CVMS: Your account activation code is {$code} for login verification. It expires in 10 minutes. Ignore if unauthorized."
-                    : "CVMS: Your password reset code is {$code} for login verification. It expires in 10 minutes. Ignore if unauthorized.";
-                $sms->make()->send(User::smsRecipient($lookup), $message);
+                $sms->make()->send(User::smsRecipient($lookup), $code);
             }
             Cache::put($cooldownKey, now()->addMinutes($otpTtlMinutes)->toIso8601String(), now()->addMinutes($otpTtlMinutes));
         } catch (\Throwable $exception) {
             Cache::forget($otpKey);
             report($exception);
 
-            return to_route($returnRoute)->with('toast_error', 'The verification code could not be sent. Please try again later.');
+            return to_route($returnRoute)->with([
+                'otp_identifier' => $identifier,
+                'toast_error' => 'The verification code could not be sent. Please try again later.',
+            ]);
         }
 
         return to_route($mode === 'activation' ? 'account.activation' : 'password.request')->with([
@@ -143,7 +161,7 @@ class PhonePasswordResetController extends Controller
         try {
             $validated = $request->validate([
                 'identifier' => ['required', 'string', 'max:255'],
-                'code' => ['required', 'digits:6'],
+                'code' => ['required', 'regex:/\A(?:[0-9]{6}|[0-9]{10})\z/'],
                 'password' => ['required', 'confirmed', Password::defaults()],
                 'mode' => ['nullable', 'in:reset,activation'],
             ]);
@@ -195,6 +213,15 @@ class PhonePasswordResetController extends Controller
     private function otpKey(string $identifier): string
     {
         return 'password-otp:'.hash('sha256', $identifier);
+    }
+
+    private function validateSmsPhone(?string $phone, string $field): void
+    {
+        if (! preg_match('/\A(?:09[0-9]{9}|\+?639[0-9]{9})\z/', $phone ?? '')) {
+            throw ValidationException::withMessages([
+                $field => 'Enter a valid Philippine mobile number, such as 09171234567 or +639171234567.',
+            ]);
+        }
     }
 
     private function abortIfOfflineRecovery(): void
@@ -257,6 +284,7 @@ class PhonePasswordResetController extends Controller
     {
         $validated = $request->validate(['phone' => ['required', 'string', 'max:32']]);
         $phone = User::normalizePhone($validated['phone']);
+        $this->validateSmsPhone($phone, 'phone');
         $key = 'password-reset-phone:'.sha1((string) $phone.'|'.$request->ip());
 
         abort_if(app(RateLimiter::class)->tooManyAttempts($key, 5), 429, 'Too many reset requests. Try again later.');
@@ -266,7 +294,7 @@ class PhonePasswordResetController extends Controller
             $query->where('role', 'parent')->orWhereJsonContains('roles', 'parent');
         })->notArchived()->first();
         if ($user) {
-            $code = (string) random_int(100000, 999999);
+            $code = (string) random_int(1000000000, 9999999999);
             $cacheKey = 'password-reset-otp:'.sha1((string) $phone);
             $purpose = $user->invitation_accepted_at === null ? 'activation' : 'reset';
 
@@ -277,12 +305,8 @@ class PhonePasswordResetController extends Controller
                 'attempts' => 0,
             ], now()->addMinutes(10));
 
-            $message = $purpose === 'activation'
-                ? "CVMS: Your account activation code is {$code} for login verification. It expires in 10 minutes. Ignore if unauthorized."
-                : "CVMS: Your password reset code is {$code} for login verification. It expires in 10 minutes. Ignore if unauthorized.";
-
             try {
-                $sms->make()->send(User::smsRecipient($phone), $message);
+                $sms->make()->send(User::smsRecipient($phone), $code);
             } catch (\Throwable $exception) {
                 Cache::forget($cacheKey);
                 report($exception);
@@ -298,7 +322,7 @@ class PhonePasswordResetController extends Controller
     {
         $validated = $request->validate([
             'phone' => ['required', 'string', 'max:32'],
-            'code' => ['required', 'digits:6'],
+            'code' => ['required', 'regex:/\A(?:[0-9]{6}|[0-9]{10})\z/'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
         $phone = User::normalizePhone($validated['phone']);
