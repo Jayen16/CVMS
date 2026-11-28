@@ -78,6 +78,7 @@ Route::get('vaccine-cards/{token}', [VaccineCardController::class, 'validateToke
 Route::get('forgot-password/phone', [PhonePasswordResetController::class, 'create'])->name('password.phone.request');
 Route::get('activate', [PhonePasswordResetController::class, 'activation'])->name('account.activation');
 Route::get('activate/code', [PhonePasswordResetController::class, 'activationCode'])->name('account.activation.code');
+Route::get('forgot-password/code', [PhonePasswordResetController::class, 'passwordCode'])->name('password.code');
 Route::get('create-password/{token}', [PhonePasswordResetController::class, 'showCreatePassword'])->name('password.create');
 Route::post('activate-account/otp', [PhonePasswordResetController::class, 'sendOtp'])->name('account.activation.otp.send');
 Route::post('activate-account/otp/verify', [PhonePasswordResetController::class, 'verifyOtp'])->name('account.activation.otp.verify');

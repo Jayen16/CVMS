@@ -32,6 +32,13 @@ class PhonePasswordResetController extends Controller
         return view('pages.auth.activation-code');
     }
 
+    public function passwordCode(): View
+    {
+        $this->abortIfOfflineRecovery();
+
+        return view('pages.auth.activation-code', ['codeMode' => 'reset']);
+    }
+
     public function showCreatePassword(string $token): View
     {
         return view('pages.auth.reset-password', ['isSetup' => true, 'token' => $token]);

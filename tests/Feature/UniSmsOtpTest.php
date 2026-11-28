@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\User;
+use App\Models\Barangay;
+use App\Models\ChildProfile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -69,4 +71,53 @@ test('a rejected SMS leaves no usable OTP and allows an immediate retry', functi
     expect(Cache::has('password-otp:'.hash('sha256', $user->phone)))->toBeFalse();
     $this->post(route('account.activation.otp.send'), $data)->assertSessionHas('otp_sent', true);
     Http::assertSentCount(2);
+});
+
+test('nurses send numeric parent OTPs that work on the direct code page', function (string $mode) {
+    $barangay = Barangay::create(['name' => 'OTP Barangay']);
+    $nurse = User::factory()->create(['role' => 'nurse', 'barangay_id' => $barangay->id]);
+    $parent = User::factory()->create([
+        'role' => 'parent', 'roles' => ['parent'], 'email' => null,
+        'phone' => '09760149526', 'login_channel' => 'sms',
+        'is_active' => $mode === 'reset',
+        'invitation_accepted_at' => $mode === 'reset' ? now() : null,
+    ]);
+    $child = ChildProfile::create([
+        'barangay_id' => $barangay->id, 'created_by' => $nurse->id,
+        'first_name' => 'SMS', 'last_name' => 'Child',
+        'birthdate' => now()->subMonths(9)->toDateString(), 'sex' => 'female',
+        'guardian_name' => $parent->name,
+    ]);
+    $child->parents()->attach($parent->id, ['relationship' => 'mother']);
+    $code = null;
+    Http::fake(function ($request) use (&$code) {
+        $code = $request['content'];
+        expect($code)->toMatch('/\A[0-9]{10}\z/');
+        expect($request['recipient'])->toBe('+639760149526');
+
+        return Http::response(['message' => ['status' => 'pending', 'reference_id' => 'msg_nurse']], 201);
+    });
+    $route = $mode === 'activation' ? 'children.parents.setup-link' : 'children.parents.password-link';
+    $this->actingAs($nurse)->postJson(route($route, [$child, $parent]), ['channel' => 'sms'])
+        ->assertOk()->assertJsonStructure(['message']);
+    Http::assertSentCount(1);
+
+    auth()->forgetGuards();
+    $page = $mode === 'activation' ? 'account.activation.code' : 'password.code';
+    $this->get(route($page))->assertOk()->assertSee('maxlength="10"', false);
+    $verifyRoute = $mode === 'activation' ? 'account.activation.otp.verify' : 'password.otp.verify';
+    $this->post(route($verifyRoute), [
+        'identifier' => $parent->phone, 'mode' => $mode, 'code' => $code,
+        'password' => 'Example!Pass12345', 'password_confirmation' => 'Example!Pass12345',
+    ])->assertSessionHasNoErrors()->assertRedirect(route('login'));
+    expect(Hash::check('Example!Pass12345', $parent->fresh()->password))->toBeTrue();
+    expect(Cache::has('password-otp:'.hash('sha256', $parent->phone)))->toBeFalse();
+})->with(['activation', 'reset']);
+
+test('staff SMS failures clear the new challenge', function () {
+    $parent = User::factory()->create(['phone' => '09760149526', 'invitation_accepted_at' => null]);
+    Http::fake(['*' => Http::response(['errors' => ['content' => ['Rejected']]], 422)]);
+    expect(fn () => app(\App\Services\AccountRecoveryService::class)->sendActivation($parent, 'sms'))
+        ->toThrow(RuntimeException::class);
+    expect(Cache::has('password-otp:'.hash('sha256', $parent->phone)))->toBeFalse();
 });

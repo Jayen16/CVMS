@@ -162,12 +162,12 @@ class ChildParentController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['message' => $channel === 'email'
                 ? 'Activation instructions sent again by email.'
-                : 'Activation instructions sent again by SMS.']);
+                : 'Activation OTP sent by SMS. Enter it at /activate/code within 10 minutes.']);
         }
 
         return to_route('children.show', $child)->with('status', $channel === 'email'
             ? 'Activation instructions sent again by email.'
-            : 'Activation instructions sent again by SMS.');
+            : 'Activation OTP sent by SMS. Enter it at /activate/code within 10 minutes.');
     }
 
     public function update(Request $request, ChildProfile $child, User $parent): RedirectResponse
@@ -258,11 +258,17 @@ class ChildParentController extends Controller
             return to_route('children.show', $child)->with('toast_error', $message);
         }
 
+        $message = $channel === 'sms'
+            ? ($parent->invitation_accepted_at === null
+                ? 'Activation OTP sent by SMS. Enter it at /activate/code within 10 minutes.'
+                : 'Password reset OTP sent by SMS. Enter it at /forgot-password/code within 10 minutes.')
+            : 'Parent password reset link sent by EMAIL.';
+
         if ($request->expectsJson()) {
-            return response()->json(['message' => 'Parent password reset link sent by '.strtoupper($channel).'.']);
+            return response()->json(['message' => $message]);
         }
 
-        return to_route('children.show', $child)->with('status', 'Parent password reset link sent by '.strtoupper($channel).'.');
+        return to_route('children.show', $child)->with('status', $message);
     }
 
     public function destroy(ChildProfile $child, User $parent): RedirectResponse
